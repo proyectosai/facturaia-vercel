@@ -7,12 +7,12 @@ export default async function ProtectedLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const appUser = await getCurrentAppUser();
+  await getCurrentAppUser();
   const profile = await getCurrentProfile();
   const demoMode = isDemoMode();
 
   return (
-    <AppSidebar appUser={appUser} profile={profile} demoMode={demoMode}>
+    <AppSidebar profile={profile} demoMode={demoMode}>
       {children}
     </AppSidebar>
   );

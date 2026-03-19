@@ -1,7 +1,6 @@
 import { getCurrentAppUser, getCurrentProfile } from "@/lib/auth";
 import { getCurrentAiUsageSnapshot, getCurrentUsageSnapshot } from "@/lib/billing";
 import { isDemoMode } from "@/lib/demo";
-import { getEffectivePlan, getPlanLabel } from "@/lib/plans";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -25,7 +24,6 @@ export default async function NewInvoicePage({
   const demoMode = isDemoMode();
   const usage = await getCurrentUsageSnapshot(appUser);
   const aiUsage = await getCurrentAiUsageSnapshot(appUser);
-  const effectivePlan = getEffectivePlan(appUser);
   const { error } = await searchParams;
   type StatusMessage = {
     tone: "default" | "error";
@@ -43,26 +41,6 @@ export default async function NewInvoicePage({
       ? {
           tone: "error" as const,
           message: decodeURIComponent(error),
-        }
-      : null,
-    effectivePlan === "free"
-      ? {
-          tone: "error" as const,
-          message: "Necesitas al menos un plan Básico activo para emitir facturas.",
-        }
-      : null,
-    usage.blocked
-      ? {
-          tone: "error" as const,
-          message:
-            "Has alcanzado el límite mensual de tu plan actual. Actualiza a Pro o Premium para seguir.",
-        }
-      : null,
-    aiUsage.blocked
-      ? {
-          tone: "error" as const,
-          message:
-            "Has alcanzado el límite diario de mejoras con IA de tu plan actual. Vuelve mañana o actualiza tu suscripción.",
         }
       : null,
   ].filter((item): item is StatusMessage => Boolean(item));
@@ -89,9 +67,7 @@ export default async function NewInvoicePage({
           <div className="space-y-4">
             <div className="flex flex-wrap gap-2">
               <Badge>Cabina de emisión</Badge>
-              <Badge variant="secondary">
-                {effectivePlan === "free" ? "Sin plan" : getPlanLabel(effectivePlan)}
-              </Badge>
+              <Badge variant="success">Uso privado</Badge>
               {demoMode ? <Badge variant="secondary">Modo demo</Badge> : null}
             </div>
             <h2 className="font-display text-4xl leading-none tracking-tight text-foreground">
@@ -111,9 +87,7 @@ export default async function NewInvoicePage({
                 {usage.used}
               </p>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                {usage.limit === null
-                  ? "Sin límite por plan."
-                  : `${usage.remaining} restantes en el periodo actual.`}
+                Sin límites artificiales por servicio o licencia.
               </p>
             </div>
 
@@ -125,9 +99,7 @@ export default async function NewInvoicePage({
                 {aiUsage.used}
               </p>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                {aiUsage.limit === null
-                  ? "Capacidad ilimitada."
-                  : `${aiUsage.remaining} mejoras disponibles hoy.`}
+                Uso local contabilizado solo como referencia interna.
               </p>
             </div>
 
@@ -139,7 +111,7 @@ export default async function NewInvoicePage({
                 {statusMessages.length === 0 ? "Todo listo" : `${statusMessages.length} aviso${statusMessages.length > 1 ? "s" : ""}`}
               </p>
               <p className="mt-2 text-sm leading-6 text-white/82">
-                Aquí tendrás visibles los bloqueos de plan, demo o capacidad antes de generar.
+                Aquí tendrás visibles los avisos de demo o validación antes de generar.
               </p>
             </div>
           </div>
@@ -166,7 +138,6 @@ export default async function NewInvoicePage({
           <InvoiceForm
             appUser={appUser}
             profile={profile}
-            usage={usage}
             aiUsage={aiUsage}
             demoMode={demoMode}
           />

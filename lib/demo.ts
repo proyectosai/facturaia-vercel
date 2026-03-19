@@ -5,7 +5,6 @@ import type {
   MessageRecord,
   MessageThread,
   Profile,
-  SubscriptionRecord,
 } from "@/lib/types";
 
 export function isDemoMode() {
@@ -22,12 +21,6 @@ export const DEMO_USER_ID = "00000000-0000-4000-8000-000000000001";
 export const demoAppUser: AppUserRecord = {
   id: DEMO_USER_ID,
   email: "demo@local.test",
-  current_plan: "pro",
-  billing_interval: "monthly",
-  plan_status: "active",
-  current_period_end: "2026-04-19T00:00:00.000Z",
-  stripe_customer_id: "cus_demo_facturaia",
-  active_subscription_id: "10000000-0000-4000-8000-000000000001",
   created_at: "2026-01-10T09:00:00.000Z",
   updated_at: "2026-03-19T08:00:00.000Z",
 };
@@ -42,24 +35,6 @@ export const demoProfile: Profile = {
   logo_url: "/demo-logo.png",
   created_at: "2026-01-10T09:00:00.000Z",
   updated_at: "2026-03-18T16:00:00.000Z",
-};
-
-export const demoSubscription: SubscriptionRecord = {
-  id: "10000000-0000-4000-8000-000000000001",
-  user_id: DEMO_USER_ID,
-  stripe_customer_id: "cus_demo_facturaia",
-  stripe_subscription_id: "sub_demo_facturaia",
-  stripe_price_id: "price_demo_pro_monthly",
-  stripe_product_id: "prod_demo_pro",
-  plan_key: "pro",
-  billing_interval: "monthly",
-  status: "active",
-  cancel_at_period_end: false,
-  current_period_start: "2026-03-19T00:00:00.000Z",
-  current_period_end: "2026-04-19T00:00:00.000Z",
-  canceled_at: null,
-  created_at: "2026-01-10T09:00:00.000Z",
-  updated_at: "2026-03-19T08:00:00.000Z",
 };
 
 export const demoAiUsage = {

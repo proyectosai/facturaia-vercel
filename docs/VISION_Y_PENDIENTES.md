@@ -67,8 +67,8 @@ Hay bastante trabajo hecho en:
 - interfaz principal
 - panel protegido
 - facturación
-- pricing y suscripciones
 - generación documental
+- mensajería opcional
 - documentación del repositorio
 
 Todavía faltan piezas importantes para considerarlo un producto completamente maduro.
@@ -80,7 +80,7 @@ Todavía faltan piezas importantes para considerarlo un producto completamente m
 - aplicación con Next.js 15, App Router y TypeScript
 - UI cuidada en español
 - dashboard protegido con navegación lateral
-- vistas diferenciadas para dashboard, facturas, nueva factura, documentos, precios y perfil
+- vistas diferenciadas para dashboard, facturas, nueva factura, documentos, instalación y perfil
 - modo demo local para revisar el producto sin servicios externos reales
 
 ### Autenticación y datos
@@ -102,13 +102,12 @@ Todavía faltan piezas importantes para considerarlo un producto completamente m
 - descarga de PDF
 - envío por email
 
-### Suscripciones y planes
+### Uso privado y despliegue
 
-- página de precios con Básico, Pro y Premium
-- integración con Stripe Checkout
-- webhook de sincronización de suscripciones
-- gating por plan en varias funciones
-- badge de plan y estado del usuario
+- guía de instalación privada integrada en la app
+- copy y navegación orientadas a despliegue self-hosted
+- eliminación de la monetización integrada como eje del producto
+- base preparada para que cada usuario active solo las integraciones que quiera usar
 
 ### IA y documentos
 
@@ -145,11 +144,11 @@ Estas partes existen, pero no están cerradas del todo:
 - falta histórico persistente de documentos generados
 - falta duplicación, versionado y biblioteca de plantillas propias del usuario
 
-### Billing
+### Instalación privada
 
-- Stripe está integrado, pero sigue siendo una base MVP
-- conviene mejorar downgrade, upgrade, copy de límites y más estados de suscripción
-- hace falta una experiencia más fina de “qué desbloquea cada plan”
+- conviene reforzar scripts de setup para VPS y servidores domésticos
+- falta una experiencia más guiada de backup y restauración
+- hacen falta checks más visibles del estado del entorno local
 
 ### Calidad
 
@@ -189,6 +188,7 @@ Esto forma parte de la visión, pero hoy no está implementado o no está comple
 - vacíos y ayudas contextuales más trabajadas
 - métricas de uso más claras en dashboard
 - experiencia móvil todavía más fina en flujos densos
+- herramientas mejores para administración self-hosted
 
 ### Infraestructura
 
@@ -228,7 +228,7 @@ El criterio es simple: menos funciones vacías y más flujos útiles que ahorren
 ### Prioridad 3. Cerrar huecos de producto
 
 - onboarding
-- mensajes de planes más claros
+- ayudas de instalación privada más claras
 - estados vacíos y ayudas
 - UX más consistente entre escritorio y móvil
 

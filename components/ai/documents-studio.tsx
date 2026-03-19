@@ -21,7 +21,6 @@ import {
 import { toast } from "sonner";
 
 import { AI_DOCUMENT_TYPES, type AiDocumentType } from "@/lib/ai";
-import { PlanGateDialog } from "@/components/plan-gate-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -470,7 +469,6 @@ export function DocumentsStudio({
   const [logoUrl, setLogoUrl] = useState(defaultLogoUrl);
   const [additionalText, setAdditionalText] = useState(defaultAdditionalText);
   const [aiUsed, setAiUsed] = useState(initialAiUsed);
-  const [upgradeOpen, setUpgradeOpen] = useState(false);
 
   const activeMeta = DOCUMENT_TYPE_META[documentType];
   const ActiveIcon = activeMeta.icon;
@@ -555,10 +553,6 @@ export function DocumentsStudio({
       };
 
       if (!response.ok || !payload.documentBody) {
-        if (response.status === 403) {
-          setUpgradeOpen(true);
-        }
-
         throw new Error(
           payload.error ?? "No se ha podido generar el documento con la IA local.",
         );
@@ -662,13 +656,6 @@ export function DocumentsStudio({
 
   return (
     <>
-      <PlanGateDialog
-        open={upgradeOpen}
-        onOpenChange={setUpgradeOpen}
-        requiredPlan="pro"
-        reason="La generación de documentos asistidos está pensada para usuarios Pro o Premium."
-      />
-
       <div className="space-y-8">
         <Card className="overflow-hidden border-white/50 bg-[radial-gradient(circle_at_top_left,rgba(230,245,240,0.95),rgba(255,255,255,0.92)_42%,rgba(244,233,215,0.78)_100%)] shadow-[0_28px_80px_rgba(21,48,52,0.10)]">
           <CardContent className="relative p-6 sm:p-8">
@@ -725,7 +712,7 @@ export function DocumentsStudio({
                     {aiLimit === null ? `${aiUsed}` : `${aiUsed}/${aiLimit}`}
                   </p>
                   <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                    Control diario activo para que la experiencia siga siendo estable incluso con uso intensivo.
+                    Referencia interna del uso diario sobre tu modelo local.
                   </p>
                 </div>
 
@@ -737,7 +724,7 @@ export function DocumentsStudio({
                     {aiRemaining === null ? "Ilimitado" : aiRemaining}
                   </p>
                   <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                    Tu modelo local sigue disponible para descripciones, borradores y piezas completas.
+                    No hay planes ni bloqueos comerciales: decides tú cómo y cuánto usar la IA local.
                   </p>
                 </div>
 

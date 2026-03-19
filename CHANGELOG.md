@@ -13,18 +13,19 @@ El formato está inspirado en Keep a Changelog y el versionado irá madurando co
 - Gestión de perfil fiscal del emisor.
 - Creación de facturas con IVA, IRPF, numeración automática y PDF profesional.
 - Historial de facturas con descarga de PDF y envío por email.
-- Integración de planes y suscripciones con Stripe.
 - Página pública de factura con QR.
 - Estudio documental con IA local vía LM Studio.
 - Exportación documental a PDF y Word.
+- Módulo opcional de mensajería unificada para WhatsApp Business y Telegram.
 - Modo demo para revisar la interfaz sin servicios reales.
 - Documentación inicial en español.
 
 ### Mejorado
 
-- UX del dashboard, pricing, nueva factura, historial y documentos.
+- UX del dashboard, instalación privada, nueva factura, historial y documentos.
 - Integración de legislación oficial BOE y AEAT dentro del flujo de facturación.
 - Soporte para propuestas, presupuestos y contratos desde la cabina documental.
+- Reorientación del proyecto a instalación privada sin monetización integrada.
 
 ### Documentación
 

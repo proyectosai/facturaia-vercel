@@ -6,11 +6,10 @@ import { redirect } from "next/navigation";
 import {
   demoAppUser,
   demoProfile,
-  demoSubscription,
   isDemoMode,
 } from "@/lib/demo";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import type { AppUserRecord, Profile, SubscriptionRecord } from "@/lib/types";
+import type { AppUserRecord, Profile } from "@/lib/types";
 
 export const getOptionalUser = cache(async () => {
   if (isDemoMode()) {
@@ -127,24 +126,3 @@ export const getCurrentAppUser = cache(async (): Promise<AppUserRecord> => {
 
   return createdUser as AppUserRecord;
 });
-
-export const getCurrentSubscription = cache(
-  async (): Promise<SubscriptionRecord | null> => {
-    if (isDemoMode()) {
-      return demoSubscription;
-    }
-
-    const user = await requireUser();
-    const supabase = await createServerSupabaseClient();
-
-    const { data: subscription } = await supabase
-      .from("subscriptions")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("current_period_end", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    return (subscription as SubscriptionRecord | null) ?? null;
-  },
-);

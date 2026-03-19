@@ -10,17 +10,6 @@ const serviceEnvSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
 });
 
-const stripeEnvSchema = z.object({
-  STRIPE_SECRET_KEY: z.string().min(1),
-  STRIPE_WEBHOOK_SECRET: z.string().min(1),
-  STRIPE_PRICE_BASIC_MONTHLY: z.string().min(1),
-  STRIPE_PRICE_BASIC_YEARLY: z.string().min(1),
-  STRIPE_PRICE_PRO_MONTHLY: z.string().min(1),
-  STRIPE_PRICE_PRO_YEARLY: z.string().min(1),
-  STRIPE_PRICE_PREMIUM_MONTHLY: z.string().min(1),
-  STRIPE_PRICE_PREMIUM_YEARLY: z.string().min(1),
-});
-
 const resendEnvSchema = z.object({
   RESEND_API_KEY: z.string().min(1),
   RESEND_FROM_EMAIL: z.string().min(1),
@@ -43,19 +32,6 @@ export function getPublicEnv() {
 export function getServiceEnv() {
   return serviceEnvSchema.parse({
     SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
-  });
-}
-
-export function getStripeEnv() {
-  return stripeEnvSchema.parse({
-    STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
-    STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
-    STRIPE_PRICE_BASIC_MONTHLY: process.env.STRIPE_PRICE_BASIC_MONTHLY,
-    STRIPE_PRICE_BASIC_YEARLY: process.env.STRIPE_PRICE_BASIC_YEARLY,
-    STRIPE_PRICE_PRO_MONTHLY: process.env.STRIPE_PRICE_PRO_MONTHLY,
-    STRIPE_PRICE_PRO_YEARLY: process.env.STRIPE_PRICE_PRO_YEARLY,
-    STRIPE_PRICE_PREMIUM_MONTHLY: process.env.STRIPE_PRICE_PREMIUM_MONTHLY,
-    STRIPE_PRICE_PREMIUM_YEARLY: process.env.STRIPE_PRICE_PREMIUM_YEARLY,
   });
 }
 

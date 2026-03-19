@@ -41,7 +41,7 @@ Estas áreas merecen especial atención:
 
 - autenticación con Supabase
 - políticas RLS y migraciones
-- webhooks de Stripe
+- webhooks opcionales de WhatsApp Business y Telegram
 - generación pública de PDFs y facturas
 - subida de logos y acceso a Storage
 - uso de IA local y endpoints internos

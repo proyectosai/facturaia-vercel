@@ -8,7 +8,7 @@ FacturaIA está diseñada como una aplicación Next.js 15 con App Router, priori
 - Server Actions para operaciones críticas
 - persistencia en Supabase
 - UI en español
-- separación entre facturación, billing, documentos e identidad fiscal
+- separación entre facturación, documentos, mensajería e identidad fiscal
 
 ## Estructura principal
 
@@ -17,13 +17,14 @@ FacturaIA está diseñada como una aplicación Next.js 15 con App Router, priori
 - `app/layout.tsx`
 - `app/page.tsx`
 - `app/login/page.tsx`
-- `app/pricing/page.tsx`
+- `app/instalacion/page.tsx`
 - `app/factura/[publicId]/page.tsx`
 - `app/(protected)/dashboard/page.tsx`
 - `app/(protected)/new-invoice/page.tsx`
 - `app/(protected)/invoices/page.tsx`
 - `app/(protected)/messages/page.tsx`
 - `app/(protected)/documents-ai/page.tsx`
+- `app/(protected)/system/page.tsx`
 - `app/(protected)/profile/page.tsx`
 
 ### `app/api/`
@@ -34,7 +35,6 @@ FacturaIA está diseñada como una aplicación Next.js 15 con App Router, priori
 - `app/api/ai/documents/export/docx/route.ts`
 - `app/api/invoices/[invoiceId]/pdf/route.ts`
 - `app/api/public/invoices/[publicId]/pdf/route.ts`
-- `app/api/stripe-webhook/route.ts`
 - `app/api/integrations/telegram/[inboundKey]/route.ts`
 - `app/api/integrations/whatsapp/[inboundKey]/route.ts`
 
@@ -73,21 +73,18 @@ Responsabilidades:
 - generación de PDF
 - enlace público y QR
 
-## 3. Billing y planes
+## 3. Uso privado y métricas internas
 
 Archivos clave:
 
-- `lib/plans.ts`
 - `lib/billing.ts`
-- `lib/actions/stripe.ts`
-- `app/api/stripe-webhook/route.ts`
+- `app/instalacion/page.tsx`
 
 Responsabilidades:
 
-- definición de planes
-- acceso por nivel de plan
-- límites mensuales y diarios
-- sincronización con Stripe
+- métricas internas de uso de facturas e IA
+- compatibilidad con modo demo
+- copy y rutas orientadas a instalación privada
 
 ## 4. Documentos con IA
 
@@ -144,7 +141,6 @@ Tablas principales:
 
 - `users`
 - `profiles`
-- `subscriptions`
 - `invoices`
 - `ai_usage`
 - `message_connections`
@@ -153,10 +149,9 @@ Tablas principales:
 
 ## `users`
 
-- plan actual
-- estado del plan
-- customer de Stripe
-- fecha de renovación
+- identidad mínima del usuario autenticado
+- email
+- timestamps de creación y actualización
 
 ## `profiles`
 
@@ -164,14 +159,6 @@ Tablas principales:
 - NIF
 - dirección
 - logo
-
-## `subscriptions`
-
-- relación con Stripe
-- precio
-- producto
-- intervalo mensual / anual
-- estado de la suscripción
 
 ## `invoices`
 
@@ -230,7 +217,6 @@ En este modo:
 ## Decisiones de arquitectura
 
 - Supabase como backend unificado para auth, base de datos y storage.
-- Stripe separado del dominio interno mediante webhook de sincronización.
 - LM Studio como sustituto local de API de IA externa.
 - PDF y DOCX generados server-side para mantener consistencia de salida.
 - componentes de UI desacoplados de la lógica de negocio.

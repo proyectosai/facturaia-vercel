@@ -10,7 +10,6 @@ import {
   requireFeatureAccess,
 } from "@/lib/billing";
 import { requireUser } from "@/lib/auth";
-import { getPlanLabel } from "@/lib/plans";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -46,34 +45,12 @@ export async function POST(request: Request) {
     const { user: appUser } = await requireFeatureAccess("ai_contracts");
     const usage = await getCurrentAiUsageSnapshot(appUser);
 
-    if (usage.blocked) {
-      return NextResponse.json(
-        {
-          error:
-            usage.limit === null
-              ? "Tu plan no tiene límite diario de IA."
-              : `Has alcanzado el límite diario de ${usage.limit} generaciones con IA de tu plan ${getPlanLabel(usage.effectivePlan)}. Vuelve mañana o actualiza tu suscripción.`,
-        },
-        { status: 429 },
-      );
-    }
-
     const completion = await generateBusinessDocument(payload);
-    const consumed = await incrementDailyAiUsage(
+    await incrementDailyAiUsage(
       appUser.id,
-      getAiDailyLimit(appUser),
+      getAiDailyLimit(),
       usage.date,
     );
-
-    if (consumed === null) {
-      return NextResponse.json(
-        {
-          error:
-            "Acabas de alcanzar tu límite diario de IA. Vuelve mañana o mejora tu plan para seguir generando documentos.",
-        },
-        { status: 429 },
-      );
-    }
 
     return NextResponse.json({
       documentTitle: completion.title,
@@ -91,11 +68,7 @@ export async function POST(request: Request) {
     const status =
       error instanceof z.ZodError
         ? 400
-        : message.includes("reservada")
-          ? 403
-          : message.includes("Activa")
-            ? 403
-            : 500;
+        : 500;
 
     return NextResponse.json({ error: message }, { status });
   }

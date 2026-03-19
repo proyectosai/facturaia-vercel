@@ -1,17 +1,10 @@
 import Link from "next/link";
 
 import { updateProfileAction } from "@/lib/actions/auth";
-import { createCustomerPortalAction } from "@/lib/actions/stripe";
-import {
-  getCurrentAppUser,
-  getCurrentProfile,
-  getCurrentSubscription,
-} from "@/lib/auth";
+import { getCurrentAppUser, getCurrentProfile } from "@/lib/auth";
 import { isDemoMode } from "@/lib/demo";
-import { getEffectivePlan, getPlanLabel } from "@/lib/plans";
 import { RouteToast } from "@/components/route-toast";
 import { SubmitButton } from "@/components/submit-button";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -23,7 +16,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { formatDateShort } from "@/lib/utils";
 
 export default async function ProfilePage({
   searchParams,
@@ -31,23 +23,20 @@ export default async function ProfilePage({
   searchParams: Promise<{
     updated?: string;
     error?: string;
-    portal?: string;
     tab?: string;
   }>;
 }) {
   const profile = await getCurrentProfile();
   const appUser = await getCurrentAppUser();
-  const subscription = await getCurrentSubscription();
   const demoMode = isDemoMode();
-  const { updated, error, portal, tab } = await searchParams;
-  const effectivePlan = getEffectivePlan(appUser);
-  const defaultTab = tab === "billing" ? "billing" : "fiscal";
+  const { updated, error, tab } = await searchParams;
+  const defaultTab = tab === "environment" ? "environment" : "fiscal";
 
   return (
     <div className="space-y-6">
       {demoMode ? (
         <div className="status-banner">
-          Estás en modo demo local. Puedes revisar la interfaz del perfil y la suscripción, pero los cambios no se guardan ni se abre Stripe.
+          Estás en modo demo local. Puedes revisar la interfaz del perfil y del entorno privado, pero los cambios no se guardan.
         </div>
       ) : null}
 
@@ -58,27 +47,24 @@ export default async function ProfilePage({
             ? "Perfil actualizado correctamente."
             : error
               ? decodeURIComponent(error)
-              : portal
-                ? "Has vuelto del portal de cliente de Stripe."
-                : null
+              : null
         }
       />
 
       <div className="max-w-3xl space-y-3">
         <p className="section-kicker">Mi Perfil</p>
         <h1 className="font-display text-5xl leading-none tracking-tight text-foreground">
-          Datos fiscales y control de suscripción.
+          Datos fiscales y control del entorno privado.
         </h1>
         <p className="text-lg leading-8 text-muted-foreground">
-          Gestiona tu identidad de emisor y abre el portal del cliente de Stripe
-          para cambiar o cancelar tu plan.
+          Gestiona tu identidad de emisor y deja lista tu instalación privada para trabajar desde tu equipo o tu servidor.
         </p>
       </div>
 
       <Tabs defaultValue={defaultTab}>
         <TabsList>
           <TabsTrigger value="fiscal">Datos fiscales</TabsTrigger>
-          <TabsTrigger value="billing">Facturación</TabsTrigger>
+          <TabsTrigger value="environment">Entorno privado</TabsTrigger>
         </TabsList>
 
         <TabsContent value="fiscal">
@@ -189,34 +175,34 @@ export default async function ProfilePage({
           </Card>
         </TabsContent>
 
-        <TabsContent value="billing">
+        <TabsContent value="environment">
           <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
             <Card>
               <CardHeader>
-                <CardTitle>Plan actual</CardTitle>
+                <CardTitle>Estado de la instalación</CardTitle>
                 <CardDescription>
-                  Estado sincronizado con Stripe y almacenado en Supabase.
+                  Resumen del entorno de uso privado de FacturaIA.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="rounded-[24px] bg-[color:var(--color-panel)] p-5">
-                  <p className="text-sm text-muted-foreground">Plan</p>
+                  <p className="text-sm text-muted-foreground">Modo de uso</p>
                   <p className="mt-2 text-3xl font-semibold text-foreground">
-                    {getPlanLabel(effectivePlan)}
+                    Instalación privada
                   </p>
                 </div>
 
                 <div className="rounded-[24px] bg-[color:var(--color-panel)] p-5">
-                  <p className="text-sm text-muted-foreground">Renovación</p>
+                  <p className="text-sm text-muted-foreground">Cuenta local</p>
                   <p className="mt-2 text-xl font-semibold text-foreground">
-                    {formatDateShort(appUser.current_period_end)}
+                    {appUser.email}
                   </p>
                 </div>
 
                 <div className="rounded-[24px] bg-[color:var(--color-panel)] p-5">
-                  <p className="text-sm text-muted-foreground">Estado Stripe</p>
+                  <p className="text-sm text-muted-foreground">Despliegue</p>
                   <p className="mt-2 text-xl font-semibold text-foreground">
-                    {subscription?.status ?? appUser.plan_status}
+                    {demoMode ? "Demo local" : "Autogestionado"}
                   </p>
                 </div>
               </CardContent>
@@ -224,55 +210,28 @@ export default async function ProfilePage({
 
             <Card>
               <CardHeader>
-                <CardTitle>Gestión de suscripción</CardTitle>
+                <CardTitle>Guía de uso privado</CardTitle>
                 <CardDescription>
-                  Cambia de plan, revisa cobros o cancela desde el portal seguro de Stripe.
+                  FacturaIA ya no está orientada a pagos ni a monetización integrada.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-5">
-                <div className="flex items-center gap-3">
-                  <Badge
-                    variant={
-                      effectivePlan === "premium"
-                        ? "success"
-                        : effectivePlan === "pro"
-                          ? "default"
-                          : "secondary"
-                    }
-                  >
-                    {getPlanLabel(effectivePlan)}
-                  </Badge>
-                  <span className="text-sm text-muted-foreground">
-                    {subscription?.billing_interval === "yearly"
-                      ? "Ciclo anual"
-                      : subscription?.billing_interval === "monthly"
-                        ? "Ciclo mensual"
-                        : "Sin ciclo activo"}
-                  </span>
-                </div>
-
                 <div className="rounded-[26px] bg-[color:var(--color-panel)] p-5 text-sm leading-6 text-muted-foreground">
-                  El portal del cliente permite actualizar tarjeta, cambiar de plan,
-                  revisar próximos cobros y cancelar al final del periodo.
+                  La aplicación está planteada para que cada autónomo la instale en
+                  su propio ordenador o en el servidor que prefiera, sin planes de
+                  pago ni servicios comerciales obligatorios.
                 </div>
 
                 <div className="flex flex-wrap gap-3">
-                  {demoMode ? (
-                    <Button variant="secondary" disabled>
-                      Portal desactivado en demo
-                    </Button>
-                  ) : (
-                    <form action={createCustomerPortalAction}>
-                      <SubmitButton pendingLabel="Abriendo portal...">
-                        Abrir portal del cliente
-                      </SubmitButton>
-                    </form>
-                  )}
-
                   <Button variant="outline" asChild>
-                    <Link href="/pricing">Ver todos los planes</Link>
+                    <Link href="/instalacion">Abrir guía de instalación</Link>
                   </Button>
                 </div>
+
+                <p className="text-sm leading-7 text-muted-foreground">
+                  Puedes desplegar FacturaIA solo para ti, mantener tus claves bajo tu control
+                  y activar únicamente las integraciones que realmente quieras usar.
+                </p>
               </CardContent>
             </Card>
           </div>

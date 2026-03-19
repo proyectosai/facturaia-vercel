@@ -6,16 +6,13 @@ import { toast } from "sonner";
 
 import { createInvoiceAction } from "@/lib/actions/invoices";
 import { calculateInvoicePreview } from "@/lib/invoice-math";
-import { getEffectivePlan, getPlanLabel, hasPlanAccess } from "@/lib/plans";
 import type {
   AppUserRecord,
   InvoiceLineItemInput,
-  PlanKey,
   Profile,
   VatRate,
 } from "@/lib/types";
 import { formatCurrency, roundCurrency } from "@/lib/utils";
-import { PlanGateDialog } from "@/components/plan-gate-dialog";
 import { SubmitButton } from "@/components/submit-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -86,26 +83,18 @@ function isValidDraft(value: unknown): value is {
 export function InvoiceForm({
   profile,
   appUser,
-  usage,
   aiUsage,
   demoMode = false,
 }: {
   profile: Profile;
   appUser: AppUserRecord;
-  usage: {
-    used: number;
-    limit: number | null;
-    remaining: number | null;
-    blocked: boolean;
-    effectivePlan: PlanKey;
-  };
   aiUsage: {
     date: string;
     used: number;
     limit: number | null;
     remaining: number | null;
     blocked: boolean;
-    effectivePlan: PlanKey;
+    effectivePlan: string;
   };
   demoMode?: boolean;
 }) {
@@ -117,16 +106,9 @@ export function InvoiceForm({
   const [aiUsedToday, setAiUsedToday] = useState(aiUsage.used);
   const [isAiGenerating, setIsAiGenerating] = useState(false);
   const [isDraftReady, setIsDraftReady] = useState(false);
-  const [upgradePlan, setUpgradePlan] =
-    useState<Exclude<PlanKey, "free"> | null>(null);
   const visibleLines = lines.filter((line) => line.description.trim().length > 0);
   const preview = calculateInvoicePreview(visibleLines, irpfRate);
-  const effectivePlan = getEffectivePlan(appUser);
-  const canCreateInvoice = effectivePlan !== "free" && !usage.blocked;
-  const canUseAiDescriptions = hasPlanAccess(appUser, "basic");
-  const aiRemaining =
-    aiUsage.limit === null ? null : Math.max(aiUsage.limit - aiUsedToday, 0);
-  const aiBlocked = aiUsage.limit !== null && aiUsedToday >= aiUsage.limit;
+  const canCreateInvoice = !demoMode;
 
   useEffect(() => {
     try {
@@ -225,19 +207,6 @@ export function InvoiceForm({
     const lineIndex = activeLine;
     const baseDescription = lines[lineIndex]?.description.trim() ?? "";
 
-    if (!canUseAiDescriptions) {
-      setUpgradePlan("basic");
-      return;
-    }
-
-    if (aiBlocked) {
-      setUpgradePlan(effectivePlan === "basic" ? "pro" : "premium");
-      toast.error(
-        "Has alcanzado tu límite diario de IA. Actualiza tu plan o vuelve mañana.",
-      );
-      return;
-    }
-
     if (!baseDescription) {
       toast.error("Escribe primero una descripción base en la línea activa.");
       return;
@@ -263,14 +232,6 @@ export function InvoiceForm({
       };
 
       if (!response.ok || !payload.improvedText) {
-        if (response.status === 403) {
-          setUpgradePlan("basic");
-        }
-
-        if (response.status === 429 && effectivePlan === "basic") {
-          setUpgradePlan("pro");
-        }
-
         throw new Error(
           payload.error ?? "No se ha podido mejorar la descripción con la IA local.",
         );
@@ -302,23 +263,6 @@ export function InvoiceForm({
 
   return (
     <>
-      <PlanGateDialog
-        open={upgradePlan !== null}
-        onOpenChange={(open) => {
-          if (!open) {
-            setUpgradePlan(null);
-          }
-        }}
-        requiredPlan={upgradePlan ?? "pro"}
-        reason={
-          upgradePlan === "basic"
-            ? "Necesitas activar un plan para emitir facturas o usar la IA local en tus descripciones."
-            : usage.blocked
-              ? "Has agotado el límite mensual de tu plan Básico. Pásate a Pro para seguir facturando sin límite."
-              : "Has alcanzado el límite diario de IA de tu plan actual. Actualiza para ampliar capacidad."
-        }
-      />
-
       <form action={demoMode ? undefined : createInvoiceAction} className="space-y-8">
         <input
           type="hidden"
@@ -379,7 +323,7 @@ export function InvoiceForm({
                 Estado de emisión
               </p>
               <p className="mt-3 text-2xl font-semibold text-white">
-                {canCreateInvoice ? "Lista para emitir" : "Pendiente de plan"}
+                {canCreateInvoice ? "Lista para emitir" : "Revisar formulario"}
               </p>
               <p className="mt-2 text-sm leading-6 text-white/82">
                 Si tienes dudas fiscales concretas, usa la pestaña de legislación antes de cerrar la factura.
@@ -545,43 +489,19 @@ export function InvoiceForm({
             </CardHeader>
             <CardContent className="space-y-5">
               <div className="rounded-[26px] bg-[color:var(--color-panel)] p-4 text-sm text-muted-foreground">
-                Plan activo:{" "}
+                Instalación privada ·{" "}
                 <strong className="text-foreground">
-                  {effectivePlan === "free"
-                    ? "Sin plan"
-                    : getPlanLabel(effectivePlan)}
+                  sin límites artificiales de facturación
                 </strong>
-                {usage.limit !== null ? (
-                  <>
-                    {" · "}
-                    Restantes este mes:{" "}
-                    <strong className="text-foreground">{usage.remaining}</strong>
-                  </>
-                ) : (
-                  <>
-                    {" · "}
-                    <strong className="text-foreground">Facturas ilimitadas</strong>
-                  </>
-                )}
               </div>
 
               <div className="rounded-[26px] bg-[color:var(--color-panel)] p-4 text-sm text-muted-foreground">
                 Mejoras IA hoy:{" "}
                 <strong className="text-foreground">{aiUsedToday}</strong>
-                {aiUsage.limit === null ? (
-                  <>
-                    {" · "}
-                    <strong className="text-foreground">Ilimitadas</strong>
-                  </>
-                ) : (
-                  <>
-                    {" de "}
-                    <strong className="text-foreground">{aiUsage.limit}</strong>
-                    {" · "}
-                    Restantes:{" "}
-                    <strong className="text-foreground">{aiRemaining}</strong>
-                  </>
-                )}
+                {" · "}
+                <strong className="text-foreground">
+                  uso local sin límite de plan
+                </strong>
               </div>
 
               <div className="space-y-2">
@@ -1003,16 +923,7 @@ export function InvoiceForm({
                 </Button>
               </div>
 
-              {demoMode ? (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="sm:min-w-[260px]"
-                  disabled
-                >
-                  Generación real desactivada en demo
-                </Button>
-              ) : canCreateInvoice ? (
+              {canCreateInvoice ? (
                 <SubmitButton
                   pendingLabel="Generando factura..."
                   className="sm:min-w-[220px]"
@@ -1022,14 +933,11 @@ export function InvoiceForm({
               ) : (
                 <Button
                   type="button"
-                  className="sm:min-w-[220px]"
-                  onClick={() =>
-                    setUpgradePlan(effectivePlan === "free" ? "basic" : "pro")
-                  }
+                  variant="secondary"
+                  className="sm:min-w-[260px]"
+                  disabled
                 >
-                  {effectivePlan === "free"
-                    ? "Elegir plan para facturar"
-                    : "Actualizar a Pro"}
+                  Generación real desactivada en demo
                 </Button>
               )}
             </div>

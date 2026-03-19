@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  CreditCard,
   FilePlus2,
   FileText,
   Files,
@@ -11,13 +10,14 @@ import {
   LogOut,
   MessageSquareText,
   Settings2,
+  ShieldCheck,
   Sparkles,
+  Wrench,
 } from "lucide-react";
 
 import { signOutAction } from "@/lib/actions/auth";
-import { getEffectivePlan, getPlanLabel } from "@/lib/plans";
-import type { AppUserRecord, Profile } from "@/lib/types";
-import { cn, formatDateShort } from "@/lib/utils";
+import type { Profile } from "@/lib/types";
+import { cn } from "@/lib/utils";
 import { SubmitButton } from "@/components/submit-button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -29,23 +29,21 @@ const navigation = [
   { href: "/invoices", label: "Mis Facturas", icon: Files },
   { href: "/messages", label: "Mensajes", icon: MessageSquareText },
   { href: "/documents-ai", label: "Documentos", icon: FileText },
-  { href: "/pricing", label: "Precios", icon: CreditCard },
+  { href: "/system", label: "Sistema", icon: Wrench },
+  { href: "/instalacion", label: "Instalación", icon: ShieldCheck },
   { href: "/profile", label: "Mi Perfil", icon: Settings2 },
 ];
 
 export function AppSidebar({
   children,
   profile,
-  appUser,
   demoMode = false,
 }: {
   children: React.ReactNode;
   profile: Profile;
-  appUser: AppUserRecord;
   demoMode?: boolean;
 }) {
   const pathname = usePathname();
-  const effectivePlan = getEffectivePlan(appUser);
   const initials =
     profile.full_name
       ?.split(" ")
@@ -65,7 +63,7 @@ export function AppSidebar({
             <div>
               <p className="font-display text-2xl text-foreground">FacturaIA</p>
               <p className="text-sm text-muted-foreground">
-                Facturación española lista para trabajar.
+                Facturación española para uso privado.
               </p>
             </div>
           </Link>
@@ -111,25 +109,15 @@ export function AppSidebar({
             </div>
 
             <div className="mt-4 flex items-center justify-between">
-              <Badge
-                variant={
-                  effectivePlan === "premium"
-                    ? "success"
-                    : effectivePlan === "pro"
-                      ? "default"
-                      : "secondary"
-                }
-              >
-                {getPlanLabel(effectivePlan)}
-              </Badge>
+              <Badge variant="success">Uso privado</Badge>
               <span className="flex items-center gap-1 text-xs uppercase tracking-[0.16em] text-muted-foreground">
                 <Sparkles className="h-3.5 w-3.5" />
-                {demoMode ? "Modo demo" : "VeriFactu"}
+                {demoMode ? "Modo demo" : "Self-hosted"}
               </span>
             </div>
 
             <p className="mt-3 text-xs text-muted-foreground">
-              Renovación: {formatDateShort(appUser.current_period_end)}
+              Instalación pensada para tu propio equipo, VPS o servidor doméstico.
             </p>
 
             <form action={signOutAction} className="mt-5">
@@ -159,15 +147,9 @@ export function AppSidebar({
               </div>
             </Link>
             <Badge
-              variant={
-                effectivePlan === "premium"
-                  ? "success"
-                  : effectivePlan === "pro"
-                    ? "default"
-                    : "secondary"
-              }
+              variant="success"
             >
-              {getPlanLabel(effectivePlan)}
+              Uso privado
             </Badge>
           </div>
 

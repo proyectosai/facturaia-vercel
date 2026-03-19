@@ -18,7 +18,7 @@ const fraunces = Fraunces({
 export const metadata: Metadata = {
   title: "FacturaIA",
   description:
-    "Aplicación de facturación en español con Next.js 15, Supabase, Stripe, Resend y generación de PDF profesional.",
+    "Aplicación self-hosted de facturación en español con Next.js 15, Supabase, Resend, LM Studio y generación de PDF profesional.",
 };
 
 export default function RootLayout({

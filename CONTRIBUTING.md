@@ -97,11 +97,10 @@ Ten especial cuidado en:
 
 - `lib/billing.ts`
 - `lib/actions/invoices.ts`
-- `app/api/stripe-webhook/route.ts`
 - `lib/ai-document-export.tsx`
 - migraciones de `supabase/migrations`
 
-Son zonas donde un cambio pequeño puede afectar a persistencia, billing o exportación documental.
+Son zonas donde un cambio pequeño puede afectar a persistencia, métricas internas o exportación documental.
 
 ## Documentación y ejemplos
 
@@ -119,9 +118,9 @@ FacturaIA no pretende ser solo una app.
 
 También quiere ser una base de aprendizaje para quienes quieran observar:
 
-- cómo se estructura un SaaS moderno
+- cómo se estructura una app self-hosted moderna
 - cómo se integra IA local en un producto real
 - cómo se cuida la UX en un panel de trabajo
-- cómo se conecta facturación, documentos, billing y backend
+- cómo se conecta facturación, documentos, mensajería y backend
 
 Si tu contribución ayuda en esa dirección, encaja bien.

@@ -8,7 +8,7 @@ Esta guía deja FacturaIA lista para desplegar en una máquina propia o en una i
 
 - Aplicación Next.js en modo Node.
 - Base de datos y auth en Supabase gestionado.
-- Stripe y Resend como servicios externos.
+- Resend como servicio externo opcional para correo saliente.
 - LM Studio en red local o en un host interno accesible desde la aplicación.
 
 ## Build y arranque
@@ -39,15 +39,6 @@ LM_STUDIO_BASE_URL=
 LM_STUDIO_MODEL=
 LM_STUDIO_API_KEY=
 
-STRIPE_SECRET_KEY=
-STRIPE_WEBHOOK_SECRET=
-STRIPE_PRICE_BASIC_MONTHLY=
-STRIPE_PRICE_BASIC_YEARLY=
-STRIPE_PRICE_PRO_MONTHLY=
-STRIPE_PRICE_PRO_YEARLY=
-STRIPE_PRICE_PREMIUM_MONTHLY=
-STRIPE_PRICE_PREMIUM_YEARLY=
-
 RESEND_API_KEY=
 RESEND_FROM_EMAIL=
 ```
@@ -65,22 +56,6 @@ Esto afecta a:
 - magic links de Supabase
 - URLs públicas de facturas
 - QR en PDFs
-- redirecciones de Stripe
-
-## Webhook de Stripe
-
-Endpoint:
-
-```text
-https://tu-dominio.com/api/stripe-webhook
-```
-
-Eventos recomendados:
-
-- `checkout.session.completed`
-- `customer.subscription.created`
-- `customer.subscription.updated`
-- `customer.subscription.deleted`
 
 ## Supabase en producción
 
@@ -116,7 +91,7 @@ Si el servidor de IA está en otra máquina:
 
 - poner la app detrás de proxy con HTTPS
 - limitar acceso al host de LM Studio
-- revisar logs de webhook
+- revisar logs de mensajería si activas WhatsApp Business o Telegram
 - monitorizar errores de render PDF / DOCX
 - rotar claves periódicamente
 
@@ -128,17 +103,15 @@ Si el servidor de IA está en otra máquina:
 4. Descarga de PDF.
 5. Generación documental con IA.
 6. Exportación DOCX.
-7. Checkout de Stripe.
-8. Webhook de Stripe.
-9. Envío de email con Resend.
+7. Envío de email con Resend, si está activado.
+8. Webhooks de mensajería, si están activados.
 
 ## Checklist de producción
 
 - variables de entorno cargadas
 - migraciones de Supabase aplicadas
-- Stripe configurado
 - dominio y callback correctos
-- Resend verificado
+- Resend verificado si usarás emails
 - LM Studio accesible
 - build correcto
-- healthcheck manual sobre `/`, `/pricing`, `/login`
+- healthcheck manual sobre `/`, `/instalacion`, `/login`

@@ -2,10 +2,6 @@ export type NumericLike = number | string;
 
 export type VatRate = 21 | 10 | 4;
 
-export type PlanKey = "free" | "basic" | "pro" | "premium";
-
-export type BillingInterval = "monthly" | "yearly";
-
 export type MessageChannel = "whatsapp" | "telegram";
 
 export type MessageConnectionStatus = "draft" | "active" | "paused";
@@ -13,16 +9,6 @@ export type MessageConnectionStatus = "draft" | "active" | "paused";
 export type MessageUrgency = "low" | "medium" | "high";
 
 export type MessageSortKey = "recent" | "urgency" | "name" | "surname";
-
-export type SubscriptionStatus =
-  | "inactive"
-  | "trialing"
-  | "active"
-  | "past_due"
-  | "canceled"
-  | "unpaid"
-  | "incomplete"
-  | "incomplete_expired";
 
 export type Profile = {
   id: string;
@@ -39,30 +25,6 @@ export type Profile = {
 export type AppUserRecord = {
   id: string;
   email: string;
-  current_plan: PlanKey;
-  billing_interval: BillingInterval | null;
-  plan_status: SubscriptionStatus;
-  current_period_end: string | null;
-  stripe_customer_id: string | null;
-  active_subscription_id: string | null;
-  created_at: string;
-  updated_at: string;
-};
-
-export type SubscriptionRecord = {
-  id: string;
-  user_id: string;
-  stripe_customer_id: string;
-  stripe_subscription_id: string;
-  stripe_price_id: string;
-  stripe_product_id: string | null;
-  plan_key: PlanKey;
-  billing_interval: BillingInterval;
-  status: SubscriptionStatus;
-  cancel_at_period_end: boolean;
-  current_period_start: string | null;
-  current_period_end: string | null;
-  canceled_at: string | null;
   created_at: string;
   updated_at: string;
 };

@@ -5,7 +5,6 @@
 - Node.js 20 o superior
 - npm
 - Proyecto Supabase
-- Cuenta Stripe
 - Cuenta Resend
 - LM Studio disponible en red local o en la misma máquina
 
@@ -43,15 +42,6 @@ LM_STUDIO_BASE_URL=http://10.149.71.240:1234/v1
 LM_STUDIO_MODEL=openai/gpt-oss-20b
 LM_STUDIO_API_KEY=
 
-STRIPE_SECRET_KEY=
-STRIPE_WEBHOOK_SECRET=
-STRIPE_PRICE_BASIC_MONTHLY=
-STRIPE_PRICE_BASIC_YEARLY=
-STRIPE_PRICE_PRO_MONTHLY=
-STRIPE_PRICE_PRO_YEARLY=
-STRIPE_PRICE_PREMIUM_MONTHLY=
-STRIPE_PRICE_PREMIUM_YEARLY=
-
 RESEND_API_KEY=
 RESEND_FROM_EMAIL=
 ```
@@ -70,6 +60,8 @@ Ejecuta las migraciones en este orden:
 
 1. `supabase/migrations/202603191900_init_facturaia.sql`
 2. `supabase/migrations/202603191945_add_ai_usage.sql`
+3. `supabase/migrations/202603192230_add_message_inbox.sql`
+4. `supabase/migrations/202603192345_remove_billing_for_self_hosted.sql`
 
 Estas migraciones crean:
 
@@ -78,43 +70,17 @@ Estas migraciones crean:
 - bucket de logos
 - secuencia de numeración
 - tabla de uso de IA
+- bandeja opcional de mensajería
+- limpieza de tablas y columnas de billing heredadas
 
-## 4. Configurar Stripe
-
-Debes crear:
-
-- 3 productos: Básico, Pro, Premium
-- 6 precios: mensual y anual para cada plan
-
-Después copia los `price_id` a:
-
-- `STRIPE_PRICE_BASIC_MONTHLY`
-- `STRIPE_PRICE_BASIC_YEARLY`
-- `STRIPE_PRICE_PRO_MONTHLY`
-- `STRIPE_PRICE_PRO_YEARLY`
-- `STRIPE_PRICE_PREMIUM_MONTHLY`
-- `STRIPE_PRICE_PREMIUM_YEARLY`
-
-Webhook:
-
-- endpoint local: `http://localhost:3000/api/stripe-webhook`
-- endpoint producción: `https://tu-dominio.com/api/stripe-webhook`
-
-Eventos mínimos:
-
-- `checkout.session.completed`
-- `customer.subscription.created`
-- `customer.subscription.updated`
-- `customer.subscription.deleted`
-
-## 5. Configurar Resend
+## 4. Configurar Resend
 
 Añade:
 
 - `RESEND_API_KEY`
 - `RESEND_FROM_EMAIL`
 
-## 6. Configurar LM Studio
+## 5. Configurar LM Studio
 
 FacturaIA usa LM Studio como backend de IA local.
 
@@ -138,7 +104,7 @@ Funciones actuales con IA:
 - generación de contratos
 - recordatorios y emails
 
-## 7. Levantar el proyecto
+## 6. Levantar el proyecto
 
 Modo normal:
 
@@ -152,7 +118,7 @@ Modo demo:
 FACTURAIA_DEMO_MODE=1 npm run dev
 ```
 
-## 8. Validación recomendada
+## 7. Validación recomendada
 
 ```bash
 npm run typecheck

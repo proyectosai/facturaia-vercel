@@ -15,11 +15,6 @@ import {
 import { getCurrentAiUsageSnapshot, getCurrentUsageSnapshot } from "@/lib/billing";
 import { demoInvoices, isDemoMode } from "@/lib/demo";
 import { getCurrentAppUser, getCurrentProfile, requireUser } from "@/lib/auth";
-import {
-  getEffectivePlan,
-  getPlanLabel,
-  hasPlanAccess,
-} from "@/lib/plans";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { InvoiceRecord } from "@/lib/types";
 import {
@@ -53,7 +48,6 @@ export default async function DashboardPage() {
   const supabase = demoMode ? null : await createServerSupabaseClient();
   const usage = await getCurrentUsageSnapshot(appUser);
   const aiUsage = await getCurrentAiUsageSnapshot(appUser);
-  const effectivePlan = getEffectivePlan(appUser);
   const profileChecks = [
     {
       label: "Nombre o razón social",
@@ -131,21 +125,13 @@ export default async function DashboardPage() {
             href: "/new-invoice",
             label: "Crear factura",
           }
-        : effectivePlan === "basic"
-          ? {
-              title: "Sube a Pro para quitar límites",
-              description:
-                "Con Pro desbloqueas facturas ilimitadas, más capacidad de IA y una operativa diaria mucho más fluida.",
-              href: "/pricing",
-              label: "Ver mejora de plan",
-            }
-          : {
-              title: "Mantén el ritmo de este mes",
-              description:
-                "Tu cuenta ya está operativa. Revisa el historial, reenvía facturas o afina tu perfil cuando lo necesites.",
-              href: "/invoices",
-              label: "Abrir historial",
-            };
+        : {
+            title: "Mantén el ritmo de este mes",
+            description:
+              "Tu instalación ya está operativa. Revisa el historial, reenvía facturas o afina tu perfil cuando lo necesites.",
+            href: "/invoices",
+            label: "Abrir historial",
+          };
   const workflowSteps = [
     {
       step: "01",
@@ -174,13 +160,12 @@ export default async function DashboardPage() {
     },
     {
       step: "03",
-      title: "Sube el nivel de automatización",
-      description: hasPlanAccess(appUser, "pro")
-        ? "Tu cuenta ya puede apoyarse en IA avanzada y trabajar con un ritmo operativo más alto."
-        : "Pro es donde desaparecen los límites de facturas y la IA pasa a ser una ayuda diaria real.",
-      href: hasPlanAccess(appUser, "pro") ? "/new-invoice" : "/pricing",
-      label: hasPlanAccess(appUser, "pro") ? "Usar IA en facturas" : "Ver mejora a Pro",
-      done: hasPlanAccess(appUser, "pro"),
+      title: "Activa tu flujo privado de automatización",
+      description:
+        "Tu instalación no depende de planes. Usa la IA local, los documentos y la bandeja de mensajes según tu propia operativa.",
+      href: "/documents-ai",
+      label: "Abrir documentos IA",
+      done: true,
     },
   ];
 
@@ -196,19 +181,9 @@ export default async function DashboardPage() {
         <Card className="overflow-hidden bg-[linear-gradient(155deg,rgba(255,255,255,0.95),rgba(229,245,240,0.92))]">
           <CardHeader className="space-y-4">
             <div className="flex flex-wrap items-center gap-3">
-              <Badge
-                variant={
-                  effectivePlan === "premium"
-                    ? "success"
-                    : effectivePlan === "pro"
-                      ? "default"
-                      : "secondary"
-                }
-              >
-                {getPlanLabel(effectivePlan)}
-              </Badge>
+              <Badge variant="success">Uso privado</Badge>
               <span className="rounded-full bg-white/80 px-4 py-2 text-sm text-muted-foreground">
-                Renovación: {formatDateShort(appUser.current_period_end)}
+                Instalación: {demoMode ? "demo local" : "autogestionada"}
               </span>
             </div>
             <div className="space-y-3">
@@ -244,7 +219,7 @@ export default async function DashboardPage() {
                   </>
                 ) : (
                   <p className="mt-4 text-sm text-muted-foreground">
-                    Estás en un plan con facturación ilimitada.
+                    No tienes límites artificiales de facturación.
                   </p>
                 )}
               </div>
@@ -270,7 +245,7 @@ export default async function DashboardPage() {
                   </>
                 ) : (
                   <p className="mt-4 text-sm text-muted-foreground">
-                    Tu plan actual no limita las mejoras de IA.
+                    La IA local está disponible sin bloqueo comercial.
                   </p>
                 )}
               </div>
@@ -296,9 +271,9 @@ export default async function DashboardPage() {
                 </Link>
               </Button>
               <Button variant="ghost" asChild>
-                <Link href="/pricing">
+                <Link href="/instalacion">
                   <Sparkles className="h-4 w-4" />
-                  Ver planes
+                  Guía privada
                 </Link>
               </Button>
             </div>
@@ -488,18 +463,17 @@ export default async function DashboardPage() {
                 title: "Facturación",
                 description:
                   usage.limit === null
-                    ? "Tu plan permite emitir sin límite mensual."
+                    ? "Tu instalación permite emitir sin límite mensual artificial."
                     : `Has consumido ${usage.used} de ${usage.limit} facturas este mes.`,
                 ready: !usage.blocked,
               },
               {
                 title: "Asistente IA",
-                description: hasPlanAccess(appUser, "basic")
-                  ? aiUsage.limit === null
-                    ? "La mejora de descripciones está activa sin límite diario."
-                    : `Hoy llevas ${aiUsage.used} mejoras y te restan ${aiUsage.remaining}.`
-                  : "Activa al menos un plan Básico para usar la IA local en descripciones.",
-                ready: hasPlanAccess(appUser, "basic") && !aiUsage.blocked,
+                description:
+                  aiUsage.limit === null
+                    ? "La mejora de descripciones está activa sin límite comercial."
+                    : `Hoy llevas ${aiUsage.used} mejoras y te restan ${aiUsage.remaining}.`,
+                ready: !aiUsage.blocked,
               },
               {
                 title: "Perfil de emisor",

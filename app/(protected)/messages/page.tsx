@@ -11,7 +11,6 @@ import {
 } from "lucide-react";
 
 import {
-  getCurrentAppUser,
   requireUser,
 } from "@/lib/auth";
 import { isDemoMode } from "@/lib/demo";
@@ -149,7 +148,6 @@ export default async function MessagesPage({
   }>;
 }) {
   const user = await requireUser();
-  const appUser = await getCurrentAppUser();
   const demoMode = isDemoMode();
   const params = await searchParams;
   const q = getSingleSearchParam(params.q);
@@ -223,17 +221,7 @@ export default async function MessagesPage({
             <Badge variant={urgentThreads > 0 ? "default" : "success"}>
               {urgentThreads} urgentes
             </Badge>
-            <Badge
-              variant={
-                appUser.current_plan === "premium"
-                  ? "success"
-                  : appUser.current_plan === "pro"
-                    ? "default"
-                    : "secondary"
-              }
-            >
-              Módulo opcional
-            </Badge>
+            <Badge variant="success">Módulo opcional</Badge>
           </div>
         </div>
 

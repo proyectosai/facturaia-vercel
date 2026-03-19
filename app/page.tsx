@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, CreditCard, FileText, Shield } from "lucide-react";
+import { ArrowRight, CheckCircle2, FileText, HardDrive, Shield } from "lucide-react";
 
 import { getOptionalUser } from "@/lib/auth";
 import { isDemoMode } from "@/lib/demo";
@@ -23,12 +23,12 @@ export default async function Home() {
             <div className="space-y-5">
               <p className="section-kicker">Facturación española asistida</p>
               <h1 className="font-display text-5xl leading-none tracking-tight text-foreground sm:text-6xl lg:text-7xl">
-                Facturas con imagen profesional, pagos y PDF listo para enviarse.
+                Facturas y documentos con imagen profesional, listos para tu instalación privada.
               </h1>
               <p className="max-w-2xl text-lg leading-8 text-muted-foreground">
                 FacturaIA centraliza tu emisión de facturas, genera PDF con QR y
                 URL pública, guarda todo en Supabase y te prepara para una operativa
-                compatible con VeriFactu.
+                compatible con VeriFactu sin depender de un SaaS comercial.
               </p>
             </div>
 
@@ -40,7 +40,7 @@ export default async function Home() {
                 </Link>
               </Button>
               <Button variant="outline" size="lg" asChild>
-                <Link href="/pricing">Ver planes</Link>
+                <Link href="/instalacion">Ver instalación</Link>
               </Button>
               {demoMode ? (
                 <Button variant="ghost" size="lg" asChild>
@@ -59,8 +59,8 @@ export default async function Home() {
                 RLS en Supabase
               </span>
               <span className="metric-pill">
-                <CreditCard className="h-4 w-4 text-[color:var(--color-brand)]" />
-                Stripe Checkout
+                <HardDrive className="h-4 w-4 text-[color:var(--color-brand)]" />
+                Uso privado self-hosted
               </span>
             </div>
           </div>
@@ -69,8 +69,8 @@ export default async function Home() {
             <CardHeader>
               <CardTitle>Lo que ya resuelve FacturaIA</CardTitle>
               <CardDescription>
-                Diseño en español, flujo protegido y automatización del ciclo
-                básico de facturación.
+                Diseño en español, flujo protegido y automatización privada del
+                ciclo básico de facturación.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -78,7 +78,7 @@ export default async function Home() {
                 "Dashboard con sidebar y panel protegido por sesión.",
                 "Formulario completo con emisor, cliente, líneas, IVA e IRPF.",
                 "Listado con búsqueda, rango de fechas, descarga PDF y envío por email.",
-                "Página pública de factura enlazada con QR y suscripción Pro con Stripe.",
+                "Página pública de factura enlazada con QR y despliegue pensado para instalación privada.",
               ].map((item) => (
                 <div
                   key={item}
