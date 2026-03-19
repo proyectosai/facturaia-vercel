@@ -1,0 +1,110 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f8f3eb;
+  --foreground: #132d34;
+  --muted-foreground: #68777b;
+  --border: rgba(19, 45, 52, 0.12);
+  --ring: #1e6460;
+  --radius: 1.6rem;
+  --color-brand: #1f6661;
+  --color-brand-foreground: #f8f5ef;
+  --color-brand-soft: #dbece8;
+  --color-panel: #f1e8dc;
+  --color-panel-strong: #e6d8c6;
+  --color-danger: #cf5f49;
+  --color-success: #2f7d67;
+  --color-success-soft: #e1f0ea;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+  --font-sans: var(--font-plus-jakarta);
+  --font-display: var(--font-fraunces);
+  --radius-sm: calc(var(--radius) - 0.6rem);
+  --radius-md: calc(var(--radius) - 0.3rem);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 0.6rem);
+}
+
+* {
+  border-color: var(--border);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-plus-jakarta), sans-serif;
+  background-image:
+    radial-gradient(circle at top left, rgba(31, 102, 97, 0.12), transparent 34%),
+    radial-gradient(circle at top right, rgba(207, 95, 73, 0.08), transparent 28%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(248, 243, 235, 0.96));
+  min-height: 100vh;
+}
+
+a {
+  color: inherit;
+}
+
+::selection {
+  background: rgba(31, 102, 97, 0.18);
+}
+
+.glass-panel {
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(20px);
+}
+
+.hero-orb {
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(60px);
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.page-shell {
+  width: min(1200px, calc(100% - 2rem));
+  margin-inline: auto;
+}
+
+.section-kicker {
+  color: var(--muted-foreground);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.status-banner {
+  border-radius: 1.5rem;
+  border: 1px solid rgba(31, 102, 97, 0.14);
+  background: rgba(255, 255, 255, 0.82);
+  padding: 0.95rem 1.1rem;
+  font-size: 0.92rem;
+}
+
+.status-banner.error {
+  border-color: rgba(207, 95, 73, 0.22);
+  color: #923f2d;
+}
+
+.metric-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.8);
+  padding: 0.55rem 0.95rem;
+  font-size: 0.9rem;
+  color: var(--muted-foreground);
+}
