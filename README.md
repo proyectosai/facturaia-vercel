@@ -128,6 +128,9 @@ Tablas principales:
 - [Instalación y configuración](./docs/INSTALACION.md)
 - [Arquitectura funcional y técnica](./docs/ARQUITECTURA.md)
 - [Despliegue en Coolify / Hetzner](./docs/DESPLIEGUE.md)
+- [Guía de contribución](./CONTRIBUTING.md)
+- [Changelog](./CHANGELOG.md)
+- [Licencia](./LICENSE)
 
 ## Notas importantes
 
