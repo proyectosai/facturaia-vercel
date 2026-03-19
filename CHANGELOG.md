@@ -17,6 +17,7 @@ El formato está inspirado en Keep a Changelog y el versionado irá madurando co
 - Estudio documental con IA local vía LM Studio.
 - Exportación documental a PDF y Word.
 - Módulo opcional de mensajería unificada para WhatsApp Business y Telegram.
+- Centro de backups con exportación y restauración JSON del usuario.
 - Modo demo para revisar la interfaz sin servicios reales.
 - Documentación inicial en español.
 

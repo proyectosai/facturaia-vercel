@@ -25,6 +25,7 @@ FacturaIA está diseñada como una aplicación Next.js 15 con App Router, priori
 - `app/(protected)/messages/page.tsx`
 - `app/(protected)/documents-ai/page.tsx`
 - `app/(protected)/system/page.tsx`
+- `app/(protected)/backups/page.tsx`
 - `app/(protected)/profile/page.tsx`
 
 ### `app/api/`
@@ -33,6 +34,8 @@ FacturaIA está diseñada como una aplicación Next.js 15 con App Router, priori
 - `app/api/ai/documents/route.ts`
 - `app/api/ai/documents/export/pdf/route.ts`
 - `app/api/ai/documents/export/docx/route.ts`
+- `app/api/backups/export/route.ts`
+- `app/api/backups/restore/route.ts`
 - `app/api/invoices/[invoiceId]/pdf/route.ts`
 - `app/api/public/invoices/[publicId]/pdf/route.ts`
 - `app/api/integrations/telegram/[inboundKey]/route.ts`
@@ -117,7 +120,23 @@ Funciones:
 - envío de factura por email
 - adjunto del PDF generado
 
-## 6. Mensajería opcional
+## 6. Copias de seguridad
+
+Archivos clave:
+
+- `app/(protected)/backups/page.tsx`
+- `components/backups/backup-center.tsx`
+- `lib/backups.ts`
+- `app/api/backups/export/route.ts`
+- `app/api/backups/restore/route.ts`
+
+Funciones:
+
+- exportación JSON del usuario autenticado
+- restauración en modo reemplazo
+- resincronización de la secuencia de facturas
+
+## 7. Mensajería opcional
 
 Archivos clave:
 
@@ -234,4 +253,5 @@ En este modo:
 - README operativo para onboarding de equipo
 - exportación XML VeriFactu
 - contratos con más parametrización
+- backups programados y snapshots cifrados
 - respuestas salientes y automatizaciones sobre mensajería

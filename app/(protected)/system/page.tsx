@@ -2,8 +2,8 @@ import Link from "next/link";
 import {
   Bot,
   Database,
-  HardDriveDownload,
   Mail,
+  ArchiveRestore,
   ServerCog,
   ShieldCheck,
   Smartphone,
@@ -176,9 +176,9 @@ export default function SystemPage() {
             title: "Backups",
             description:
               "Guarda copias de tu base de datos y del almacenamiento de logos con la frecuencia que necesites.",
-            icon: HardDriveDownload,
-            href: "/instalacion",
-            label: "Ver guía privada",
+            icon: ArchiveRestore,
+            href: "/backups",
+            label: "Abrir backups",
           },
           {
             title: "Mensajería opcional",

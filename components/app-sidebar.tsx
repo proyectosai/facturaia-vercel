@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  ArchiveRestore,
   FilePlus2,
   FileText,
   Files,
@@ -30,6 +31,7 @@ const navigation = [
   { href: "/messages", label: "Mensajes", icon: MessageSquareText },
   { href: "/documents-ai", label: "Documentos", icon: FileText },
   { href: "/system", label: "Sistema", icon: Wrench },
+  { href: "/backups", label: "Backups", icon: ArchiveRestore },
   { href: "/instalacion", label: "Instalación", icon: ShieldCheck },
   { href: "/profile", label: "Mi Perfil", icon: Settings2 },
 ];

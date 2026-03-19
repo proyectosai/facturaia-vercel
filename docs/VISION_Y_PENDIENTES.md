@@ -108,6 +108,7 @@ Todavía faltan piezas importantes para considerarlo un producto completamente m
 - copy y navegación orientadas a despliegue self-hosted
 - eliminación de la monetización integrada como eje del producto
 - base preparada para que cada usuario active solo las integraciones que quiera usar
+- backups manuales desde la propia interfaz
 
 ### IA y documentos
 
@@ -149,6 +150,7 @@ Estas partes existen, pero no están cerradas del todo:
 - conviene reforzar scripts de setup para VPS y servidores domésticos
 - falta una experiencia más guiada de backup y restauración
 - hacen falta checks más visibles del estado del entorno local
+- faltan snapshots programados o cifrados
 
 ### Calidad
 

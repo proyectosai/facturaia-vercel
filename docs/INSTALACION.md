@@ -62,6 +62,7 @@ Ejecuta las migraciones en este orden:
 2. `supabase/migrations/202603191945_add_ai_usage.sql`
 3. `supabase/migrations/202603192230_add_message_inbox.sql`
 4. `supabase/migrations/202603192345_remove_billing_for_self_hosted.sql`
+5. `supabase/migrations/202603200915_add_invoice_sequence_sync_function.sql`
 
 Estas migraciones crean:
 
@@ -72,6 +73,7 @@ Estas migraciones crean:
 - tabla de uso de IA
 - bandeja opcional de mensajería
 - limpieza de tablas y columnas de billing heredadas
+- resincronización segura de numeración tras restaurar backups
 
 ## 4. Configurar Resend
 
@@ -125,3 +127,16 @@ npm run typecheck
 npm run lint
 FACTURAIA_DEMO_MODE=1 npm run build
 ```
+
+## 8. Backups y restauración
+
+La pantalla `/backups` permite:
+
+- exportar un JSON con perfil, facturas, IA y mensajería del usuario actual
+- restaurar ese JSON en modo reemplazo
+
+Notas importantes:
+
+- la restauración actual sustituye los datos del usuario autenticado
+- el logo se exporta como ruta y URL, no como binario de storage
+- tras restaurar, FacturaIA resincroniza la secuencia de numeración de facturas

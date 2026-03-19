@@ -93,6 +93,7 @@ Si el servidor de IA está en otra máquina:
 - limitar acceso al host de LM Studio
 - revisar logs de mensajería si activas WhatsApp Business o Telegram
 - monitorizar errores de render PDF / DOCX
+- almacenar backups fuera del servidor principal de vez en cuando
 - rotar claves periódicamente
 
 ## Comprobaciones post-despliegue
@@ -105,6 +106,7 @@ Si el servidor de IA está en otra máquina:
 6. Exportación DOCX.
 7. Envío de email con Resend, si está activado.
 8. Webhooks de mensajería, si están activados.
+9. Exportación y restauración de backup desde `/backups`.
 
 ## Checklist de producción
 
@@ -113,5 +115,6 @@ Si el servidor de IA está en otra máquina:
 - dominio y callback correctos
 - Resend verificado si usarás emails
 - LM Studio accesible
+- estrategia de backup definida
 - build correcto
 - healthcheck manual sobre `/`, `/instalacion`, `/login`
