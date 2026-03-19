@@ -136,6 +136,7 @@ Tablas principales:
 
 - [Instalación y configuración](./docs/INSTALACION.md)
 - [Arquitectura funcional y técnica](./docs/ARQUITECTURA.md)
+- [Visión, alcance y pendientes](./docs/VISION_Y_PENDIENTES.md)
 - [Despliegue en Coolify / Hetzner](./docs/DESPLIEGUE.md)
 - [Hoja de ruta](./docs/ROADMAP.md)
 - [Guía de contribución](./CONTRIBUTING.md)
