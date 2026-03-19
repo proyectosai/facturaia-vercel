@@ -80,24 +80,18 @@ flowchart LR
 
 - Mensajería unificada: WhatsApp Business y Telegram por webhook.
 - Backups locales: exportación y restauración JSON.
+- Backups remotos: primera entrega operativa con WebDAV / Nextcloud.
 - Correo saliente: envío de facturas con Resend.
 
-## Módulo siguiente
+## Siguiente módulo
 
-### Backups remotos
+### Correo saliente y evolución a correo entrante
 
 Motivo de prioridad:
 
-- es clave en instalaciones self-hosted
-- protege frente a pérdida del VPS o del equipo local
-- aprovecha la base ya construida de exportación y restauración
-
-Proveedores previstos:
-
-- S3 compatible
-- WebDAV
-- Dropbox
-- Google Drive
+- ya existe una base funcional de envío
+- falta cerrar mejor instalación, proveedores alternativos y evolución hacia bandeja de entrada
+- encaja bien con facturas, documentos y CRM ligero
 
 ## Documentación asociada
 

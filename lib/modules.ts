@@ -43,6 +43,16 @@ function hasLmStudio() {
   return Boolean(process.env.LM_STUDIO_BASE_URL) && Boolean(process.env.LM_STUDIO_MODEL);
 }
 
+function hasRemoteBackups() {
+  return (
+    process.env.REMOTE_BACKUP_PROVIDER === "webdav" &&
+    Boolean(process.env.WEBDAV_BASE_URL) &&
+    Boolean(process.env.WEBDAV_USERNAME) &&
+    Boolean(process.env.WEBDAV_PASSWORD) &&
+    Boolean(process.env.WEBDAV_BACKUP_PATH)
+  );
+}
+
 export const MODULE_DEFINITIONS: ModuleDefinition[] = [
   {
     id: "messaging-inbox",
@@ -96,22 +106,23 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
     title: "Backups remotos",
     summary:
       "Sincronización de copias hacia almacenamiento externo para no depender solo del disco local o del VPS principal.",
-    status: "next",
+    status: "partial",
     category: "resiliencia",
+    routeHref: "/backups",
     docsPath: "docs/modulos/BACKUPS_REMOTOS.md",
-    providers: ["S3 compatible", "WebDAV", "Dropbox", "Google Drive"],
+    providers: ["WebDAV / Nextcloud"],
     requirements: [
       "Sistema base de backups ya operativo",
-      "Credenciales del proveedor remoto",
-      "Política de cifrado y retención",
+      "Credenciales WebDAV válidas",
+      "Migración remote_backup_runs aplicada para ver historial",
     ],
     installSteps: [
-      "Elegir proveedor remoto y política de retención.",
-      "Definir cifrado y nombre de snapshots.",
-      "Programar sincronización desde la propia app.",
+      "Añade las variables WebDAV en .env.local o en tu panel de despliegue.",
+      "Abre /backups y revisa el destino remoto detectado.",
+      "Lanza una sincronización manual y comprueba el fichero en tu almacenamiento.",
     ],
     notes: [
-      "Es el siguiente módulo a implementar sobre la base actual.",
+      "La primera entrega usa WebDAV / Nextcloud; S3 y otros proveedores quedan para iteraciones posteriores.",
     ],
   },
   {
@@ -120,7 +131,7 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
     title: "Correo saliente",
     summary:
       "Envío de facturas y documentos desde FacturaIA con Resend u otros proveedores SMTP compatibles en iteraciones futuras.",
-    status: "partial",
+    status: "next",
     category: "canales",
     docsPath: "docs/modulos/CORREO_SALIENTE.md",
     requirements: [
@@ -299,8 +310,10 @@ export function getModuleCatalog(): ModuleRuntimeState[] {
         ? "Listo para exportar y restaurar"
         : "Falta Supabase";
     } else if (module.id === "remote-backups") {
-      configured = false;
-      configuredLabel = "Diseño listo, implementación pendiente";
+      configured = hasRemoteBackups();
+      configuredLabel = configured
+        ? "WebDAV / Nextcloud listo"
+        : "Faltan variables WebDAV";
     } else if (module.id === "email-outbound") {
       configured = hasResend();
       configuredLabel = configured

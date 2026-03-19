@@ -4,6 +4,21 @@ Todos los cambios relevantes de FacturaIA se documentarán aquí.
 
 El formato está inspirado en Keep a Changelog y el versionado irá madurando conforme avance el proyecto.
 
+## [0.1.1] - 2026-03-20
+
+### Añadido
+
+- Primera entrega real del módulo de backups remotos con WebDAV / Nextcloud.
+- Nueva ruta `app/api/backups/push/route.ts` para enviar snapshots remotos manualmente.
+- Historial de ejecuciones remotas en la pantalla `/backups`.
+- Migración `202603201030_add_remote_backup_runs.sql`.
+
+### Mejorado
+
+- Catálogo `/modules` actualizado para reflejar el estado real del sistema modular.
+- Pantalla `/system` con visibilidad sobre la configuración de backups remotos.
+- Documentación de instalación y despliegue ampliada para usuarios self-hosted.
+
 ## [0.1.0] - 2026-03-19
 
 ### Añadido

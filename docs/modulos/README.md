@@ -5,7 +5,7 @@ Esta carpeta reúne documentación específica por módulo para que una instalac
 Documentos actuales:
 
 - `MENSAJERIA_WHATSAPP_TELEGRAM.md`
-- `BACKUPS_REMOTOS.md`
+- `BACKUPS_REMOTOS.md` (WebDAV / Nextcloud ya operativo)
 - `CORREO_SALIENTE.md`
 
 Documento general:

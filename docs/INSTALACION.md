@@ -44,6 +44,12 @@ LM_STUDIO_API_KEY=
 
 RESEND_API_KEY=
 RESEND_FROM_EMAIL=
+
+REMOTE_BACKUP_PROVIDER=webdav
+WEBDAV_BASE_URL=
+WEBDAV_USERNAME=
+WEBDAV_PASSWORD=
+WEBDAV_BACKUP_PATH=/FacturaIA
 ```
 
 ## 3. Configurar Supabase
@@ -63,6 +69,7 @@ Ejecuta las migraciones en este orden:
 3. `supabase/migrations/202603192230_add_message_inbox.sql`
 4. `supabase/migrations/202603192345_remove_billing_for_self_hosted.sql`
 5. `supabase/migrations/202603200915_add_invoice_sequence_sync_function.sql`
+6. `supabase/migrations/202603201030_add_remote_backup_runs.sql`
 
 Estas migraciones crean:
 
@@ -74,6 +81,7 @@ Estas migraciones crean:
 - bandeja opcional de mensajería
 - limpieza de tablas y columnas de billing heredadas
 - resincronización segura de numeración tras restaurar backups
+- historial de ejecuciones de backups remotos
 
 ## 4. Configurar Resend
 
@@ -150,3 +158,33 @@ La pantalla `/modules` resume:
 - requisitos de instalación
 - pasos resumidos por módulo
 - documento asociado dentro de `docs/modulos`
+
+## 10. Backups remotos por WebDAV / Nextcloud
+
+Si quieres una copia fuera del equipo o del VPS principal, activa el módulo remoto.
+
+### Variables necesarias
+
+```env
+REMOTE_BACKUP_PROVIDER=webdav
+WEBDAV_BASE_URL=https://cloud.tudominio.com/remote.php/dav/files/tu_usuario
+WEBDAV_USERNAME=tu_usuario
+WEBDAV_PASSWORD=tu_app_password
+WEBDAV_BACKUP_PATH=/FacturaIA
+```
+
+### Instalación mínima
+
+1. Añade las variables anteriores.
+2. Reinicia FacturaIA.
+3. Abre `/backups`.
+4. Comprueba que la tarjeta `Backups remotos` muestra `WebDAV / Nextcloud`.
+5. Pulsa `Enviar copia remota ahora`.
+6. Verifica el fichero en tu almacenamiento remoto.
+
+### Recomendaciones
+
+- usa una app password específica si trabajas con Nextcloud
+- mantén HTTPS en la URL WebDAV
+- prueba primero con una carpeta dedicada solo a FacturaIA
+- consulta `docs/modulos/BACKUPS_REMOTOS.md` para la guía detallada

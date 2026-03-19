@@ -36,6 +36,7 @@ FacturaIA está diseñada como una aplicación Next.js 15 con App Router, priori
 - `app/api/ai/documents/export/pdf/route.ts`
 - `app/api/ai/documents/export/docx/route.ts`
 - `app/api/backups/export/route.ts`
+- `app/api/backups/push/route.ts`
 - `app/api/backups/restore/route.ts`
 - `app/api/invoices/[invoiceId]/pdf/route.ts`
 - `app/api/public/invoices/[publicId]/pdf/route.ts`
@@ -143,7 +144,9 @@ Archivos clave:
 - `app/(protected)/backups/page.tsx`
 - `components/backups/backup-center.tsx`
 - `lib/backups.ts`
+- `lib/remote-backups.ts`
 - `app/api/backups/export/route.ts`
+- `app/api/backups/push/route.ts`
 - `app/api/backups/restore/route.ts`
 
 Funciones:
@@ -151,6 +154,8 @@ Funciones:
 - exportación JSON del usuario autenticado
 - restauración en modo reemplazo
 - resincronización de la secuencia de facturas
+- sincronización manual a WebDAV / Nextcloud
+- historial de últimas ejecuciones remotas
 
 ## 8. Mensajería opcional
 
@@ -181,6 +186,7 @@ Tablas principales:
 - `message_connections`
 - `message_threads`
 - `message_messages`
+- `remote_backup_runs`
 
 ## `users`
 
@@ -233,6 +239,14 @@ Tablas principales:
 - payload original
 - fecha exacta
 - tipo de mensaje
+
+## `remote_backup_runs`
+
+- historial de copias remotas por usuario
+- proveedor usado
+- estado `success` o `error`
+- ruta remota y nombre de fichero
+- último error, si existe
 
 ## Modo demo
 

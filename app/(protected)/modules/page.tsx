@@ -109,18 +109,20 @@ export default function ModulesPage() {
               <div className="rounded-[26px] bg-white/82 p-5">
                 <p className="text-sm font-semibold text-foreground">Qué hará</p>
                 <p className="mt-2 text-sm leading-7 text-muted-foreground">
-                  Permitirá que la copia de seguridad local no se quede solo en el
-                  disco del equipo o del VPS principal, sino que pueda enviarse a un
-                  almacenamiento remoto elegido por el propio usuario.
+                  {nextModule.summary}
                 </p>
               </div>
 
-              <div className="rounded-[26px] bg-white/82 p-5">
-                <p className="text-sm font-semibold text-foreground">Proveedores previstos</p>
-                <p className="mt-2 text-sm leading-7 text-muted-foreground">
-                  {(nextModule.providers ?? []).join(", ")}.
-                </p>
-              </div>
+              {nextModule.providers?.length ? (
+                <div className="rounded-[26px] bg-white/82 p-5">
+                  <p className="text-sm font-semibold text-foreground">
+                    Proveedores previstos
+                  </p>
+                  <p className="mt-2 text-sm leading-7 text-muted-foreground">
+                    {nextModule.providers.join(", ")}.
+                  </p>
+                </div>
+              ) : null}
             </div>
 
             <div className="space-y-4">
@@ -132,6 +134,24 @@ export default function ModulesPage() {
                   {nextModule.configuredLabel}
                 </p>
               </div>
+
+              {nextModule.installSteps.length ? (
+                <div className="rounded-[26px] bg-[color:var(--color-panel)] p-5">
+                  <p className="text-sm font-semibold text-foreground">
+                    Primeros pasos
+                  </p>
+                  <div className="mt-2 space-y-2">
+                    {nextModule.installSteps.map((step) => (
+                      <p
+                        key={step}
+                        className="text-sm leading-7 text-muted-foreground"
+                      >
+                        {step}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
 
               {nextModule.docsPath ? (
                 <div className="rounded-[26px] bg-[color:var(--color-panel)] p-5">

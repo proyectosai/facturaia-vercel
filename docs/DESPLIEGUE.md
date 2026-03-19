@@ -41,6 +41,12 @@ LM_STUDIO_API_KEY=
 
 RESEND_API_KEY=
 RESEND_FROM_EMAIL=
+
+REMOTE_BACKUP_PROVIDER=webdav
+WEBDAV_BASE_URL=
+WEBDAV_USERNAME=
+WEBDAV_PASSWORD=
+WEBDAV_BACKUP_PATH=/FacturaIA
 ```
 
 ## Configuración de dominio
@@ -87,10 +93,32 @@ Si el servidor de IA está en otra máquina:
 - limita acceso por red
 - evita exponerlo públicamente si no hace falta
 
+## Backups remotos en producción
+
+La primera integración remota soportada es **WebDAV / Nextcloud**.
+
+Recomendación práctica:
+
+- usa una app password específica para FacturaIA
+- guarda las variables en Coolify como secretos
+- apunta `WEBDAV_BASE_URL` al endpoint WebDAV del usuario final
+- usa `WEBDAV_BACKUP_PATH` para encapsular todas las copias en una carpeta dedicada
+
+Ejemplo:
+
+```env
+REMOTE_BACKUP_PROVIDER=webdav
+WEBDAV_BASE_URL=https://cloud.tudominio.com/remote.php/dav/files/facturaia
+WEBDAV_USERNAME=facturaia
+WEBDAV_PASSWORD=app-password
+WEBDAV_BACKUP_PATH=/FacturaIA
+```
+
 ## Hardening recomendado
 
 - poner la app detrás de proxy con HTTPS
 - limitar acceso al host de LM Studio
+- limitar acceso al destino WebDAV si el proveedor lo permite
 - revisar logs de mensajería si activas WhatsApp Business o Telegram
 - monitorizar errores de render PDF / DOCX
 - almacenar backups fuera del servidor principal de vez en cuando
@@ -107,7 +135,8 @@ Si el servidor de IA está en otra máquina:
 7. Envío de email con Resend, si está activado.
 8. Webhooks de mensajería, si están activados.
 9. Exportación y restauración de backup desde `/backups`.
-10. Revisión del catálogo modular en `/modules`.
+10. Envío de un backup remoto manual a WebDAV / Nextcloud, si está activado.
+11. Revisión del catálogo modular en `/modules`.
 
 ## Checklist de producción
 
@@ -117,5 +146,6 @@ Si el servidor de IA está en otra máquina:
 - Resend verificado si usarás emails
 - LM Studio accesible
 - estrategia de backup definida
+- variables WebDAV definidas si usarás backups remotos
 - build correcto
 - healthcheck manual sobre `/`, `/instalacion`, `/login`

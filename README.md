@@ -16,7 +16,7 @@ FacturaIA es una aplicación Next.js 15 pensada para autónomos y pequeños nego
 - Estudio documental con IA local vía LM Studio para propuestas, presupuestos, contratos y mensajes.
 - Exportación de documentos a PDF y Word.
 - Módulo opcional de mensajería unificada para WhatsApp Business y Telegram por webhook.
-- Centro de backups para exportar y restaurar datos del usuario en JSON.
+- Centro de backups para exportar, restaurar y sincronizar copias remotas por WebDAV / Nextcloud.
 - Catálogo de módulos opcionales con estado e instalación en `/modules`.
 - Guía de instalación privada dentro de la propia app.
 - Modo demo local para revisar la interfaz sin servicios reales.
@@ -94,6 +94,11 @@ LM_STUDIO_MODEL=
 LM_STUDIO_API_KEY=
 RESEND_API_KEY=
 RESEND_FROM_EMAIL=
+REMOTE_BACKUP_PROVIDER=
+WEBDAV_BASE_URL=
+WEBDAV_USERNAME=
+WEBDAV_PASSWORD=
+WEBDAV_BACKUP_PATH=
 ```
 
 ## Scripts disponibles
@@ -117,6 +122,7 @@ Migraciones incluidas:
 - [`supabase/migrations/202603192230_add_message_inbox.sql`](./supabase/migrations/202603192230_add_message_inbox.sql)
 - [`supabase/migrations/202603192345_remove_billing_for_self_hosted.sql`](./supabase/migrations/202603192345_remove_billing_for_self_hosted.sql)
 - [`supabase/migrations/202603200915_add_invoice_sequence_sync_function.sql`](./supabase/migrations/202603200915_add_invoice_sequence_sync_function.sql)
+- [`supabase/migrations/202603201030_add_remote_backup_runs.sql`](./supabase/migrations/202603201030_add_remote_backup_runs.sql)
 
 Tablas principales activas:
 
@@ -127,6 +133,7 @@ Tablas principales activas:
 - `message_connections`
 - `message_threads`
 - `message_messages`
+- `remote_backup_runs`
 
 ## Documentación adicional
 
@@ -151,7 +158,7 @@ Tablas principales activas:
 - El proyecto usa IA local con LM Studio; no depende de una API comercial externa para documentos.
 - El flujo de Word y PDF documental ya está operativo.
 - Está planteado para uso privado y autogestionado.
-- El backup exporta JSON del usuario autenticado y la restauración actual funciona en modo reemplazo.
+- El backup exporta JSON del usuario autenticado, la restauración funciona en modo reemplazo y el primer proveedor remoto soportado es WebDAV / Nextcloud.
 - La parte legal y fiscal mostrada en la UI no sustituye asesoramiento profesional.
 
 ## Verificación

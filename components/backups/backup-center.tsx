@@ -1,10 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
+  CloudUpload,
   DatabaseBackup,
   Download,
+  HardDriveDownload,
   LoaderCircle,
   RotateCcw,
   ShieldCheck,
@@ -22,6 +26,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import type { RemoteBackupRun } from "@/lib/types";
 
 type BackupSummary = {
   invoices: number;
@@ -29,6 +34,13 @@ type BackupSummary = {
   messageConnections: number;
   messageThreads: number;
   messageRecords: number;
+};
+
+type RemoteBackupState = {
+  configured: boolean;
+  providerLabel: string;
+  targetLabel: string;
+  latestRuns: RemoteBackupRun[];
 };
 
 function extractFileName(contentDisposition: string | null) {
@@ -55,16 +67,27 @@ async function downloadResponseFile(response: Response, fallbackName: string) {
   URL.revokeObjectURL(url);
 }
 
+function formatRunDate(value: string) {
+  return new Intl.DateTimeFormat("es-ES", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
+}
+
 export function BackupCenter({
   summary,
   demoMode,
+  remoteState,
 }: {
   summary: BackupSummary;
   demoMode: boolean;
+  remoteState: RemoteBackupState;
 }) {
+  const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
+  const [isPushingRemote, setIsPushingRemote] = useState(false);
   const [selectedFileName, setSelectedFileName] = useState("");
 
   async function handleExport() {
@@ -129,6 +152,7 @@ export function BackupCenter({
       }
 
       toast.success("Copia restaurada. Recarga la página para ver el nuevo estado.");
+      router.refresh();
     } catch (error) {
       toast.error(
         error instanceof Error
@@ -140,22 +164,60 @@ export function BackupCenter({
     }
   }
 
+  async function handleRemotePush() {
+    setIsPushingRemote(true);
+
+    try {
+      const response = await fetch("/api/backups/push", {
+        method: "POST",
+      });
+
+      const payload = (await response.json().catch(() => null)) as
+        | { error?: string }
+        | { remotePath?: string; fileName?: string };
+
+      if (!response.ok) {
+        throw new Error(
+          "error" in (payload ?? {})
+            ? (payload as { error?: string }).error
+            : "No se ha podido enviar el backup remoto.",
+        );
+      }
+
+      toast.success(
+        "Backup remoto enviado correctamente a tu almacenamiento externo.",
+      );
+      router.refresh();
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "No se ha podido enviar el backup remoto.",
+      );
+    } finally {
+      setIsPushingRemote(false);
+    }
+  }
+
+  const stats = [
+    { label: "Facturas", value: summary.invoices },
+    { label: "Registros IA", value: summary.aiUsageRows },
+    { label: "Conexiones", value: summary.messageConnections },
+    { label: "Conversaciones", value: summary.messageThreads },
+    { label: "Mensajes", value: summary.messageRecords },
+  ];
+
   return (
     <div className="space-y-6">
       {demoMode ? (
         <div className="status-banner">
-          Estás en modo demo local. Puedes exportar una copia de ejemplo, pero la restauración real está desactivada.
+          Estás en modo demo local. Puedes exportar una copia de ejemplo, pero la
+          restauración real y el envío remoto están desactivados.
         </div>
       ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        {[
-          { label: "Facturas", value: summary.invoices },
-          { label: "Registros IA", value: summary.aiUsageRows },
-          { label: "Conexiones", value: summary.messageConnections },
-          { label: "Conversaciones", value: summary.messageThreads },
-          { label: "Mensajes", value: summary.messageRecords },
-        ].map((item) => (
+        {stats.map((item) => (
           <Card key={item.label}>
             <CardContent className="space-y-2">
               <p className="text-sm text-muted-foreground">{item.label}</p>
@@ -165,7 +227,7 @@ export function BackupCenter({
         ))}
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+      <div className="grid gap-6 xl:grid-cols-3">
         <Card className="overflow-hidden bg-[linear-gradient(150deg,rgba(255,255,255,0.95),rgba(232,246,242,0.9))]">
           <CardHeader>
             <div className="flex items-center gap-3">
@@ -187,14 +249,20 @@ export function BackupCenter({
               storage: el logo se conserva como ruta y URL.
             </div>
 
-            <Button onClick={handleExport} disabled={isExporting}>
-              {isExporting ? (
-                <LoaderCircle className="h-4 w-4 animate-spin" />
-              ) : (
-                <Download className="h-4 w-4" />
-              )}
-              Descargar backup JSON
-            </Button>
+            <div className="flex flex-wrap gap-3">
+              <Button onClick={handleExport} disabled={isExporting}>
+                {isExporting ? (
+                  <LoaderCircle className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4" />
+                )}
+                Descargar backup JSON
+              </Button>
+              <div className="inline-flex items-center gap-2 rounded-full bg-white/82 px-4 py-2 text-sm text-muted-foreground">
+                <HardDriveDownload className="h-4 w-4 text-[color:var(--color-brand)]" />
+                Copia local inmediata
+              </div>
+            </div>
           </CardContent>
         </Card>
 
@@ -257,6 +325,115 @@ export function BackupCenter({
                 Operación pensada para instalaciones privadas
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card className="overflow-hidden bg-[linear-gradient(155deg,rgba(19,45,52,0.96),rgba(37,81,89,0.98))] text-white">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="rounded-2xl bg-white/12 p-3 text-white">
+                <CloudUpload className="h-5 w-5" />
+              </div>
+              <div>
+                <CardTitle className="text-white">Backups remotos</CardTitle>
+                <CardDescription className="text-white/72">
+                  Primer módulo adicional del sistema modular, ya operativo con WebDAV / Nextcloud.
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="rounded-[26px] bg-white/10 p-5">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-sm font-semibold text-white">
+                  {remoteState.providerLabel}
+                </p>
+                <span className="rounded-full bg-white/14 px-3 py-1 text-xs uppercase tracking-[0.14em] text-white/80">
+                  {remoteState.configured ? "Configurado" : "Pendiente"}
+                </span>
+              </div>
+              <p className="mt-3 break-all text-sm leading-7 text-white/78">
+                {remoteState.targetLabel}
+              </p>
+            </div>
+
+            {remoteState.configured ? (
+              <>
+                <Button
+                  onClick={handleRemotePush}
+                  disabled={demoMode || isPushingRemote}
+                  className="bg-white text-[color:rgba(19,45,52,0.96)] hover:bg-white/92"
+                >
+                  {isPushingRemote ? (
+                    <LoaderCircle className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <CloudUpload className="h-4 w-4" />
+                  )}
+                  Enviar copia remota ahora
+                </Button>
+
+                <div className="space-y-3">
+                  <p className="text-sm font-semibold text-white">
+                    Últimas ejecuciones
+                  </p>
+                  {remoteState.latestRuns.length > 0 ? (
+                    <div className="space-y-3">
+                      {remoteState.latestRuns.map((run) => (
+                        <div
+                          key={run.id}
+                          className="rounded-[22px] bg-white/10 p-4 text-sm"
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <p className="font-medium text-white">
+                              {run.status === "success"
+                                ? "Sincronización correcta"
+                                : "Sincronización con error"}
+                            </p>
+                            <span className="text-white/72">
+                              {formatRunDate(run.created_at)}
+                            </span>
+                          </div>
+                          <p className="mt-2 break-all text-white/76">
+                            {run.status === "success"
+                              ? run.remote_path
+                              : run.error_message ?? "Sin detalle adicional."}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-[22px] bg-white/10 p-4 text-sm leading-7 text-white/76">
+                      Todavía no hay ejecuciones registradas. Lanza la primera copia remota
+                      desde este panel y quedará reflejada aquí.
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="space-y-4">
+                <div className="rounded-[22px] bg-white/10 p-4 text-sm leading-7 text-white/78">
+                  Para activarlo necesitas definir `REMOTE_BACKUP_PROVIDER`,
+                  `WEBDAV_BASE_URL`, `WEBDAV_USERNAME`, `WEBDAV_PASSWORD` y
+                  `WEBDAV_BACKUP_PATH` en tu `.env.local` o en el panel de tu servidor.
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  <Button
+                    variant="secondary"
+                    asChild
+                    className="bg-white text-[color:rgba(19,45,52,0.96)] hover:bg-white/92"
+                  >
+                    <Link href="/modules">Ver módulo</Link>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    asChild
+                    className="border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                  >
+                    <Link href="/system">Revisar entorno</Link>
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

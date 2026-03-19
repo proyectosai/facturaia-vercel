@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 
 import { isDemoMode } from "@/lib/demo";
+import { getRemoteBackupStatusSummary } from "@/lib/remote-backups";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,6 +22,8 @@ import {
 } from "@/components/ui/card";
 
 function getEnvironmentFlags() {
+  const remoteBackups = getRemoteBackupStatusSummary();
+
   return {
     demoMode: isDemoMode(),
     hasSupabase:
@@ -34,6 +37,7 @@ function getEnvironmentFlags() {
     appUrl: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
     lmStudioBaseUrl: process.env.LM_STUDIO_BASE_URL || "No configurado",
     lmStudioModel: process.env.LM_STUDIO_MODEL || "No configurado",
+    remoteBackups,
   };
 }
 
@@ -63,6 +67,14 @@ export default function SystemPage() {
         : "El envío por email está desactivado hasta configurar Resend.",
       ready: env.hasResend,
       icon: Mail,
+    },
+    {
+      title: "Backups remotos",
+      description: env.remoteBackups.configured
+        ? `Destino activo: ${env.remoteBackups.targetLabel}.`
+        : "El destino externo todavía no está configurado; por ahora solo cuentas con copias locales.",
+      ready: env.remoteBackups.configured,
+      icon: ArchiveRestore,
     },
   ];
 
@@ -175,7 +187,7 @@ export default function SystemPage() {
           {
             title: "Backups",
             description:
-              "Guarda copias de tu base de datos y del almacenamiento de logos con la frecuencia que necesites.",
+              "Guarda copias locales y, si activas WebDAV / Nextcloud, envíalas también fuera del servidor principal.",
             icon: ArchiveRestore,
             href: "/backups",
             label: "Abrir backups",

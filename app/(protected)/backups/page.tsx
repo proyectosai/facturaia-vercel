@@ -4,12 +4,16 @@ import { BackupCenter } from "@/components/backups/backup-center";
 import { getBackupSummary } from "@/lib/backups";
 import { requireUser } from "@/lib/auth";
 import { isDemoMode } from "@/lib/demo";
+import { getRemoteBackupState } from "@/lib/remote-backups";
 import { Badge } from "@/components/ui/badge";
 
 export default async function BackupsPage() {
   const user = await requireUser();
   const demoMode = isDemoMode();
-  const summary = await getBackupSummary(user.id);
+  const [summary, remoteState] = await Promise.all([
+    getBackupSummary(user.id),
+    getRemoteBackupState(user.id),
+  ]);
 
   return (
     <div className="space-y-8">
@@ -58,7 +62,11 @@ export default async function BackupsPage() {
         </div>
       </section>
 
-      <BackupCenter summary={summary} demoMode={demoMode} />
+      <BackupCenter
+        summary={summary}
+        demoMode={demoMode}
+        remoteState={remoteState}
+      />
 
       <div className="rounded-[28px] bg-[color:var(--color-panel)] p-6">
         <div className="flex items-start gap-3">

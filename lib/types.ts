@@ -154,3 +154,14 @@ export type MessageRecord = {
   raw_payload: Record<string, unknown>;
   created_at: string;
 };
+
+export type RemoteBackupRun = {
+  id: string;
+  user_id: string;
+  provider: "webdav";
+  status: "success" | "error";
+  file_name: string;
+  remote_path: string;
+  error_message: string | null;
+  created_at: string;
+};
