@@ -27,7 +27,7 @@ const setupSteps = [
   {
     title: "2. Conecta solo lo que quieras",
     description:
-      "Supabase, Resend, LM Studio y mensajería son opcionales según tu forma de trabajar.",
+      "Supabase, SMTP o Resend, LM Studio y mensajería son opcionales según tu forma de trabajar.",
     icon: LockKeyhole,
   },
   {
@@ -147,6 +147,12 @@ export default function InstalacionPage() {
                   "WhatsApp Business y Telegram por webhook si quieres ordenar conversaciones.",
                 icon: HardDrive,
               },
+              {
+                title: "Correo saliente",
+                description:
+                  "SMTP o Resend para enviar facturas y correos de prueba desde tu instalación.",
+                icon: LockKeyhole,
+              },
             ].map((item) => {
               const Icon = item.icon;
 
@@ -195,7 +201,14 @@ export default function InstalacionPage() {
                 label: "Nueva factura",
               },
               {
-                title: "3. Activa documentos o mensajería",
+                title: "3. Revisa correo y backups",
+                description:
+                  "Configura el envío saliente y prepara copias remotas antes de usarlo a diario.",
+                href: "/mail",
+                label: "Abrir correo",
+              },
+              {
+                title: "4. Activa documentos o mensajería",
                 description:
                   "Añade IA local y bandeja de mensajes solo si de verdad te aportan valor.",
                 href: "/documents-ai",

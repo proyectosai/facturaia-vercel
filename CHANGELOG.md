@@ -12,12 +12,16 @@ El formato está inspirado en Keep a Changelog y el versionado irá madurando co
 - Nueva ruta `app/api/backups/push/route.ts` para enviar snapshots remotos manualmente.
 - Historial de ejecuciones remotas en la pantalla `/backups`.
 - Migración `202603201030_add_remote_backup_runs.sql`.
+- Nuevo módulo de correo saliente con soporte SMTP o Resend.
+- Nueva pantalla `/mail` para comprobar proveedor y enviar correos de prueba.
+- Documento `docs/modulos/CORREO_ENTRANTE.md` para la siguiente fase del roadmap.
 
 ### Mejorado
 
 - Catálogo `/modules` actualizado para reflejar el estado real del sistema modular.
 - Pantalla `/system` con visibilidad sobre la configuración de backups remotos.
 - Documentación de instalación y despliegue ampliada para usuarios self-hosted.
+- Envío de facturas desacoplado de Resend como único proveedor.
 
 ## [0.1.0] - 2026-03-19
 

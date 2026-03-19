@@ -7,7 +7,6 @@ import { ZodError } from "zod";
 import { requireFeatureAccess } from "@/lib/billing";
 import { requireUser } from "@/lib/auth";
 import { isDemoMode } from "@/lib/demo";
-import { getResendEnv } from "@/lib/env";
 import { getInvoicePdfFileName } from "@/lib/invoice-files";
 import {
   buildInvoiceEmailHtml,
@@ -17,7 +16,7 @@ import {
   parseInvoiceLines,
   renderInvoicePdfBuffer,
 } from "@/lib/invoices";
-import { getResendClient } from "@/lib/resend";
+import { sendTransactionalEmail } from "@/lib/mail";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { InvoiceRecord } from "@/lib/types";
 import { formatInvoiceNumber } from "@/lib/utils";
@@ -173,11 +172,7 @@ export async function sendInvoiceEmailAction(formData: FormData) {
     }
 
     const pdfBuffer = await renderInvoicePdfBuffer(invoice as InvoiceRecord);
-    const resend = getResendClient();
-    const resendEnv = getResendEnv();
-
-    const { error: emailError } = await resend.emails.send({
-      from: resendEnv.RESEND_FROM_EMAIL,
+    await sendTransactionalEmail({
       to: [(invoice as InvoiceRecord).client_email],
       subject: `Tu factura ${formatInvoiceNumber((invoice as InvoiceRecord).invoice_number)}`,
       html: buildInvoiceEmailHtml(invoice as InvoiceRecord),
@@ -190,10 +185,6 @@ export async function sendInvoiceEmailAction(formData: FormData) {
         },
       ],
     });
-
-    if (emailError) {
-      throw new Error("Resend no ha podido enviar el email.");
-    }
 
     revalidatePath("/invoices");
     redirect(`/invoices?emailed=${invoiceId}`);

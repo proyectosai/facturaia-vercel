@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 
 import { isDemoMode } from "@/lib/demo";
+import { getOutboundMailStatusSummary } from "@/lib/mail";
 import { getRemoteBackupStatusSummary } from "@/lib/remote-backups";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,7 @@ import {
 
 function getEnvironmentFlags() {
   const remoteBackups = getRemoteBackupStatusSummary();
+  const outboundMail = getOutboundMailStatusSummary();
 
   return {
     demoMode: isDemoMode(),
@@ -30,13 +32,12 @@ function getEnvironmentFlags() {
       Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL) &&
       Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) &&
       Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
-    hasResend:
-      Boolean(process.env.RESEND_API_KEY) && Boolean(process.env.RESEND_FROM_EMAIL),
     hasLocalAi:
       Boolean(process.env.LM_STUDIO_BASE_URL) && Boolean(process.env.LM_STUDIO_MODEL),
     appUrl: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
     lmStudioBaseUrl: process.env.LM_STUDIO_BASE_URL || "No configurado",
     lmStudioModel: process.env.LM_STUDIO_MODEL || "No configurado",
+    outboundMail,
     remoteBackups,
   };
 }
@@ -61,11 +62,11 @@ export default function SystemPage() {
       icon: Bot,
     },
     {
-      title: "Resend",
-      description: env.hasResend
-        ? "Correo saliente disponible para enviar facturas."
-        : "El envío por email está desactivado hasta configurar Resend.",
-      ready: env.hasResend,
+      title: "Correo saliente",
+      description: env.outboundMail.configured
+        ? `${env.outboundMail.providerLabel} listo desde ${env.outboundMail.fromLabel}.`
+        : "El envío por email está desactivado hasta configurar SMTP o Resend.",
+      ready: env.outboundMail.configured,
       icon: Mail,
     },
     {
@@ -193,12 +194,12 @@ export default function SystemPage() {
             label: "Abrir backups",
           },
           {
-            title: "Mensajería opcional",
+            title: "Correo",
             description:
-              "Conecta WhatsApp Business o Telegram por webhook solo si te aporta valor operativo.",
-            icon: Smartphone,
-            href: "/modules",
-            label: "Ver módulos",
+              "Usa SMTP o Resend para enviar facturas y validar el módulo con correos de prueba.",
+            icon: Mail,
+            href: "/mail",
+            label: "Abrir correo",
           },
           {
             title: "Endurecimiento",
@@ -207,6 +208,14 @@ export default function SystemPage() {
             icon: ShieldCheck,
             href: "/instalacion",
             label: "Revisar despliegue",
+          },
+          {
+            title: "Mensajería opcional",
+            description:
+              "Conecta WhatsApp Business o Telegram por webhook solo si te aporta valor operativo.",
+            icon: Smartphone,
+            href: "/modules",
+            label: "Ver módulos",
           },
         ].map((item) => {
           const Icon = item.icon;

@@ -8,7 +8,7 @@ Esta guía deja FacturaIA lista para desplegar en una máquina propia o en una i
 
 - Aplicación Next.js en modo Node.
 - Base de datos y auth en Supabase gestionado.
-- Resend como servicio externo opcional para correo saliente.
+- SMTP o Resend como salida de correo opcional.
 - LM Studio en red local o en un host interno accesible desde la aplicación.
 
 ## Build y arranque
@@ -38,6 +38,14 @@ SUPABASE_SERVICE_ROLE_KEY=
 LM_STUDIO_BASE_URL=
 LM_STUDIO_MODEL=
 LM_STUDIO_API_KEY=
+
+MAIL_PROVIDER=smtp
+SMTP_HOST=
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USERNAME=
+SMTP_PASSWORD=
+SMTP_FROM_EMAIL=
 
 RESEND_API_KEY=
 RESEND_FROM_EMAIL=
@@ -93,6 +101,40 @@ Si el servidor de IA está en otra máquina:
 - limita acceso por red
 - evita exponerlo públicamente si no hace falta
 
+## Correo saliente en producción
+
+Tienes dos opciones:
+
+- `SMTP`, recomendado para despliegues privados
+- `Resend`, si prefieres un proveedor gestionado
+
+Ejemplo SMTP:
+
+```env
+MAIL_PROVIDER=smtp
+SMTP_HOST=mail.tudominio.es
+SMTP_PORT=465
+SMTP_SECURE=true
+SMTP_USERNAME=facturacion@tudominio.es
+SMTP_PASSWORD=tu-password
+SMTP_FROM_EMAIL=FacturaIA <facturacion@tudominio.es>
+```
+
+Ejemplo Resend:
+
+```env
+MAIL_PROVIDER=resend
+RESEND_API_KEY=re_xxx
+RESEND_FROM_EMAIL=FacturaIA <facturacion@tudominio.es>
+```
+
+Después del despliegue:
+
+1. abre `/mail`
+2. revisa el proveedor detectado
+3. envía una prueba
+4. valida luego `/invoices`
+
 ## Backups remotos en producción
 
 La primera integración remota soportada es **WebDAV / Nextcloud**.
@@ -132,7 +174,7 @@ WEBDAV_BACKUP_PATH=/FacturaIA
 4. Descarga de PDF.
 5. Generación documental con IA.
 6. Exportación DOCX.
-7. Envío de email con Resend, si está activado.
+7. Envío de email desde `/mail` y `/invoices`, si está activado.
 8. Webhooks de mensajería, si están activados.
 9. Exportación y restauración de backup desde `/backups`.
 10. Envío de un backup remoto manual a WebDAV / Nextcloud, si está activado.
@@ -143,7 +185,7 @@ WEBDAV_BACKUP_PATH=/FacturaIA
 - variables de entorno cargadas
 - migraciones de Supabase aplicadas
 - dominio y callback correctos
-- Resend verificado si usarás emails
+- proveedor de correo configurado y probado
 - LM Studio accesible
 - estrategia de backup definida
 - variables WebDAV definidas si usarás backups remotos

@@ -5,7 +5,7 @@
 - Node.js 20 o superior
 - npm
 - Proyecto Supabase
-- Cuenta Resend
+- SMTP o cuenta Resend si vas a usar correo saliente
 - LM Studio disponible en red local o en la misma máquina
 
 ## 1. Instalar dependencias
@@ -41,6 +41,14 @@ SUPABASE_SERVICE_ROLE_KEY=
 LM_STUDIO_BASE_URL=http://10.149.71.240:1234/v1
 LM_STUDIO_MODEL=openai/gpt-oss-20b
 LM_STUDIO_API_KEY=
+
+MAIL_PROVIDER=smtp
+SMTP_HOST=
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USERNAME=
+SMTP_PASSWORD=
+SMTP_FROM_EMAIL=
 
 RESEND_API_KEY=
 RESEND_FROM_EMAIL=
@@ -83,12 +91,41 @@ Estas migraciones crean:
 - resincronización segura de numeración tras restaurar backups
 - historial de ejecuciones de backups remotos
 
-## 4. Configurar Resend
+## 4. Configurar correo saliente
 
-Añade:
+FacturaIA soporta dos opciones:
 
-- `RESEND_API_KEY`
-- `RESEND_FROM_EMAIL`
+- SMTP
+- Resend
+
+### Opción SMTP
+
+```env
+MAIL_PROVIDER=smtp
+SMTP_HOST=
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USERNAME=
+SMTP_PASSWORD=
+SMTP_FROM_EMAIL=
+```
+
+### Opción Resend
+
+```env
+MAIL_PROVIDER=resend
+RESEND_API_KEY=
+RESEND_FROM_EMAIL=
+```
+
+Después:
+
+1. reinicia la aplicación
+2. abre `/mail`
+3. revisa el proveedor detectado
+4. envía un correo de prueba
+
+Para una instalación privada, SMTP suele ser la opción más natural.
 
 ## 5. Configurar LM Studio
 
@@ -159,7 +196,20 @@ La pantalla `/modules` resume:
 - pasos resumidos por módulo
 - documento asociado dentro de `docs/modulos`
 
-## 10. Backups remotos por WebDAV / Nextcloud
+## 10. Correo saliente en la app
+
+La pantalla `/mail` permite:
+
+- comprobar el proveedor detectado
+- ver el remitente activo
+- enviar un correo de prueba
+- validar el mismo canal que luego usará `/invoices`
+
+Guía completa:
+
+- `docs/modulos/CORREO_SALIENTE.md`
+
+## 11. Backups remotos por WebDAV / Nextcloud
 
 Si quieres una copia fuera del equipo o del VPS principal, activa el módulo remoto.
 

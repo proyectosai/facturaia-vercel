@@ -11,10 +11,11 @@ FacturaIA es una aplicación Next.js 15 pensada para autónomos y pequeños nego
 - Dashboard protegido con sidebar en español.
 - Gestión de perfil fiscal del emisor.
 - Creación de facturas con IVA, IRPF, numeración automática y PDF profesional.
-- Historial de facturas con descarga de PDF y envío por email con Resend.
+- Historial de facturas con descarga de PDF y envío por email con SMTP o Resend.
 - Página pública de factura con QR.
 - Estudio documental con IA local vía LM Studio para propuestas, presupuestos, contratos y mensajes.
 - Exportación de documentos a PDF y Word.
+- Módulo de correo saliente con pantalla de prueba y soporte SMTP / Resend.
 - Módulo opcional de mensajería unificada para WhatsApp Business y Telegram por webhook.
 - Centro de backups para exportar, restaurar y sincronizar copias remotas por WebDAV / Nextcloud.
 - Catálogo de módulos opcionales con estado e instalación en `/modules`.
@@ -36,7 +37,7 @@ FacturaIA es una aplicación Next.js 15 pensada para autónomos y pequeños nego
 - Tailwind CSS v4
 - Componentes UI estilo shadcn/ui + Radix
 - Supabase Auth + Postgres + Storage + RLS
-- Resend
+- Nodemailer + SMTP o Resend
 - `@react-pdf/renderer`
 - `docx`
 - LM Studio local usando `openai/gpt-oss-20b`
@@ -50,6 +51,7 @@ FacturaIA es una aplicación Next.js 15 pensada para autónomos y pequeños nego
 - `/new-invoice`
 - `/invoices`
 - `/documents-ai`
+- `/mail`
 - `/modules`
 - `/messages`
 - `/system`
@@ -92,6 +94,13 @@ SUPABASE_SERVICE_ROLE_KEY=
 LM_STUDIO_BASE_URL=
 LM_STUDIO_MODEL=
 LM_STUDIO_API_KEY=
+MAIL_PROVIDER=
+SMTP_HOST=
+SMTP_PORT=
+SMTP_SECURE=
+SMTP_USERNAME=
+SMTP_PASSWORD=
+SMTP_FROM_EMAIL=
 RESEND_API_KEY=
 RESEND_FROM_EMAIL=
 REMOTE_BACKUP_PROVIDER=
@@ -146,6 +155,7 @@ Tablas principales activas:
 - [Mensajería WhatsApp y Telegram](./docs/modulos/MENSAJERIA_WHATSAPP_TELEGRAM.md)
 - [Backups remotos](./docs/modulos/BACKUPS_REMOTOS.md)
 - [Correo saliente](./docs/modulos/CORREO_SALIENTE.md)
+- [Correo entrante](./docs/modulos/CORREO_ENTRANTE.md)
 - [Hoja de ruta](./docs/ROADMAP.md)
 - [Guía de contribución](./CONTRIBUTING.md)
 - [Código de conducta](./CODE_OF_CONDUCT.md)
@@ -159,6 +169,7 @@ Tablas principales activas:
 - El flujo de Word y PDF documental ya está operativo.
 - Está planteado para uso privado y autogestionado.
 - El backup exporta JSON del usuario autenticado, la restauración funciona en modo reemplazo y el primer proveedor remoto soportado es WebDAV / Nextcloud.
+- El correo saliente soporta SMTP y Resend, con pantalla de prueba propia en `/mail`.
 - La parte legal y fiscal mostrada en la UI no sustituye asesoramiento profesional.
 
 ## Verificación

@@ -57,13 +57,14 @@ flowchart LR
 0. Mensajería unificada
 0. Backups locales
 1. Backups remotos
-2. Correo saliente y luego correo entrante
-3. Presupuestos y albaranes
-4. OCR de gastos
-5. CRM ligero
-6. Firma documental
-7. Conciliación bancaria
-8. Facturae / VeriFactu
+2. Correo saliente
+3. Correo entrante
+4. Presupuestos y albaranes
+5. OCR de gastos
+6. CRM ligero
+7. Firma documental
+8. Conciliación bancaria
+9. Facturae / VeriFactu
 
 ## Dependencias recomendadas
 
@@ -81,16 +82,16 @@ flowchart LR
 - Mensajería unificada: WhatsApp Business y Telegram por webhook.
 - Backups locales: exportación y restauración JSON.
 - Backups remotos: primera entrega operativa con WebDAV / Nextcloud.
-- Correo saliente: envío de facturas con Resend.
+- Correo saliente: envío de facturas y correos de prueba con SMTP o Resend.
 
 ## Siguiente módulo
 
-### Correo saliente y evolución a correo entrante
+### Correo entrante
 
 Motivo de prioridad:
 
-- ya existe una base funcional de envío
-- falta cerrar mejor instalación, proveedores alternativos y evolución hacia bandeja de entrada
+- ya existe una base funcional de salida
+- permite unificar comunicación con clientes dentro de FacturaIA
 - encaja bien con facturas, documentos y CRM ligero
 
 ## Documentación asociada
@@ -99,3 +100,4 @@ Motivo de prioridad:
 - `docs/modulos/MENSAJERIA_WHATSAPP_TELEGRAM.md`
 - `docs/modulos/BACKUPS_REMOTOS.md`
 - `docs/modulos/CORREO_SALIENTE.md`
+- `docs/modulos/CORREO_ENTRANTE.md`

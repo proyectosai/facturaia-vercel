@@ -1,3 +1,5 @@
+import { getOutboundMailStatusSummary } from "@/lib/mail";
+
 export type ModuleStatus = "active" | "partial" | "next" | "planned";
 
 export type ModuleCategory =
@@ -33,10 +35,6 @@ function hasSupabase() {
     Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) &&
     Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY)
   );
-}
-
-function hasResend() {
-  return Boolean(process.env.RESEND_API_KEY) && Boolean(process.env.RESEND_FROM_EMAIL);
 }
 
 function hasLmStudio() {
@@ -130,27 +128,53 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
     order: 2,
     title: "Correo saliente",
     summary:
-      "Envío de facturas y documentos desde FacturaIA con Resend u otros proveedores SMTP compatibles en iteraciones futuras.",
-    status: "next",
+      "Envío de facturas y pruebas desde FacturaIA con SMTP clásico o Resend, según prefieras en tu instalación privada.",
+    status: "active",
     category: "canales",
+    routeHref: "/mail",
     docsPath: "docs/modulos/CORREO_SALIENTE.md",
+    providers: ["SMTP", "Resend"],
     requirements: [
-      "RESEND_API_KEY",
-      "RESEND_FROM_EMAIL",
-      "Dominio o remitente verificado",
+      "MAIL_PROVIDER o detección automática del proveedor",
+      "Variables SMTP o Resend completas",
+      "Remitente válido",
     ],
     installSteps: [
-      "Configura las variables de Resend.",
-      "Verifica el remitente.",
-      "Prueba el envío desde el historial de facturas.",
+      "Configura SMTP o Resend en tu entorno.",
+      "Abre /mail y revisa el estado detectado.",
+      "Envía una prueba antes de usar el envío desde /invoices.",
     ],
     notes: [
-      "Hoy está implementado el envío saliente; falta bandeja de entrada y proveedores alternativos.",
+      "El envío de facturas del historial usa este mismo módulo.",
+    ],
+  },
+  {
+    id: "email-inbound",
+    order: 3,
+    title: "Correo entrante",
+    summary:
+      "Bandeja de entrada para asociar emails entrantes con clientes, documentos y seguimiento operativo.",
+    status: "next",
+    category: "canales",
+    docsPath: "docs/modulos/CORREO_ENTRANTE.md",
+    providers: ["IMAP", "reenvío entrante", "webhook de proveedor"],
+    requirements: [
+      "Modelo de correo saliente ya asentado",
+      "Persistencia de conversaciones por cliente",
+      "Reglas de importación seguras",
+    ],
+    installSteps: [
+      "Definir origen del correo entrante.",
+      "Crear bandeja interna y mapeo con clientes.",
+      "Añadir reglas de clasificación y seguimiento.",
+    ],
+    notes: [
+      "Es el siguiente paso natural para unificar facturas, documentos y comunicación.",
     ],
   },
   {
     id: "quotes-delivery-notes",
-    order: 3,
+    order: 4,
     title: "Presupuestos y albaranes",
     summary:
       "Flujo documental previo a la factura, con conversión de presupuesto o albarán en factura definitiva.",
@@ -169,7 +193,7 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
   },
   {
     id: "expenses-ocr",
-    order: 4,
+    order: 5,
     title: "OCR de gastos",
     summary:
       "Lectura de tickets y facturas de proveedor para extraer importes, IVA y datos básicos de gasto.",
@@ -188,7 +212,7 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
   },
   {
     id: "crm-light",
-    order: 5,
+    order: 6,
     title: "CRM ligero",
     summary:
       "Ficha unificada de cliente con notas, documentos, mensajes y estado operativo.",
@@ -206,7 +230,7 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
   },
   {
     id: "document-signature",
-    order: 6,
+    order: 7,
     title: "Firma documental",
     summary:
       "Aceptación o firma de propuestas y contratos con trazabilidad básica dentro del entorno privado.",
@@ -225,7 +249,7 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
   },
   {
     id: "bank-reconciliation",
-    order: 7,
+    order: 8,
     title: "Conciliación bancaria",
     summary:
       "Importación de extractos para marcar facturas cobradas y ordenar movimientos.",
@@ -244,7 +268,7 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
   },
   {
     id: "facturae-verifactu",
-    order: 8,
+    order: 9,
     title: "Facturae / VeriFactu",
     summary:
       "Exportación estructurada orientada a cumplimiento fiscal cuando el núcleo de facturación esté más maduro.",
@@ -295,6 +319,8 @@ export function getModuleCategoryLabel(category: ModuleCategory) {
 }
 
 export function getModuleCatalog(): ModuleRuntimeState[] {
+  const outboundMail = getOutboundMailStatusSummary();
+
   return MODULE_DEFINITIONS.map((module) => {
     let configured = false;
     let configuredLabel = "Pendiente";
@@ -315,10 +341,13 @@ export function getModuleCatalog(): ModuleRuntimeState[] {
         ? "WebDAV / Nextcloud listo"
         : "Faltan variables WebDAV";
     } else if (module.id === "email-outbound") {
-      configured = hasResend();
+      configured = outboundMail.configured;
       configuredLabel = configured
-        ? "Resend configurado"
-        : "Faltan variables de Resend";
+        ? `${outboundMail.providerLabel} listo`
+        : "Faltan variables de correo";
+    } else if (module.id === "email-inbound") {
+      configured = false;
+      configuredLabel = "Siguiente iteración";
     } else if (module.id === "quotes-delivery-notes") {
       configured = hasLmStudio();
       configuredLabel = configured

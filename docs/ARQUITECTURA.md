@@ -24,6 +24,7 @@ FacturaIA está diseñada como una aplicación Next.js 15 con App Router, priori
 - `app/(protected)/invoices/page.tsx`
 - `app/(protected)/messages/page.tsx`
 - `app/(protected)/documents-ai/page.tsx`
+- `app/(protected)/mail/page.tsx`
 - `app/(protected)/modules/page.tsx`
 - `app/(protected)/system/page.tsx`
 - `app/(protected)/backups/page.tsx`
@@ -129,12 +130,18 @@ Funciones:
 
 Archivos clave:
 
+- `app/(protected)/mail/page.tsx`
+- `lib/actions/mail.ts`
+- `lib/mail.ts`
 - `lib/resend.ts`
 - `lib/actions/invoices.ts`
 
 Funciones:
 
+- detección del proveedor saliente
+- soporte SMTP
 - envío de factura por email
+- correo de prueba desde la propia app
 - adjunto del PDF generado
 
 ## 7. Copias de seguridad
