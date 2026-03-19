@@ -185,8 +185,8 @@ export default function SystemPage() {
             description:
               "Conecta WhatsApp Business o Telegram por webhook solo si te aporta valor operativo.",
             icon: Smartphone,
-            href: "/messages",
-            label: "Abrir mensajes",
+            href: "/modules",
+            label: "Ver módulos",
           },
           {
             title: "Endurecimiento",

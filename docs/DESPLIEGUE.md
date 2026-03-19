@@ -107,6 +107,7 @@ Si el servidor de IA está en otra máquina:
 7. Envío de email con Resend, si está activado.
 8. Webhooks de mensajería, si están activados.
 9. Exportación y restauración de backup desde `/backups`.
+10. Revisión del catálogo modular en `/modules`.
 
 ## Checklist de producción
 

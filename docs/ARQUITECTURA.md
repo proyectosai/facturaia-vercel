@@ -24,6 +24,7 @@ FacturaIA está diseñada como una aplicación Next.js 15 con App Router, priori
 - `app/(protected)/invoices/page.tsx`
 - `app/(protected)/messages/page.tsx`
 - `app/(protected)/documents-ai/page.tsx`
+- `app/(protected)/modules/page.tsx`
 - `app/(protected)/system/page.tsx`
 - `app/(protected)/backups/page.tsx`
 - `app/(protected)/profile/page.tsx`
@@ -89,7 +90,22 @@ Responsabilidades:
 - compatibilidad con modo demo
 - copy y rutas orientadas a instalación privada
 
-## 4. Documentos con IA
+## 4. Catálogo modular
+
+Archivos clave:
+
+- `lib/modules.ts`
+- `app/(protected)/modules/page.tsx`
+- `docs/MODULOS_DFD.md`
+- `docs/modulos/*`
+
+Responsabilidades:
+
+- definir módulos activos, parciales y planificados
+- mostrar requisitos e instalación resumida por módulo
+- dar un orden de implementación coherente
+
+## 5. Documentos con IA
 
 Archivos clave:
 
@@ -108,7 +124,7 @@ Funciones:
 - exportación a Word
 - plantillas listas para propuesta, presupuesto y contrato
 
-## 5. Email
+## 6. Email
 
 Archivos clave:
 
@@ -120,7 +136,7 @@ Funciones:
 - envío de factura por email
 - adjunto del PDF generado
 
-## 6. Copias de seguridad
+## 7. Copias de seguridad
 
 Archivos clave:
 
@@ -136,7 +152,7 @@ Funciones:
 - restauración en modo reemplazo
 - resincronización de la secuencia de facturas
 
-## 7. Mensajería opcional
+## 8. Mensajería opcional
 
 Archivos clave:
 

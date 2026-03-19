@@ -17,6 +17,7 @@ FacturaIA es una aplicación Next.js 15 pensada para autónomos y pequeños nego
 - Exportación de documentos a PDF y Word.
 - Módulo opcional de mensajería unificada para WhatsApp Business y Telegram por webhook.
 - Centro de backups para exportar y restaurar datos del usuario en JSON.
+- Catálogo de módulos opcionales con estado e instalación en `/modules`.
 - Guía de instalación privada dentro de la propia app.
 - Modo demo local para revisar la interfaz sin servicios reales.
 
@@ -49,6 +50,7 @@ FacturaIA es una aplicación Next.js 15 pensada para autónomos y pequeños nego
 - `/new-invoice`
 - `/invoices`
 - `/documents-ai`
+- `/modules`
 - `/messages`
 - `/system`
 - `/backups`
@@ -129,9 +131,14 @@ Tablas principales activas:
 ## Documentación adicional
 
 - [Instalación y configuración](./docs/INSTALACION.md)
+- [DFD y plan de módulos](./docs/MODULOS_DFD.md)
 - [Arquitectura funcional y técnica](./docs/ARQUITECTURA.md)
 - [Visión, alcance y pendientes](./docs/VISION_Y_PENDIENTES.md)
 - [Despliegue en Coolify / Hetzner](./docs/DESPLIEGUE.md)
+- [Índice de módulos](./docs/modulos/README.md)
+- [Mensajería WhatsApp y Telegram](./docs/modulos/MENSAJERIA_WHATSAPP_TELEGRAM.md)
+- [Backups remotos](./docs/modulos/BACKUPS_REMOTOS.md)
+- [Correo saliente](./docs/modulos/CORREO_SALIENTE.md)
 - [Hoja de ruta](./docs/ROADMAP.md)
 - [Guía de contribución](./CONTRIBUTING.md)
 - [Código de conducta](./CODE_OF_CONDUCT.md)

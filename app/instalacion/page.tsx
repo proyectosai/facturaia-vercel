@@ -58,6 +58,9 @@ export default function InstalacionPage() {
               <Link href="/dashboard">Abrir panel</Link>
             </Button>
             <Button variant="outline" asChild>
+              <Link href="/modules">Ver módulos</Link>
+            </Button>
+            <Button variant="outline" asChild>
               <Link href="https://github.com/proyectosai/facturaia">
                 Ver repositorio
               </Link>

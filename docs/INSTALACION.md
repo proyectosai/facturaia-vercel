@@ -140,3 +140,13 @@ Notas importantes:
 - la restauración actual sustituye los datos del usuario autenticado
 - el logo se exporta como ruta y URL, no como binario de storage
 - tras restaurar, FacturaIA resincroniza la secuencia de numeración de facturas
+
+## 9. Catálogo de módulos
+
+La pantalla `/modules` resume:
+
+- qué módulos existen ya
+- cuál es el siguiente módulo del roadmap
+- requisitos de instalación
+- pasos resumidos por módulo
+- documento asociado dentro de `docs/modulos`
