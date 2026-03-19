@@ -22,6 +22,7 @@ FacturaIA está diseñada como una aplicación Next.js 15 con App Router, priori
 - `app/(protected)/dashboard/page.tsx`
 - `app/(protected)/new-invoice/page.tsx`
 - `app/(protected)/invoices/page.tsx`
+- `app/(protected)/messages/page.tsx`
 - `app/(protected)/documents-ai/page.tsx`
 - `app/(protected)/profile/page.tsx`
 
@@ -34,6 +35,8 @@ FacturaIA está diseñada como una aplicación Next.js 15 con App Router, priori
 - `app/api/invoices/[invoiceId]/pdf/route.ts`
 - `app/api/public/invoices/[publicId]/pdf/route.ts`
 - `app/api/stripe-webhook/route.ts`
+- `app/api/integrations/telegram/[inboundKey]/route.ts`
+- `app/api/integrations/whatsapp/[inboundKey]/route.ts`
 
 ## Capas lógicas
 
@@ -117,6 +120,24 @@ Funciones:
 - envío de factura por email
 - adjunto del PDF generado
 
+## 6. Mensajería opcional
+
+Archivos clave:
+
+- `app/(protected)/messages/page.tsx`
+- `lib/messages.ts`
+- `lib/actions/messages.ts`
+- `app/api/integrations/telegram/[inboundKey]/route.ts`
+- `app/api/integrations/whatsapp/[inboundKey]/route.ts`
+
+Funciones:
+
+- bandeja unificada para WhatsApp Business y Telegram
+- ordenación por fecha, urgencia, nombre y apellidos
+- detección básica de prioridad por contenido
+- panel de configuración de webhooks por usuario
+- almacenamiento de conversaciones y mensajes
+
 ## Modelo de datos
 
 Tablas principales:
@@ -126,6 +147,9 @@ Tablas principales:
 - `subscriptions`
 - `invoices`
 - `ai_usage`
+- `message_connections`
+- `message_threads`
+- `message_messages`
 
 ## `users`
 
@@ -166,6 +190,28 @@ Tablas principales:
 - fecha UTC
 - contador diario
 
+## `message_connections`
+
+- conexión por usuario y canal
+- clave de entrada del webhook
+- verify token para WhatsApp
+- estado del canal
+
+## `message_threads`
+
+- conversación agregada por cliente
+- urgencia
+- último mensaje
+- contador sin leer
+- datos de nombre, apellidos, teléfono o alias
+
+## `message_messages`
+
+- detalle de cada mensaje recibido
+- payload original
+- fecha exacta
+- tipo de mensaje
+
 ## Modo demo
 
 El proyecto soporta un modo demo activado por:
@@ -202,3 +248,4 @@ En este modo:
 - README operativo para onboarding de equipo
 - exportación XML VeriFactu
 - contratos con más parametrización
+- respuestas salientes y automatizaciones sobre mensajería

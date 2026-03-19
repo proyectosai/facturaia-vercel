@@ -6,6 +6,14 @@ export type PlanKey = "free" | "basic" | "pro" | "premium";
 
 export type BillingInterval = "monthly" | "yearly";
 
+export type MessageChannel = "whatsapp" | "telegram";
+
+export type MessageConnectionStatus = "draft" | "active" | "paused";
+
+export type MessageUrgency = "low" | "medium" | "high";
+
+export type MessageSortKey = "recent" | "urgency" | "name" | "surname";
+
 export type SubscriptionStatus =
   | "inactive"
   | "trialing"
@@ -131,4 +139,56 @@ export type InvoiceMonthGroup = {
   label: string;
   total: number;
   items: InvoiceListItem[];
+};
+
+export type MessageConnection = {
+  id: string;
+  user_id: string;
+  channel: MessageChannel;
+  label: string;
+  status: MessageConnectionStatus;
+  inbound_key: string;
+  verify_token: string;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+};
+
+export type MessageThread = {
+  id: string;
+  user_id: string;
+  connection_id: string | null;
+  channel: MessageChannel;
+  external_chat_id: string;
+  external_contact_id: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  full_name: string;
+  phone: string | null;
+  telegram_username: string | null;
+  urgency: MessageUrgency;
+  urgency_score: number;
+  urgency_locked: boolean;
+  unread_count: number;
+  last_message_preview: string | null;
+  last_message_direction: "inbound" | "outbound";
+  last_message_at: string;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+};
+
+export type MessageRecord = {
+  id: string;
+  user_id: string;
+  thread_id: string;
+  channel: MessageChannel;
+  external_message_id: string | null;
+  direction: "inbound" | "outbound";
+  sender_name: string | null;
+  body: string;
+  message_type: string;
+  received_at: string;
+  raw_payload: Record<string, unknown>;
+  created_at: string;
 };

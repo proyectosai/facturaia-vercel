@@ -15,6 +15,7 @@ FacturaIA es una aplicación Next.js 15 orientada a autónomos y pequeños negoc
 - Página pública de factura con QR.
 - Suscripciones con Stripe: Básico, Pro y Premium.
 - Gating de funcionalidades según plan.
+- Módulo opcional de mensajería unificada para WhatsApp Business y Telegram por webhook.
 - Estudio documental con IA local vía LM Studio para propuestas, presupuestos, contratos y mensajes.
 - Exportación de documentos a PDF y Word.
 - Modo demo local para revisar la interfaz sin servicios reales.
@@ -50,6 +51,7 @@ El proyecto está preparado como MVP serio de producto:
 - `/new-invoice`
 - `/invoices`
 - `/documents-ai`
+- `/messages`
 - `/profile`
 - `/factura/[publicId]`
 
@@ -131,6 +133,9 @@ Tablas principales:
 - `subscriptions`
 - `invoices`
 - `ai_usage`
+- `message_connections`
+- `message_threads`
+- `message_messages`
 
 ## Documentación adicional
 

@@ -40,6 +40,22 @@ export function formatDateShort(value: string | Date | null | undefined) {
   }).format(date);
 }
 
+export function formatDateTimeShort(value: string | Date | null | undefined) {
+  if (!value) {
+    return "Pendiente";
+  }
+
+  const date = typeof value === "string" ? new Date(value) : value;
+
+  return new Intl.DateTimeFormat("es-ES", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
 export function formatInvoiceNumber(value: number | string) {
   return `FAC-${String(value).padStart(6, "0")}`;
 }

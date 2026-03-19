@@ -9,6 +9,7 @@ import {
   Files,
   Home,
   LogOut,
+  MessageSquareText,
   Settings2,
   Sparkles,
 } from "lucide-react";
@@ -26,6 +27,7 @@ const navigation = [
   { href: "/dashboard", label: "Inicio", icon: Home },
   { href: "/new-invoice", label: "Nueva Factura", icon: FilePlus2 },
   { href: "/invoices", label: "Mis Facturas", icon: Files },
+  { href: "/messages", label: "Mensajes", icon: MessageSquareText },
   { href: "/documents-ai", label: "Documentos", icon: FileText },
   { href: "/pricing", label: "Precios", icon: CreditCard },
   { href: "/profile", label: "Mi Perfil", icon: Settings2 },
