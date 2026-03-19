@@ -1,5 +1,8 @@
 # FacturaIA
 
+[![CI](https://github.com/proyectosai/facturaia/actions/workflows/ci.yml/badge.svg)](https://github.com/proyectosai/facturaia/actions/workflows/ci.yml)
+[![Licencia: MIT](https://img.shields.io/badge/licencia-MIT-2f7d32.svg)](./LICENSE)
+
 FacturaIA es una aplicación Next.js 15 orientada a autónomos y pequeños negocios españoles para emitir facturas, gestionar suscripciones, generar documentos con IA local y trabajar con un panel moderno en español.
 
 ## Qué incluye
@@ -51,6 +54,12 @@ El proyecto está preparado como MVP serio de producto:
 - `/factura/[publicId]`
 
 ## Instalación rápida
+
+Si usas `nvm`, puedes fijar la versión recomendada con:
+
+```bash
+nvm use
+```
 
 ```bash
 npm install
@@ -128,9 +137,27 @@ Tablas principales:
 - [Instalación y configuración](./docs/INSTALACION.md)
 - [Arquitectura funcional y técnica](./docs/ARQUITECTURA.md)
 - [Despliegue en Coolify / Hetzner](./docs/DESPLIEGUE.md)
+- [Hoja de ruta](./docs/ROADMAP.md)
 - [Guía de contribución](./CONTRIBUTING.md)
+- [Código de conducta](./CODE_OF_CONDUCT.md)
+- [Política de seguridad](./SECURITY.md)
 - [Changelog](./CHANGELOG.md)
 - [Licencia](./LICENSE)
+
+## Colaboración pública
+
+El repositorio ya está preparado para trabajo abierto:
+
+- CI en GitHub Actions sobre `push` y `pull_request`
+- plantillas de issues para bugs y mejoras
+- plantilla de pull request
+- guía de contribución, código de conducta y política de seguridad
+
+Si vas a participar, empieza por:
+
+1. leer [CONTRIBUTING.md](./CONTRIBUTING.md)
+2. revisar [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md)
+3. comprobar [SECURITY.md](./SECURITY.md) si el tema es sensible
 
 ## Notas importantes
 

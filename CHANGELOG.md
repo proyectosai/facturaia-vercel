@@ -33,6 +33,10 @@ El formato está inspirado en Keep a Changelog y el versionado irá madurando co
 - `docs/ARQUITECTURA.md`
 - `docs/DESPLIEGUE.md`
 - `CONTRIBUTING.md`
+- `CODE_OF_CONDUCT.md`
+- `SECURITY.md`
+- plantillas de issues y pull requests
+- workflow de CI para `lint`, `typecheck` y `demo:build`
 
 ### Notas
 

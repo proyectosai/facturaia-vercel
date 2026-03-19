@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentación del proyecto
+    url: https://github.com/proyectosai/facturaia/tree/main/docs
+    about: Revisa primero la documentación técnica y de despliegue.
+  - name: Política de seguridad
+    url: https://github.com/proyectosai/facturaia/blob/main/SECURITY.md
+    about: Si tu reporte es sensible, sigue primero la política de seguridad.

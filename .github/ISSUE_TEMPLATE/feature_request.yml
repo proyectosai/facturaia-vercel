@@ -1,0 +1,70 @@
+name: Propuesta de mejora
+description: Sugiere una funcionalidad o mejora para FacturaIA.
+title: "[Idea]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Gracias por proponer una mejora. Cuanto más claro sea el caso de uso, más fácil será evaluarla.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problema o necesidad
+      description: ¿Qué fricción existe hoy?
+      placeholder: Un autónomo no puede reutilizar fácilmente una propuesta anterior como base de un nuevo presupuesto.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Propuesta
+      description: Describe la solución que te gustaría ver.
+      placeholder: Añadir duplicación de documentos y plantillas reutilizables desde la cabina documental.
+    validations:
+      required: true
+
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impacto esperado
+      description: ¿Qué mejora aportaría al usuario o al producto?
+      placeholder: Reduciría el tiempo de preparación de propuestas recurrentes y mejoraría la consistencia del material comercial.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Área relacionada
+      options:
+        - Dashboard
+        - Nueva factura
+        - Mis facturas
+        - Documentos con IA
+        - Perfil fiscal
+        - Precios / suscripciones
+        - Infraestructura / DX
+        - Documentación
+        - Otra
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternativas consideradas
+      description: Si ya has pensado otras opciones, indícalas.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Comprobaciones
+      options:
+        - label: He revisado si ya existe una propuesta parecida.
+          required: true
+        - label: Entiendo que no toda idea se implementará de inmediato.
+          required: true

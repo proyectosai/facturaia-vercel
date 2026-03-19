@@ -1,0 +1,77 @@
+name: Reporte de bug
+description: Informa de un error reproducible en FacturaIA.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Gracias por reportar el problema. Intenta ser concreto y reproducible.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Resumen
+      description: Explica el fallo en una o dos frases.
+      placeholder: Al generar una factura con varias líneas, el total de IVA no coincide con la vista previa.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Pasos para reproducirlo
+      description: Enumera los pasos exactos.
+      placeholder: |
+        1. Ir a /new-invoice
+        2. Añadir dos líneas con IVA 21%
+        3. Pulsar Generar factura
+        4. Ver el total resultante
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Comportamiento esperado
+      placeholder: El PDF y la vista previa deberían mostrar el mismo total.
+    validations:
+      required: true
+
+  - type: textarea
+    id: current
+    attributes:
+      label: Comportamiento actual
+      placeholder: La vista previa muestra un total y el PDF otro distinto.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Área afectada
+      options:
+        - UI / UX
+        - Facturación
+        - Suscripciones / Stripe
+        - Supabase / Auth
+        - IA local / LM Studio
+        - Exportación PDF / Word
+        - Documentación
+        - Otra
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Entorno
+      description: Sistema operativo, navegador, versión de Node, modo demo o entorno real.
+      placeholder: macOS 15, Chrome 134, Node 20, demo mode activado.
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Contexto adicional
+      description: Añade logs, capturas o cualquier detalle que ayude.

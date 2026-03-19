@@ -2,6 +2,11 @@
 
 Gracias por interesarte en contribuir a FacturaIA.
 
+Antes de participar, revisa también:
+
+- [Código de conducta](./CODE_OF_CONDUCT.md)
+- [Política de seguridad](./SECURITY.md)
+
 La idea del proyecto es doble:
 
 - construir una herramienta útil para autónomos españoles
@@ -84,6 +89,7 @@ Incluye:
 - impacto funcional
 - capturas si afecta a UI
 - notas de configuración si aplica
+- validaciones ejecutadas
 
 ## Áreas sensibles del proyecto
 

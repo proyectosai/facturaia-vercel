@@ -11,6 +11,12 @@
 
 ## 1. Instalar dependencias
 
+Si usas `nvm`, puedes cargar la versión recomendada del proyecto:
+
+```bash
+nvm use
+```
+
 ```bash
 npm install
 ```
