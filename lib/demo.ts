@@ -18,7 +18,7 @@ export const DEMO_USER_ID = "00000000-0000-4000-8000-000000000001";
 
 export const demoAppUser: AppUserRecord = {
   id: DEMO_USER_ID,
-  email: "demo@facturaia.app",
+  email: "demo@local.test",
   current_plan: "pro",
   billing_interval: "monthly",
   plan_status: "active",
@@ -31,7 +31,7 @@ export const demoAppUser: AppUserRecord = {
 
 export const demoProfile: Profile = {
   id: DEMO_USER_ID,
-  email: "demo@facturaia.app",
+  email: "demo@local.test",
   full_name: "Estudio Rivera Consultoría",
   nif: "B12345678",
   address: "Calle Velázquez 52, 28001 Madrid",
