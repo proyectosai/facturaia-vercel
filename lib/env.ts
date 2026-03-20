@@ -49,3 +49,7 @@ export function getLocalAiEnv() {
     LM_STUDIO_API_KEY: process.env.LM_STUDIO_API_KEY,
   });
 }
+
+export function hasLocalAiEnv() {
+  return Boolean(process.env.LM_STUDIO_BASE_URL) && Boolean(process.env.LM_STUDIO_MODEL);
+}

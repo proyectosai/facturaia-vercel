@@ -85,16 +85,17 @@ flowchart LR
 - Correo saliente: envío de facturas y correos de prueba con SMTP o Resend.
 - Correo entrante: primera entrega operativa con importación IMAP manual.
 - Presupuestos y albaranes: primera entrega operativa con persistencia, estados y conversión a factura.
+- OCR de gastos: primera entrega operativa con extracción de texto y revisión asistida.
 
 ## Siguiente módulo
 
-### OCR de gastos
+### CRM ligero
 
 Motivo de prioridad:
 
-- complementa el circuito documental y fiscal con la entrada de gastos
-- encaja con usuarios autónomos que guardan tickets o facturas de proveedor
-- prepara el terreno para conciliación y reporting más completo
+- conecta facturas, mensajes, correo, gastos y documentos en torno al cliente
+- aprovecha la base modular ya existente
+- mejora mucho la operativa diaria sin exigir integraciones nuevas
 
 ## Documentación asociada
 
@@ -104,3 +105,4 @@ Motivo de prioridad:
 - `docs/modulos/CORREO_SALIENTE.md`
 - `docs/modulos/CORREO_ENTRANTE.md`
 - `docs/modulos/PRESUPUESTOS_ALBARANES.md`
+- `docs/modulos/GASTOS_OCR.md`

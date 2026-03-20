@@ -229,6 +229,14 @@ export default function SystemPage() {
             href: "/modules",
             label: "Ver módulos",
           },
+          {
+            title: "Gastos",
+            description:
+              "Importa justificantes y revisa gastos dentro de la app antes de avanzar hacia conciliación.",
+            icon: Database,
+            href: "/gastos",
+            label: "Abrir gastos",
+          },
         ].map((item) => {
           const Icon = item.icon;
 

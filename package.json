@@ -32,6 +32,7 @@
     "mailparser": "^3.9.4",
     "next": "^15.5.13",
     "nodemailer": "^8.0.3",
+    "pdf-parse": "^2.4.5",
     "qrcode": "^1.5.4",
     "react": "19.1.0",
     "react-dom": "19.1.0",

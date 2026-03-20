@@ -3,6 +3,7 @@ import "server-only";
 import {
   demoAiUsage,
   demoCommercialDocuments,
+  demoExpenses,
   demoInvoices,
   demoMailMessages,
   demoMailSyncRuns,
@@ -16,6 +17,7 @@ import {
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import type {
   CommercialDocumentRecord,
+  ExpenseRecord,
   InvoiceRecord,
   MailMessage,
   MailSyncRun,
@@ -46,6 +48,7 @@ export type FacturaIaBackup = {
   profile: Profile | null;
   invoices: InvoiceRecord[];
   commercialDocuments: CommercialDocumentRecord[];
+  expenses: ExpenseRecord[];
   aiUsage: BackupAiUsageRow[];
   messages: {
     connections: MessageConnection[];
@@ -62,6 +65,7 @@ export type FacturaIaBackup = {
 export type BackupSummary = {
   invoices: number;
   commercialDocuments: number;
+  expenses: number;
   aiUsageRows: number;
   messageConnections: number;
   messageThreads: number;
@@ -83,6 +87,7 @@ export async function getBackupSummary(userId: string): Promise<BackupSummary> {
     return {
       invoices: demoInvoices.length,
       commercialDocuments: demoCommercialDocuments.length,
+      expenses: demoExpenses.length,
       aiUsageRows: 1,
       messageConnections: demoMessageConnections.length,
       messageThreads: demoMessageThreads.length,
@@ -96,6 +101,7 @@ export async function getBackupSummary(userId: string): Promise<BackupSummary> {
   const [
     invoices,
     commercialDocuments,
+    expenses,
     aiUsage,
     connections,
     threads,
@@ -108,6 +114,7 @@ export async function getBackupSummary(userId: string): Promise<BackupSummary> {
       .from("commercial_documents")
       .select("*", { count: "exact", head: true })
       .eq("user_id", userId),
+    admin.from("expenses").select("*", { count: "exact", head: true }).eq("user_id", userId),
     admin.from("ai_usage").select("*", { count: "exact", head: true }).eq("user_id", userId),
     admin
       .from("message_connections")
@@ -122,6 +129,7 @@ export async function getBackupSummary(userId: string): Promise<BackupSummary> {
   return {
     invoices: invoices.count ?? 0,
     commercialDocuments: commercialDocuments.count ?? 0,
+    expenses: expenses.count ?? 0,
     aiUsageRows: aiUsage.count ?? 0,
     messageConnections: connections.count ?? 0,
     messageThreads: threads.count ?? 0,
@@ -145,6 +153,7 @@ export async function exportBackupForUser(
       profile: demoProfile,
       invoices: demoInvoices,
       commercialDocuments: demoCommercialDocuments,
+      expenses: demoExpenses,
       aiUsage: [
         {
           user_id: userId,
@@ -170,6 +179,7 @@ export async function exportBackupForUser(
     profile,
     invoices,
     commercialDocuments,
+    expenses,
     aiUsage,
     connections,
     threads,
@@ -185,6 +195,7 @@ export async function exportBackupForUser(
       .select("*")
       .eq("user_id", userId)
       .order("issue_date", { ascending: true }),
+    admin.from("expenses").select("*").eq("user_id", userId).order("expense_date", { ascending: true }),
     admin.from("ai_usage").select("*").eq("user_id", userId).order("date", { ascending: true }),
     admin
       .from("message_connections")
@@ -213,6 +224,7 @@ export async function exportBackupForUser(
   if (
     invoices.error ||
     commercialDocuments.error ||
+    expenses.error ||
     aiUsage.error ||
     connections.error ||
     threads.error ||
@@ -234,6 +246,7 @@ export async function exportBackupForUser(
     invoices: (invoices.data as InvoiceRecord[] | null) ?? [],
     commercialDocuments:
       (commercialDocuments.data as CommercialDocumentRecord[] | null) ?? [],
+    expenses: (expenses.data as ExpenseRecord[] | null) ?? [],
     aiUsage: (aiUsage.data as BackupAiUsageRow[] | null) ?? [],
     messages: {
       connections: (connections.data as MessageConnection[] | null) ?? [],
@@ -279,6 +292,7 @@ export async function restoreBackupForUser(
     admin.from("message_threads").delete().eq("user_id", userId),
     admin.from("message_connections").delete().eq("user_id", userId),
     admin.from("ai_usage").delete().eq("user_id", userId),
+    admin.from("expenses").delete().eq("user_id", userId),
     admin.from("commercial_documents").delete().eq("user_id", userId),
     admin.from("invoices").delete().eq("user_id", userId),
   ];
@@ -338,6 +352,19 @@ export async function restoreBackupForUser(
 
     if (documentsInsert.error) {
       throw new Error("No se han podido restaurar los presupuestos y albaranes.");
+    }
+  }
+
+  if (backup.expenses.length > 0) {
+    const expensesInsert = await admin.from("expenses").insert(
+      backup.expenses.map((row) => ({
+        ...row,
+        user_id: userId,
+      })),
+    );
+
+    if (expensesInsert.error) {
+      throw new Error("No se han podido restaurar los gastos.");
     }
   }
 
@@ -441,6 +468,7 @@ export async function restoreBackupForUser(
   return {
     invoices: backup.invoices.length,
     commercialDocuments: backup.commercialDocuments.length,
+    expenses: backup.expenses.length,
     aiUsageRows: backup.aiUsage.length,
     messageConnections: backup.messages.connections.length,
     messageThreads: backup.messages.threads.length,

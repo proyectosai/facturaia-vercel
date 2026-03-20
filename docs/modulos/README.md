@@ -9,6 +9,7 @@ Documentos actuales:
 - `CORREO_SALIENTE.md`
 - `CORREO_ENTRANTE.md` (primera entrega IMAP ya operativa)
 - `PRESUPUESTOS_ALBARANES.md` (primera entrega de pre-facturación ya operativa)
+- `GASTOS_OCR.md` (primera entrega de importación y revisión ya operativa)
 
 Documento general:
 

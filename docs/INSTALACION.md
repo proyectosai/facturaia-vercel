@@ -90,6 +90,7 @@ Ejecuta las migraciones en este orden:
 6. `supabase/migrations/202603201030_add_remote_backup_runs.sql`
 7. `supabase/migrations/202603201200_add_inbound_mail_module.sql`
 8. `supabase/migrations/202603201330_add_commercial_documents_module.sql`
+9. `supabase/migrations/202603201430_add_expenses_module.sql`
 
 Estas migraciones crean:
 
@@ -104,6 +105,7 @@ Estas migraciones crean:
 - historial de ejecuciones de backups remotos
 - bandeja interna de correo entrante por IMAP
 - flujo de presupuestos y albaranes previo a facturación
+- circuito inicial de gastos con justificantes y revisión
 
 ## 4. Configurar correo saliente
 
@@ -233,7 +235,31 @@ Guía completa:
 
 - `docs/modulos/PRESUPUESTOS_ALBARANES.md`
 
-## 11. Correo saliente en la app
+## 11. OCR de gastos
+
+Este módulo añade una primera entrega realista para gestión de justificantes de gasto.
+
+Qué hace ahora:
+
+- subir ticket o factura proveedor
+- extraer texto si el PDF ya lo contiene
+- permitir pegado manual de texto OCR
+- proponer proveedor, fecha e importes
+- dejar el gasto pendiente o revisado
+
+Pasos:
+
+1. aplica la migración `202603201430_add_expenses_module.sql`
+2. reinicia FacturaIA
+3. abre `/gastos`
+4. sube un PDF o pega texto OCR
+5. revisa el resultado antes de marcarlo como revisado
+
+Guía completa:
+
+- `docs/modulos/GASTOS_OCR.md`
+
+## 12. Correo saliente en la app
 
 La pantalla `/mail` permite:
 
@@ -246,7 +272,7 @@ Guía completa:
 
 - `docs/modulos/CORREO_SALIENTE.md`
 
-## 12. Correo entrante por IMAP
+## 13. Correo entrante por IMAP
 
 Variables mínimas:
 
@@ -274,7 +300,7 @@ Guía completa:
 
 - `docs/modulos/CORREO_ENTRANTE.md`
 
-## 13. Backups remotos por WebDAV / Nextcloud
+## 14. Backups remotos por WebDAV / Nextcloud
 
 Si quieres una copia fuera del equipo o del VPS principal, activa el módulo remoto.
 

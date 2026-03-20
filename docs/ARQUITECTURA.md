@@ -22,6 +22,7 @@ FacturaIA está diseñada como una aplicación Next.js 15 con App Router, priori
 - `app/(protected)/dashboard/page.tsx`
 - `app/(protected)/new-invoice/page.tsx`
 - `app/(protected)/presupuestos/page.tsx`
+- `app/(protected)/gastos/page.tsx`
 - `app/(protected)/invoices/page.tsx`
 - `app/(protected)/messages/page.tsx`
 - `app/(protected)/documents-ai/page.tsx`
@@ -123,7 +124,24 @@ Responsabilidades:
 - mostrar requisitos e instalación resumida por módulo
 - dar un orden de implementación coherente
 
-## 6. Documentos con IA
+## 6. Gastos y OCR asistido
+
+Archivos clave:
+
+- `app/(protected)/gastos/page.tsx`
+- `lib/expenses.ts`
+- `lib/actions/expenses.ts`
+- `supabase/migrations/202603201430_add_expenses_module.sql`
+
+Funciones:
+
+- subida de justificantes
+- extracción de texto desde PDF o texto manual
+- propuesta local de proveedor, fecha e importes
+- revisión manual dentro de la app
+- persistencia del justificante y del texto extraído
+
+## 7. Documentos con IA
 
 Archivos clave:
 
@@ -142,7 +160,7 @@ Funciones:
 - exportación a Word
 - plantillas listas para propuesta, presupuesto y contrato
 
-## 7. Email
+## 8. Email
 
 Archivos clave:
 
@@ -164,7 +182,7 @@ Funciones:
 - bandeja interna por remitente
 - historial de sincronizaciones entrantes
 
-## 8. Copias de seguridad
+## 9. Copias de seguridad
 
 Archivos clave:
 
@@ -182,10 +200,11 @@ Funciones:
 - restauración en modo reemplazo
 - resincronización de la secuencia de facturas
 - inclusión de presupuestos y albaranes en la copia
+- inclusión de gastos y justificantes asociados
 - sincronización manual a WebDAV / Nextcloud
 - historial de últimas ejecuciones remotas
 
-## 9. Mensajería opcional
+## 10. Mensajería opcional
 
 Archivos clave:
 
@@ -211,6 +230,7 @@ Tablas principales:
 - `profiles`
 - `invoices`
 - `commercial_documents`
+- `expenses`
 - `ai_usage`
 - `message_connections`
 - `message_threads`
@@ -252,6 +272,15 @@ Tablas principales:
 - datos fiscales y de cliente
 - líneas, IVA, IRPF y total
 - referencia opcional a la factura generada después
+
+## `expenses`
+
+- tipo de justificante (`ticket` o `supplier_invoice`)
+- estado de revisión (`draft` o `reviewed`)
+- proveedor, NIF, fecha y cantidades propuestas
+- ruta al archivo original
+- método de extracción de texto
+- texto bruto y payload extraído
 
 ## `ai_usage`
 

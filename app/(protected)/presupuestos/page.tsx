@@ -32,6 +32,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 
 function getSingleSearchParam(
   value: string | string[] | undefined,
@@ -58,6 +59,33 @@ function getStatusTone(document: CommercialDocumentRecord) {
   }
 
   return "bg-[color:rgba(202,145,34,0.14)] text-[color:#8b5b00]";
+}
+
+function buildCommercialHref({
+  q,
+  type,
+  status,
+}: {
+  q?: string;
+  type?: string;
+  status?: string;
+}) {
+  const params = new URLSearchParams();
+
+  if (q?.trim()) {
+    params.set("q", q.trim());
+  }
+
+  if (type && type !== "all") {
+    params.set("type", type);
+  }
+
+  if (status && status !== "all") {
+    params.set("status", status);
+  }
+
+  const query = params.toString();
+  return query ? `/presupuestos?${query}` : "/presupuestos";
 }
 
 function DocumentCard({
@@ -189,21 +217,42 @@ export default async function PresupuestosPage({
     created?: string | string[];
     updated?: string | string[];
     error?: string | string[];
+    q?: string | string[];
+    type?: string | string[];
+    status?: string | string[];
   }>;
 }) {
   const user = await requireUser();
   const profile = await getCurrentProfile();
   const demoMode = isDemoMode();
-  const documents = await getCommercialDocumentsForUser(user.id, { type: "all" });
-  const summary = getCommercialDocumentSummary(documents);
   const params = await searchParams;
   const created = getSingleSearchParam(params.created);
   const updated = getSingleSearchParam(params.updated);
   const error = getSingleSearchParam(params.error);
+  const q = getSingleSearchParam(params.q);
+  const type = getSingleSearchParam(params.type, "all");
+  const status = getSingleSearchParam(params.status, "all");
+  const allDocuments = await getCommercialDocumentsForUser(user.id, { type: "all", status: "all" });
+  const documents = await getCommercialDocumentsForUser(user.id, {
+    query: q,
+    type: type === "quote" || type === "delivery_note" ? type : "all",
+    status:
+      status === "draft" ||
+      status === "sent" ||
+      status === "accepted" ||
+      status === "rejected" ||
+      status === "delivered" ||
+      status === "signed" ||
+      status === "converted"
+        ? status
+        : "all",
+  });
+  const summary = getCommercialDocumentSummary(allDocuments);
   const quotes = documents.filter((document) => document.document_type === "quote");
   const deliveryNotes = documents.filter(
     (document) => document.document_type === "delivery_note",
   );
+  const readyToInvoice = documents.filter((document) => canConvertCommercialDocument(document));
 
   return (
     <div className="space-y-8">
@@ -282,6 +331,74 @@ export default async function PresupuestosPage({
           visibles, pero el guardado real de documentos permanece desactivado.
         </div>
       ) : null}
+
+      <Card className="border-white/60 bg-[color:rgba(251,247,241,0.82)]">
+        <CardContent className="space-y-5 py-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-medium text-foreground">Seguimiento documental</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Filtra por tipo, estado o cliente para detectar rápido qué está listo para facturar.
+              </p>
+            </div>
+            <div className="rounded-full bg-white/80 px-4 py-2 text-sm text-muted-foreground">
+              {documents.length} resultados · {readyToInvoice.length} listos para factura
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <Link href={buildCommercialHref({ q, type: "all", status })}>
+              <Button variant={type === "all" ? "default" : "outline"} size="sm">
+                Todos
+              </Button>
+            </Link>
+            <Link href={buildCommercialHref({ q, type: "quote", status })}>
+              <Button variant={type === "quote" ? "default" : "outline"} size="sm">
+                Presupuestos
+              </Button>
+            </Link>
+            <Link href={buildCommercialHref({ q, type: "delivery_note", status })}>
+              <Button
+                variant={type === "delivery_note" ? "default" : "outline"}
+                size="sm"
+              >
+                Albaranes
+              </Button>
+            </Link>
+            <Link href={buildCommercialHref({ q, type, status: "accepted" })}>
+              <Button variant={status === "accepted" ? "default" : "outline"} size="sm">
+                Aceptados
+              </Button>
+            </Link>
+            <Link href={buildCommercialHref({ q, type, status: "sent" })}>
+              <Button variant={status === "sent" ? "default" : "outline"} size="sm">
+                Enviados
+              </Button>
+            </Link>
+            <Link href={buildCommercialHref({ q, type, status: "delivered" })}>
+              <Button variant={status === "delivered" ? "default" : "outline"} size="sm">
+                Entregados
+              </Button>
+            </Link>
+            <Link href={buildCommercialHref({ q, type, status: "converted" })}>
+              <Button variant={status === "converted" ? "default" : "outline"} size="sm">
+                Convertidos
+              </Button>
+            </Link>
+          </div>
+
+          <form action="/presupuestos" className="flex gap-3">
+            <Input
+              name="q"
+              defaultValue={q}
+              placeholder="Buscar por cliente, NIF o email..."
+            />
+            {type !== "all" ? <input type="hidden" name="type" value={type} /> : null}
+            {status !== "all" ? <input type="hidden" name="status" value={status} /> : null}
+            <Button type="submit" variant="outline">Buscar</Button>
+          </form>
+        </CardContent>
+      </Card>
 
       <CommercialDocumentForm profile={profile} demoMode={demoMode} />
 

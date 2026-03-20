@@ -12,6 +12,17 @@ export const AI_DOCUMENT_TYPES = [
 
 export type AiDocumentType = (typeof AI_DOCUMENT_TYPES)[number];
 
+const aiExpenseDraftSchema = z.object({
+  vendorName: z.string().nullable(),
+  vendorNif: z.string().nullable(),
+  expenseDate: z.string().nullable(),
+  baseAmount: z.number().nullable(),
+  vatAmount: z.number().nullable(),
+  totalAmount: z.number().nullable(),
+  notes: z.string().nullable().optional(),
+  confidence: z.number().min(0).max(1).nullable().optional(),
+});
+
 const chatCompletionSchema = z.object({
   choices: z
     .array(
@@ -78,6 +89,18 @@ function sanitizeAiText(value: string) {
     .replace(/[ \t]+\n/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+}
+
+function extractJsonObject(value: string) {
+  const sanitized = sanitizeAiText(value);
+  const firstBrace = sanitized.indexOf("{");
+  const lastBrace = sanitized.lastIndexOf("}");
+
+  if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) {
+    throw new Error("La IA local no ha devuelto un bloque JSON válido.");
+  }
+
+  return sanitized.slice(firstBrace, lastBrace + 1);
 }
 
 async function callLocalChatModel({
@@ -231,4 +254,42 @@ export async function generateBusinessDocument({
     title: getAiDocumentLabel(documentType),
     body: completion.text,
   };
+}
+
+export async function extractExpenseDataFromText({
+  rawText,
+  expenseKind,
+  fileName,
+}: {
+  rawText: string;
+  expenseKind: "ticket" | "supplier_invoice";
+  fileName?: string;
+}) {
+  const systemPrompt =
+    "Eres un asistente experto en revisar justificantes de gasto españoles. Extraes datos útiles de tickets y facturas de proveedor. Devuelve solo JSON válido, sin markdown, sin comentarios y sin texto adicional.";
+  const userPrompt = [
+    `Tipo de gasto: ${expenseKind === "ticket" ? "ticket" : "factura de proveedor"}`,
+    fileName?.trim() ? `Archivo: ${fileName.trim()}` : null,
+    "Devuelve un JSON con estas claves exactas:",
+    '{"vendorName":string|null,"vendorNif":string|null,"expenseDate":string|null,"baseAmount":number|null,"vatAmount":number|null,"totalAmount":number|null,"notes":string|null,"confidence":number|null}',
+    "Reglas:",
+    "- usa formato de fecha YYYY-MM-DD si puedes inferirlo",
+    "- usa decimales con punto",
+    "- si un dato no está claro, devuelve null",
+    "- no inventes importes",
+    `Texto OCR o extraído:\n${rawText.trim()}`,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+
+  const completion = await callLocalChatModel({
+    systemPrompt,
+    userPrompt,
+    temperature: 0.1,
+    maxTokens: 500,
+  });
+
+  return aiExpenseDraftSchema.parse(
+    JSON.parse(extractJsonObject(completion.text)) as unknown,
+  );
 }

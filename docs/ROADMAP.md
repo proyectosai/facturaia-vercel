@@ -5,7 +5,8 @@ Este documento resume la dirección prevista para FacturaIA como producto y como
 ## Prioridad actual
 
 - pulir la experiencia de facturación diaria
-- reforzar el estudio documental con mejores plantillas
+- reforzar el circuito documental previo y posterior a la factura
+- consolidar gastos, mensajería y correo dentro del mismo panel
 - cerrar detalles de despliegue y hardening
 - mejorar documentación para contribución externa
 
@@ -24,19 +25,28 @@ Este documento resume la dirección prevista para FacturaIA como producto y como
 - más opciones de branding y bloques reutilizables
 - históricos y duplicación de documentos
 - mejora de calidad de salida con IA local
+- PDF específico para presupuestos y albaranes
+- firma o aceptación documentada
 
-### Suscripciones y producto
+### Operativa privada
 
-- onboarding más guiado
-- mejor explicación de límites y capacidades por plan
-- gating más fino en experiencia protegida
+- mejor onboarding para instalación self-hosted
+- healthchecks más completos por módulo
 - mayor claridad entre demo y entorno real
+- exportación/importación de configuración local
 
 ### Fiscal y normativa
 
 - más ayudas contextuales dentro del flujo
 - revisión de copy legal y fiscal con referencias oficiales
 - evolución futura hacia exportes compatibles con más escenarios reales
+
+### Gastos y conciliación
+
+- OCR automático de imágenes
+- categorías y revisión más guiada
+- conciliación con movimientos bancarios
+- exportes para asesoría o reporting interno
 
 ## Infraestructura y calidad
 

@@ -12,6 +12,7 @@ FacturaIA es una aplicación Next.js 15 pensada para autónomos y pequeños nego
 - Gestión de perfil fiscal del emisor.
 - Creación de facturas con IVA, IRPF, numeración automática y PDF profesional.
 - Módulo de presupuestos y albaranes con conversión posterior a factura.
+- Módulo de gastos con importación de justificantes, extracción de texto y revisión.
 - Historial de facturas con descarga de PDF y envío por email con SMTP o Resend.
 - Página pública de factura con QR.
 - Estudio documental con IA local vía LM Studio para propuestas, presupuestos, contratos y mensajes.
@@ -52,6 +53,7 @@ FacturaIA es una aplicación Next.js 15 pensada para autónomos y pequeños nego
 - `/dashboard`
 - `/new-invoice`
 - `/presupuestos`
+- `/gastos`
 - `/invoices`
 - `/documents-ai`
 - `/mail`
@@ -146,6 +148,7 @@ Migraciones incluidas:
 - [`supabase/migrations/202603201030_add_remote_backup_runs.sql`](./supabase/migrations/202603201030_add_remote_backup_runs.sql)
 - [`supabase/migrations/202603201200_add_inbound_mail_module.sql`](./supabase/migrations/202603201200_add_inbound_mail_module.sql)
 - [`supabase/migrations/202603201330_add_commercial_documents_module.sql`](./supabase/migrations/202603201330_add_commercial_documents_module.sql)
+- [`supabase/migrations/202603201430_add_expenses_module.sql`](./supabase/migrations/202603201430_add_expenses_module.sql)
 
 Tablas principales activas:
 
@@ -153,6 +156,7 @@ Tablas principales activas:
 - `profiles`
 - `invoices`
 - `commercial_documents`
+- `expenses`
 - `ai_usage`
 - `message_connections`
 - `message_threads`
@@ -175,6 +179,7 @@ Tablas principales activas:
 - [Correo saliente](./docs/modulos/CORREO_SALIENTE.md)
 - [Correo entrante](./docs/modulos/CORREO_ENTRANTE.md)
 - [Presupuestos y albaranes](./docs/modulos/PRESUPUESTOS_ALBARANES.md)
+- [OCR de gastos](./docs/modulos/GASTOS_OCR.md)
 - [Hoja de ruta](./docs/ROADMAP.md)
 - [Guía de contribución](./CONTRIBUTING.md)
 - [Código de conducta](./CODE_OF_CONDUCT.md)
@@ -191,6 +196,7 @@ Tablas principales activas:
 - El correo saliente soporta SMTP y Resend, con pantalla de prueba propia en `/mail`.
 - El correo entrante soporta una primera entrega IMAP con sincronización manual desde `/mail`.
 - El módulo `/presupuestos` cubre la primera fase de pre-facturación: persistencia, estados y conversión a factura.
+- El módulo `/gastos` cubre la primera fase de importación y revisión de justificantes de gasto.
 - La parte legal y fiscal mostrada en la UI no sustituye asesoramiento profesional.
 
 ## Verificación

@@ -200,17 +200,22 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
     title: "OCR de gastos",
     summary:
       "Lectura de tickets y facturas de proveedor para extraer importes, IVA y datos básicos de gasto.",
-    status: "next",
+    status: "partial",
     category: "finanzas",
+    routeHref: "/gastos",
+    docsPath: "docs/modulos/GASTOS_OCR.md",
     requirements: [
-      "Pipeline OCR",
-      "Modelo de gasto",
-      "Subida segura de documentos",
+      "Migración expenses aplicada",
+      "Bucket expense-files operativo",
+      "Supabase configurado o modo demo local",
     ],
     installSteps: [
       "Subir ticket o PDF.",
       "Extraer datos con OCR.",
       "Validar y guardar el gasto.",
+    ],
+    notes: [
+      "Primera entrega con PDF/texto y OCR manual pegado. El OCR automático de imágenes llegará después.",
     ],
   },
   {
@@ -219,7 +224,7 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
     title: "CRM ligero",
     summary:
       "Ficha unificada de cliente con notas, documentos, mensajes y estado operativo.",
-    status: "planned",
+    status: "next",
     category: "canales",
     requirements: [
       "Modelo de cliente consolidado",
@@ -358,6 +363,11 @@ export function getModuleCatalog(): ModuleRuntimeState[] {
       configured = hasSupabase();
       configuredLabel = configured
         ? "Listo para crear documentos"
+        : "Falta Supabase";
+    } else if (module.id === "expenses-ocr") {
+      configured = hasSupabase();
+      configuredLabel = configured
+        ? "Listo para importar justificantes"
         : "Falta Supabase";
     } else {
       configured = false;

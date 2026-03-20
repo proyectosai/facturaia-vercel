@@ -16,6 +16,7 @@ import {
   Settings2,
   ShieldCheck,
   Sparkles,
+  Wallet,
   Wrench,
 } from "lucide-react";
 
@@ -31,6 +32,7 @@ const navigation = [
   { href: "/dashboard", label: "Inicio", icon: Home },
   { href: "/new-invoice", label: "Nueva Factura", icon: FilePlus2 },
   { href: "/presupuestos", label: "Presupuestos", icon: ReceiptText },
+  { href: "/gastos", label: "Gastos", icon: Wallet },
   { href: "/invoices", label: "Mis Facturas", icon: Files },
   { href: "/messages", label: "Mensajes", icon: MessageSquareText },
   { href: "/documents-ai", label: "Documentos", icon: FileText },

@@ -165,6 +165,12 @@ export default function InstalacionPage() {
                   "Presupuestos y albaranes para trabajar el paso previo antes de emitir la factura final.",
                 icon: Database,
               },
+              {
+                title: "Gastos y OCR asistido",
+                description:
+                  "Importa justificantes y revísalos dentro de la app sin depender de servicios externos.",
+                icon: HardDrive,
+              },
             ].map((item) => {
               const Icon = item.icon;
 
@@ -227,7 +233,14 @@ export default function InstalacionPage() {
                 label: "Abrir correo",
               },
               {
-                title: "5. Activa documentos o mensajería",
+                title: "5. Importa tus primeros gastos",
+                description:
+                  "Valida el circuito de justificantes y deja revisado al menos un gasto real o de prueba.",
+                href: "/gastos",
+                label: "Abrir gastos",
+              },
+              {
+                title: "6. Activa documentos o mensajería",
                 description:
                   "Añade IA local y bandeja de mensajes solo si de verdad te aportan valor.",
                 href: "/documents-ai",

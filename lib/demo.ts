@@ -1,6 +1,7 @@
 import type {
   AppUserRecord,
   CommercialDocumentRecord,
+  ExpenseRecord,
   InvoiceRecord,
   MailMessage,
   MailSyncRun,
@@ -672,6 +673,61 @@ export const demoCommercialDocuments: CommercialDocumentRecord[] = [
   },
 ];
 
+export const demoExpenses: ExpenseRecord[] = [
+  {
+    id: "92000000-0000-4000-8000-000000000001",
+    user_id: DEMO_USER_ID,
+    expense_kind: "ticket",
+    review_status: "reviewed",
+    vendor_name: "Papelería Goya",
+    vendor_nif: "B45211833",
+    expense_date: "2026-03-17",
+    currency: "EUR",
+    base_amount: 18.6,
+    vat_amount: 3.91,
+    total_amount: 22.51,
+    notes: "Material de oficina para documentación y carpetas.",
+    source_file_name: "ticket-papeleria-goya.pdf",
+    source_file_path: "00000000-0000-4000-8000-000000000001/expenses/ticket-papeleria-goya.pdf",
+    source_file_mime_type: "application/pdf",
+    text_extraction_method: "pdf_text",
+    raw_text:
+      "PAPELERIA GOYA\nFecha 17/03/2026\nBase imponible 18,60\nIVA 21% 3,91\nTOTAL 22,51",
+    extracted_payload: {
+      confidence: 0.93,
+      source: "demo",
+    },
+    created_at: "2026-03-17T11:05:00.000Z",
+    updated_at: "2026-03-17T11:10:00.000Z",
+  },
+  {
+    id: "92000000-0000-4000-8000-000000000002",
+    user_id: DEMO_USER_ID,
+    expense_kind: "supplier_invoice",
+    review_status: "draft",
+    vendor_name: "Hosting Norte S.L.",
+    vendor_nif: "B74122991",
+    expense_date: "2026-03-19",
+    currency: "EUR",
+    base_amount: 48,
+    vat_amount: 10.08,
+    total_amount: 58.08,
+    notes: "Pendiente de confirmar si el servicio corresponde al entorno principal o al de pruebas.",
+    source_file_name: "hosting-marzo.pdf",
+    source_file_path: "00000000-0000-4000-8000-000000000001/expenses/hosting-marzo.pdf",
+    source_file_mime_type: "application/pdf",
+    text_extraction_method: "pdf_text",
+    raw_text:
+      "HOSTING NORTE SL\nFactura proveedor marzo\nFecha 19/03/2026\nBase 48,00\nIVA 21% 10,08\nTotal 58,08",
+    extracted_payload: {
+      confidence: 0.88,
+      source: "demo",
+    },
+    created_at: "2026-03-19T09:20:00.000Z",
+    updated_at: "2026-03-19T09:20:00.000Z",
+  },
+];
+
 export function getDemoInvoiceById(invoiceId: string) {
   return demoInvoices.find((invoice) => invoice.id === invoiceId) ?? null;
 }
@@ -690,4 +746,8 @@ export function getDemoMailThreadById(threadId: string) {
 
 export function getDemoCommercialDocumentById(documentId: string) {
   return demoCommercialDocuments.find((document) => document.id === documentId) ?? null;
+}
+
+export function getDemoExpenseById(expenseId: string) {
+  return demoExpenses.find((expense) => expense.id === expenseId) ?? null;
 }

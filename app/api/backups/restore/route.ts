@@ -96,6 +96,31 @@ const backupSchema = z.object({
       }),
     )
     .default([]),
+  expenses: z
+    .array(
+      z.object({
+        id: z.string(),
+        expense_kind: z.enum(["ticket", "supplier_invoice"]),
+        review_status: z.enum(["draft", "reviewed"]),
+        vendor_name: z.string().nullable().optional(),
+        vendor_nif: z.string().nullable().optional(),
+        expense_date: z.string().nullable().optional(),
+        currency: z.string().default("EUR"),
+        base_amount: z.union([z.number(), z.string()]).nullable().optional(),
+        vat_amount: z.union([z.number(), z.string()]).nullable().optional(),
+        total_amount: z.union([z.number(), z.string()]).nullable().optional(),
+        notes: z.string().nullable().optional(),
+        source_file_name: z.string().nullable().optional(),
+        source_file_path: z.string().nullable().optional(),
+        source_file_mime_type: z.string().nullable().optional(),
+        text_extraction_method: z.enum(["manual", "pdf_text", "plain_text", "unavailable"]),
+        raw_text: z.string().nullable().optional(),
+        extracted_payload: z.any(),
+        created_at: z.string().optional(),
+        updated_at: z.string().optional(),
+      }),
+    )
+    .default([]),
   aiUsage: z
     .array(
       z.object({

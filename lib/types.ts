@@ -25,6 +25,16 @@ export type CommercialDocumentStatus =
   | "signed"
   | "converted";
 
+export type ExpenseKind = "ticket" | "supplier_invoice";
+
+export type ExpenseReviewStatus = "draft" | "reviewed";
+
+export type ExpenseExtractionMethod =
+  | "manual"
+  | "pdf_text"
+  | "plain_text"
+  | "unavailable";
+
 export type Profile = {
   id: string;
   email: string;
@@ -144,6 +154,29 @@ export type CommercialDocumentRecord = {
   vat_breakdown: InvoiceVatBreakdown[];
   notes: string | null;
   converted_invoice_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ExpenseRecord = {
+  id: string;
+  user_id: string;
+  expense_kind: ExpenseKind;
+  review_status: ExpenseReviewStatus;
+  vendor_name: string | null;
+  vendor_nif: string | null;
+  expense_date: string | null;
+  currency: string;
+  base_amount: NumericLike | null;
+  vat_amount: NumericLike | null;
+  total_amount: NumericLike | null;
+  notes: string | null;
+  source_file_name: string | null;
+  source_file_path: string | null;
+  source_file_mime_type: string | null;
+  text_extraction_method: ExpenseExtractionMethod;
+  raw_text: string | null;
+  extracted_payload: Record<string, unknown>;
   created_at: string;
   updated_at: string;
 };

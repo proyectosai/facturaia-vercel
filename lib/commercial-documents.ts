@@ -256,16 +256,19 @@ export async function getCommercialDocumentsForUser(
   filters: {
     query?: string;
     type?: CommercialDocumentType | "all";
+    status?: CommercialDocumentStatus | "all";
   } = {},
 ) {
   const query = filters.query?.trim().toLowerCase() ?? "";
   const type = filters.type ?? "all";
+  const status = filters.status ?? "all";
 
   if (isDemoMode()) {
     return demoCommercialDocuments
       .map(normaliseCommercialDocument)
       .filter((document) => document.user_id === userId)
       .filter((document) => (type === "all" ? true : document.document_type === type))
+      .filter((document) => (status === "all" ? true : document.status === status))
       .filter((document) => {
         if (!query) {
           return true;
@@ -293,6 +296,10 @@ export async function getCommercialDocumentsForUser(
 
   if (type !== "all") {
     dbQuery = dbQuery.eq("document_type", type);
+  }
+
+  if (status !== "all") {
+    dbQuery = dbQuery.eq("status", status);
   }
 
   if (query) {
