@@ -1,7 +1,14 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-import { hasSupabasePublicEnv, isDemoMode } from "@/lib/demo";
+function hasSupabasePublicEnv() {
+  return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()) &&
+    Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim());
+}
+
+function isDemoMode() {
+  return process.env.FACTURAIA_DEMO_MODE === "1" || !hasSupabasePublicEnv();
+}
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
