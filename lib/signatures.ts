@@ -1,5 +1,6 @@
 import "server-only";
 
+import { randomUUID } from "node:crypto";
 import { cache } from "react";
 
 import {
@@ -22,7 +23,18 @@ import {
   formatCommercialDocumentNumber,
   normaliseCommercialDocument,
 } from "@/lib/commercial-documents";
+import {
+  buildSignatureDocumentSnapshot,
+  extractSignatureSnapshot,
+  hasSignatureSnapshotMismatch,
+} from "@/lib/signature-snapshot";
 import { getBaseUrl } from "@/lib/utils";
+
+export {
+  buildSignatureDocumentSnapshot,
+  extractSignatureSnapshot,
+  hasSignatureSnapshotMismatch,
+};
 
 type SignatureFilters = {
   status?: "all" | DocumentSignatureStatus;
@@ -325,14 +337,20 @@ export async function getPublicSignatureRequestByToken(token: string) {
 }
 
 export function buildSignatureRequestInsertPayload(document: CommercialDocumentRecord, note: string | null) {
+  const snapshot = buildSignatureDocumentSnapshot(document);
+
   return {
     document_id: document.id,
     document_type: document.document_type,
     request_kind: getRequestKind(document.document_type),
     status: "pending" as const,
-    public_token: crypto.randomUUID(),
+    public_token: randomUUID(),
     request_note: note,
     requested_at: new Date().toISOString(),
     expires_at: getDefaultExpiry(document),
+    evidence: {
+      documentSnapshot: snapshot,
+      createdAt: new Date().toISOString(),
+    },
   };
 }

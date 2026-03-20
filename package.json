@@ -9,8 +9,10 @@
     "demo:start": "FACTURAIA_DEMO_MODE=1 next start",
     "build": "next build",
     "start": "next start",
+    "doctor": "node scripts/facturaia-doctor.mjs",
     "lint": "eslint .",
-    "typecheck": "node -e \"const fs=require('fs'); fs.rmSync('.next/types',{recursive:true,force:true,maxRetries:5,retryDelay:100});\" && next typegen && tsc --noEmit --incremental false"
+    "typecheck": "node -e \"const fs=require('fs'); fs.rmSync('.next/types',{recursive:true,force:true,maxRetries:5,retryDelay:100});\" && next typegen && tsc --noEmit --incremental false",
+    "test": "vitest run"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.11",
@@ -53,6 +55,7 @@
     "eslint": "^9",
     "eslint-config-next": "^15.5.13",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.0.0"
   }
 }

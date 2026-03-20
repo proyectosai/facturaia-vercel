@@ -5,6 +5,7 @@ import type {
   CommercialDocumentRecord,
   DocumentSignatureRequestRecord,
   ExpenseRecord,
+  FeedbackEntryRecord,
   InvoiceRecord,
   InvoiceReminderRecord,
   MailMessage,
@@ -51,6 +52,39 @@ export const demoAiUsage = {
   used: 12,
   limit: 50,
 };
+
+export const demoFeedbackEntries: FeedbackEntryRecord[] = [
+  {
+    id: "25000000-0000-4000-8000-000000000001",
+    user_id: DEMO_USER_ID,
+    source_type: "pilot",
+    module_key: "cobros",
+    severity: "high",
+    status: "planned",
+    title: "Recordatorios automáticos semanales",
+    message:
+      "El piloto necesita poder lanzar recordatorios automáticos cada lunes para facturas vencidas sin entrar manualmente en /cobros.",
+    reporter_name: "Marina Lozano",
+    contact_email: "equipo@nexodigital.es",
+    created_at: "2026-03-20T08:30:00.000Z",
+    updated_at: "2026-03-20T09:10:00.000Z",
+  },
+  {
+    id: "25000000-0000-4000-8000-000000000002",
+    user_id: DEMO_USER_ID,
+    source_type: "self",
+    module_key: "facturae",
+    severity: "medium",
+    status: "open",
+    title: "Validación más estricta de NIF y vencimiento",
+    message:
+      "Conviene endurecer la revisión previa del XML antes de recomendarlo en una instalación real.",
+    reporter_name: null,
+    contact_email: null,
+    created_at: "2026-03-20T07:15:00.000Z",
+    updated_at: "2026-03-20T07:15:00.000Z",
+  },
+];
 
 export const demoMessageConnections: MessageConnection[] = [
   {

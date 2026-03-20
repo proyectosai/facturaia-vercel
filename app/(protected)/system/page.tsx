@@ -47,6 +47,16 @@ function getEnvironmentFlags() {
     outboundMail,
     inboundMail,
     remoteBackups,
+    missingCoreEnv: [
+      !process.env.NEXT_PUBLIC_APP_URL ? "NEXT_PUBLIC_APP_URL" : null,
+      !process.env.NEXT_PUBLIC_SUPABASE_URL ? "NEXT_PUBLIC_SUPABASE_URL" : null,
+      !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+        ? "NEXT_PUBLIC_SUPABASE_ANON_KEY"
+        : null,
+      !process.env.SUPABASE_SERVICE_ROLE_KEY
+        ? "SUPABASE_SERVICE_ROLE_KEY"
+        : null,
+    ].filter(Boolean) as string[],
   };
 }
 
@@ -200,6 +210,40 @@ export default function SystemPage() {
       </section>
 
       <section className="grid gap-4 xl:grid-cols-3">
+        <Card className="xl:col-span-3">
+          <CardHeader>
+            <CardTitle>Doctor de instalación</CardTitle>
+            <CardDescription>
+              Ejecuta un chequeo rápido del entorno antes de trabajar con datos reales.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+            <div className="rounded-[26px] bg-[color:var(--color-panel)] p-5">
+              <p className="text-sm font-medium text-foreground">Comando recomendado</p>
+              <pre className="mt-3 overflow-x-auto rounded-2xl bg-[color:rgba(19,45,52,0.94)] p-4 text-sm text-white">
+                <code>npm run doctor</code>
+              </pre>
+              <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                Este script revisa Node, URL pública, Supabase, correo, LM Studio e integraciones opcionales desde tu propia instalación.
+              </p>
+            </div>
+            <div className="rounded-[26px] bg-[color:rgba(251,247,241,0.82)] p-5">
+              <p className="text-sm font-medium text-foreground">Variables críticas pendientes</p>
+              {env.missingCoreEnv.length > 0 ? (
+                <ul className="mt-3 space-y-2 text-sm leading-6 text-muted-foreground">
+                  {env.missingCoreEnv.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                  La base crítica del entorno ya está presente.
+                </p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
         {[
           {
             title: "Backups",

@@ -7,6 +7,7 @@ import { ZodError, z } from "zod";
 import { requireUser } from "@/lib/auth";
 import { isDemoMode } from "@/lib/demo";
 import { getLogoStoragePath } from "@/lib/invoices";
+import { assertAllowedUpload, uploadRules } from "@/lib/security";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getBaseUrl } from "@/lib/utils";
 
@@ -91,6 +92,7 @@ export async function updateProfileAction(formData: FormData) {
     let logoUrl = existingLogoUrl;
 
     if (logoFile instanceof File && logoFile.size > 0) {
+      assertAllowedUpload(logoFile, uploadRules.logo);
       const storagePath = getLogoStoragePath(
         user.id,
         logoFile.name || "facturaia-logo.png",

@@ -13,11 +13,14 @@ FacturaIA es una aplicación Next.js 15 pensada para autónomos y pequeños nego
 - Creación de facturas con IVA, IRPF, numeración automática y PDF profesional.
 - Módulo de presupuestos y albaranes con conversión posterior a factura.
 - Módulo de firma documental para aceptar presupuestos y firmar albaranes desde un enlace público.
+- Evidencia de firma reforzada con hash de integridad del documento y validación de cambios posteriores al enlace.
 - Módulo de gastos con importación de justificantes, extracción de texto y revisión.
 - Módulo de conciliación bancaria con importación CSV y enlace manual de movimientos con facturas o gastos.
 - Seguimiento de cobros y vencimientos con centro dedicado, marcado manual, recordatorios individuales y por lote, historial de avisos y sincronización básica con banca.
 - Módulo Facturae / VeriFactu con panel de preparación y exportación inicial XML Facturae 3.2.2 sin firma.
+- Revisión Facturae más estricta con validación básica de NIF y vencimiento, más detalle de pago en el XML.
 - Módulo CRM ligero para centralizar fichas de cliente y proveedor con actividad relacionada.
+- Bandeja interna de feedback para registrar incidencias y peticiones de pilotos o uso interno.
 - Historial de facturas con descarga de PDF y envío por email con SMTP o Resend.
 - Página pública de factura con QR.
 - Estudio documental con IA local vía LM Studio para propuestas, presupuestos, contratos y mensajes.
@@ -28,6 +31,9 @@ FacturaIA es una aplicación Next.js 15 pensada para autónomos y pequeños nego
 - Centro de backups para exportar, restaurar y sincronizar copias remotas por WebDAV / Nextcloud.
 - Catálogo de módulos opcionales con estado e instalación en `/modules`.
 - Guía de instalación privada dentro de la propia app.
+- Script `npm run doctor` para validar la instalación local.
+- Cabeceras de seguridad y validación estricta de uploads en puntos sensibles.
+- Suite de tests unitarios para cobros, seguridad, Facturae y firma.
 - Modo demo local para revisar la interfaz sin servicios reales.
 
 ## Filosofía del proyecto
@@ -67,6 +73,7 @@ FacturaIA es una aplicación Next.js 15 pensada para autónomos y pequeños nego
 - `/facturae`
 - `/documents-ai`
 - `/mail`
+- `/feedback`
 - `/modules`
 - `/messages`
 - `/system`
@@ -88,6 +95,7 @@ Después:
 ```bash
 npm install
 cp .env.example .env.local
+npm run doctor
 npm run dev
 ```
 
@@ -226,6 +234,7 @@ Tablas principales activas:
 - El módulo `/facturae` cubre la primera fase de exportación XML Facturae 3.2.2 sin firma.
 - El módulo `/clientes` cubre la primera fase de fichas unificadas con actividad cruzada.
 - El módulo `/firmas` cubre la primera fase de aceptación y firma básica por enlace público.
+- El módulo `/feedback` permite registrar y priorizar feedback real de pilotos o uso interno.
 - La parte legal y fiscal mostrada en la UI no sustituye asesoramiento profesional.
 
 ## Verificación
@@ -233,5 +242,6 @@ Tablas principales activas:
 ```bash
 npm run typecheck
 npm run lint
+npm test
 FACTURAIA_DEMO_MODE=1 npm run build
 ```

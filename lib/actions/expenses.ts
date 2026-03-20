@@ -7,6 +7,7 @@ import { z } from "zod";
 import { requireUser } from "@/lib/auth";
 import { buildExpenseDraftFromInput, getExpenseByIdForUser, getExpenseStoragePath } from "@/lib/expenses";
 import { isDemoMode } from "@/lib/demo";
+import { assertAllowedUpload, uploadRules } from "@/lib/security";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 const createExpenseSchema = z.object({
@@ -46,6 +47,8 @@ export async function createExpenseAction(formData: FormData) {
     if (!(file instanceof File) || file.size === 0) {
       throw new Error("Adjunta un ticket, factura PDF o archivo de texto.");
     }
+
+    assertAllowedUpload(file, uploadRules.expenseSource);
 
     const supabase = await createServerSupabaseClient();
     const storagePath = getExpenseStoragePath(user.id, file.name || "gasto.pdf");

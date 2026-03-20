@@ -15,6 +15,7 @@ Documentos actuales:
 - `CONCILIACION_BANCARIA.md` (primera entrega con extractos CSV y conciliación manual ya operativa)
 - `COBROS_Y_VENCIMIENTOS.md` (primera entrega del circuito de cobro ya operativa)
 - `FACTURAE_VERIFACTU.md` (primera entrega con panel de preparación y exportación XML Facturae ya operativa)
+- `FEEDBACK_PILOTOS.md` (bandeja interna para recoger feedback de uso real)
 
 Documento general:
 

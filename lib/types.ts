@@ -64,6 +64,12 @@ export type ClientStatus = "lead" | "active" | "paused" | "archived";
 
 export type ClientPriority = "low" | "medium" | "high";
 
+export type FeedbackSeverity = "low" | "medium" | "high";
+
+export type FeedbackStatus = "open" | "reviewed" | "planned" | "resolved";
+
+export type FeedbackSourceType = "self" | "pilot";
+
 export type Profile = {
   id: string;
   email: string;
@@ -300,6 +306,21 @@ export type ClientRecord = {
   address: string | null;
   notes: string | null;
   tags: string[];
+  created_at: string;
+  updated_at: string;
+};
+
+export type FeedbackEntryRecord = {
+  id: string;
+  user_id: string;
+  source_type: FeedbackSourceType;
+  module_key: string;
+  severity: FeedbackSeverity;
+  status: FeedbackStatus;
+  title: string;
+  message: string;
+  reporter_name: string | null;
+  contact_email: string | null;
   created_at: string;
   updated_at: string;
 };

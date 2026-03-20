@@ -26,6 +26,7 @@ Copia el fichero de ejemplo:
 
 ```bash
 cp .env.example .env.local
+npm run doctor
 ```
 
 Variables relevantes:
@@ -469,3 +470,51 @@ Pasos:
 Guía completa:
 
 - `docs/modulos/COBROS_Y_VENCIMIENTOS.md`
+
+## 20. Doctor de instalación
+
+FacturaIA incluye un chequeo rápido de entorno:
+
+```bash
+npm run doctor
+```
+
+Revisa:
+
+- versión de Node
+- URL pública
+- variables críticas de Supabase
+- LM Studio
+- correo saliente
+- correo entrante IMAP
+- WebDAV / Nextcloud para backups
+
+Recomendación:
+
+1. ejecuta `npm run doctor` justo después de preparar `.env.local`
+2. no empieces con datos reales hasta dejar verde al menos `NEXT_PUBLIC_APP_URL` y Supabase
+3. usa `/system` como resumen visual del mismo estado
+
+## 21. Feedback y pilotos
+
+La ruta `/feedback` sirve para registrar feedback real dentro de la propia instalación.
+
+Qué hace:
+
+- anotar incidencias o peticiones por módulo
+- distinguir entre feedback interno y feedback de piloto
+- marcar prioridad
+- mover cada entrada por estados simples
+- incluir ese backlog en backups y restore
+
+Pasos:
+
+1. aplica la migración `202603202120_add_feedback_entries.sql`
+2. reinicia FacturaIA
+3. abre `/feedback`
+4. registra observaciones reales según vayan apareciendo
+5. cambia su estado a `reviewed`, `planned` o `resolved`
+
+Guía completa:
+
+- `docs/modulos/FEEDBACK_PILOTOS.md`

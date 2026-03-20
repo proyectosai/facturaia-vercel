@@ -9,6 +9,8 @@ Esta entrega añade:
 - panel `/facturae`
 - exportación de borrador XML Facturae 3.2.2
 - revisión previa por factura
+- validación más estricta de NIF y vencimiento
+- detalle de pago con vencimiento dentro del XML
 - enlaces oficiales a BOE, Facturae y AEAT
 
 ## Qué hace ahora
@@ -16,6 +18,7 @@ Esta entrega añade:
 - lista facturas emitidas y las prepara para exportación
 - genera un XML Facturae 3.2.2 sin firma XAdES
 - avisa sobre datos que conviene revisar antes de usar el fichero fuera de la app
+- bloquea mejor casos con NIF no reconocible o vencimiento incoherente
 - muestra referencias oficiales para seguir Facturae y VeriFactu
 
 ## Qué no hace todavía

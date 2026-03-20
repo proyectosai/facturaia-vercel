@@ -5,6 +5,11 @@ import { z } from "zod";
 import type { FacturaIaBackup } from "@/lib/backups";
 import { restoreBackupForUser } from "@/lib/backups";
 import { requireUser } from "@/lib/auth";
+import {
+  assertAllowedUpload,
+  UploadValidationError,
+  uploadRules,
+} from "@/lib/security";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -46,6 +51,23 @@ const backupSchema = z.object({
         address: z.string().nullable().optional(),
         notes: z.string().nullable().optional(),
         tags: z.array(z.string()).default([]),
+        created_at: z.string().optional(),
+        updated_at: z.string().optional(),
+      }),
+    )
+    .default([]),
+  feedbackEntries: z
+    .array(
+      z.object({
+        id: z.string(),
+        source_type: z.enum(["self", "pilot"]),
+        module_key: z.string(),
+        severity: z.enum(["low", "medium", "high"]),
+        status: z.enum(["open", "reviewed", "planned", "resolved"]),
+        title: z.string(),
+        message: z.string(),
+        reporter_name: z.string().nullable().optional(),
+        contact_email: z.string().nullable().optional(),
         created_at: z.string().optional(),
         updated_at: z.string().optional(),
       }),
@@ -367,6 +389,8 @@ export async function POST(request: Request) {
       );
     }
 
+    assertAllowedUpload(file, uploadRules.backupJson);
+
     const text = await file.text();
     const parsed = backupSchema.parse(JSON.parse(text)) as FacturaIaBackup;
     const restored = await restoreBackupForUser(user.id, user.email ?? "", parsed);
@@ -386,13 +410,20 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error:
-          error instanceof z.ZodError
-            ? error.issues[0]?.message ?? "El archivo no tiene el formato esperado."
-            : error instanceof Error
-              ? error.message
-              : "No se ha podido restaurar la copia de seguridad.",
+          error instanceof UploadValidationError
+            ? error.message
+            : error instanceof z.ZodError
+              ? error.issues[0]?.message ?? "El archivo no tiene el formato esperado."
+              : error instanceof Error
+                ? error.message
+                : "No se ha podido restaurar la copia de seguridad.",
       },
-      { status: 500 },
+      {
+        status:
+          error instanceof UploadValidationError
+            ? 400
+            : 500,
+      },
     );
   }
 }

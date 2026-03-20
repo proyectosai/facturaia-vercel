@@ -27,6 +27,7 @@ import {
 } from "@/lib/invoices";
 import { sendTransactionalEmail } from "@/lib/mail";
 import { hasLocalAiEnv } from "@/lib/env";
+import { assertAllowedUpload, uploadRules } from "@/lib/security";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { InvoiceRecord } from "@/lib/types";
 import { formatCurrency, formatInvoiceNumber, toNumber } from "@/lib/utils";
@@ -170,6 +171,7 @@ export async function createInvoiceAction(formData: FormData) {
     let issuerLogoUrl = existingLogoUrl;
 
     if (logoFile instanceof File && logoFile.size > 0) {
+      assertAllowedUpload(logoFile, uploadRules.logo);
       const storagePath = getLogoStoragePath(
         user.id,
         logoFile.name || "facturaia-logo.png",

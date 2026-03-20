@@ -249,9 +249,12 @@ Funciones:
 Archivos clave:
 
 - `app/(protected)/cobros/page.tsx`
+- `app/(protected)/feedback/page.tsx`
 - `lib/collections.ts`
 - `lib/collections-server.ts`
+- `lib/feedback.ts`
 - `lib/actions/invoices.ts`
+- `lib/actions/feedback.ts`
 - `lib/actions/banking.ts`
 - `supabase/migrations/202603201900_add_invoice_collection_tracking.sql`
 
@@ -266,7 +269,23 @@ Funciones:
 - recalcular cobros al conciliar ingresos bancarios
 - trasladar la fecha de vencimiento a PDF y factura pública
 
-## 13. Facturae / VeriFactu
+## 13. Feedback y pilotos
+
+Archivos clave:
+
+- `app/(protected)/feedback/page.tsx`
+- `lib/feedback.ts`
+- `lib/actions/feedback.ts`
+- `supabase/migrations/202603202120_add_feedback_entries.sql`
+
+Funciones:
+
+- registrar feedback interno o de pilotos
+- clasificar por módulo, severidad y estado
+- mantener un backlog operativo dentro de la app
+- incluir ese histórico en backups y restore
+
+## 14. Facturae / VeriFactu
 
 Archivos clave:
 
@@ -281,8 +300,10 @@ Funciones:
 - avisos sobre direcciones, NIF y retenciones
 - acceso a fuentes oficiales de BOE, Facturae y AEAT
 - punto de partida para cumplimiento más avanzado
+- validación más estricta de NIF y vencimiento
+- detalle de pago y vencimiento dentro del XML
 
-## 14. Copias de seguridad
+## 15. Copias de seguridad
 
 Archivos clave:
 
@@ -301,6 +322,7 @@ Funciones:
 - resincronización de la secuencia de facturas
 - inclusión de presupuestos y albaranes en la copia
 - inclusión del historial de recordatorios de cobro
+- inclusión del feedback interno y de pilotos
 - inclusión de gastos y justificantes asociados
 - inclusión de movimientos bancarios y su estado de conciliación
 - inclusión de solicitudes de firma y respuestas

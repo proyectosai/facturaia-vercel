@@ -55,6 +55,9 @@ type PartyXmlDraft = {
   secondSurname?: string;
 };
 
+const spanishTaxIdPattern =
+  /^([A-HJNPQRSUVW]\d{7}[0-9A-J]|\d{8}[A-Z]|[XYZ]\d{7}[A-Z])$/i;
+
 function escapeXml(value: string) {
   return value
     .replaceAll("&", "&amp;")
@@ -66,6 +69,10 @@ function escapeXml(value: string) {
 
 function decimal(value: number) {
   return roundCurrency(value).toFixed(2);
+}
+
+export function looksLikeSpanishTaxId(value: string) {
+  return spanishTaxIdPattern.test(value.trim().toUpperCase());
 }
 
 function normalizeInvoice(invoice: InvoiceRecord): NormalizedInvoiceRecord {
@@ -293,6 +300,24 @@ function buildInvoiceTaxXml(invoice: NormalizedInvoiceRecord) {
   return { taxesOutputs, taxesWithheld };
 }
 
+function buildPaymentDetailsXml(invoice: NormalizedInvoiceRecord) {
+  const outstandingAmount = Math.max(
+    0,
+    roundCurrency(invoice.grand_total - toNumber(invoice.amount_paid)),
+  );
+  const installmentAmount = outstandingAmount > 0 ? outstandingAmount : invoice.grand_total;
+  const dueDate = invoice.due_date || invoice.issue_date;
+
+  return `
+      <PaymentDetails>
+        <Installment>
+          <InstallmentDueDate>${escapeXml(dueDate)}</InstallmentDueDate>
+          <InstallmentAmount>${decimal(installmentAmount)}</InstallmentAmount>
+          <PaymentMeans>04</PaymentMeans>
+        </Installment>
+      </PaymentDetails>`;
+}
+
 export function getFacturaeReadiness(invoiceRecord: InvoiceRecord): FacturaePreparedInvoice {
   const invoice = normalizeInvoice(invoiceRecord);
   const issues: FacturaeReadinessIssue[] = [];
@@ -314,10 +339,57 @@ export function getFacturaeReadiness(invoiceRecord: InvoiceRecord): FacturaePrep
     hasBlockingIssue = true;
   }
 
+  if (
+    invoice.issuer_nif?.trim() &&
+    !looksLikeSpanishTaxId(invoice.issuer_nif)
+  ) {
+    issues.push({
+      level: "warning",
+      message:
+        "El NIF del emisor no sigue un formato español reconocible. Revísalo antes de usar el XML fuera de la app.",
+    });
+    hasBlockingIssue = true;
+  }
+
+  if (
+    invoice.client_nif?.trim() &&
+    !looksLikeSpanishTaxId(invoice.client_nif)
+  ) {
+    issues.push({
+      level: "warning",
+      message:
+        "El NIF del cliente no sigue un formato español reconocible. Revísalo antes de usar el XML fuera de la app.",
+    });
+    hasBlockingIssue = true;
+  }
+
   if (!invoice.issue_date?.trim()) {
     issues.push({
       level: "warning",
       message: "Falta fecha de emisión y el XML no debería usarse así fuera de la app.",
+    });
+    hasBlockingIssue = true;
+  }
+
+  if (!invoice.due_date?.trim()) {
+    issues.push({
+      level: "warning",
+      message:
+        "Falta fecha de vencimiento. El XML se puede generar, pero conviene definirla para trazabilidad de cobro y pago.",
+    });
+    hasBlockingIssue = true;
+  }
+
+  if (
+    invoice.issue_date?.trim() &&
+    invoice.due_date?.trim() &&
+    new Date(`${invoice.due_date}T00:00:00.000Z`).getTime() <
+      new Date(`${invoice.issue_date}T00:00:00.000Z`).getTime()
+  ) {
+    issues.push({
+      level: "warning",
+      message:
+        "La fecha de vencimiento es anterior a la fecha de emisión. Revísala antes de exportar.",
     });
     hasBlockingIssue = true;
   }
@@ -388,6 +460,7 @@ export function renderFacturaeXml(invoiceRecord: InvoiceRecord) {
     address: invoice.client_address,
   });
   const { taxesOutputs, taxesWithheld } = buildInvoiceTaxXml(invoice);
+  const paymentDetailsXml = buildPaymentDetailsXml(invoice);
   const batchIdentifier = formatInvoiceNumber(invoice.invoice_number);
   const lineXml = invoice.line_items
     .map((line, index) => {
@@ -453,6 +526,7 @@ ${perLineTaxXml}
       <TaxesOutputs>
 ${taxesOutputs}
       </TaxesOutputs>${taxesWithheld}
+${paymentDetailsXml}
       <InvoiceTotals>
         <TotalGrossAmount>${decimal(invoice.subtotal)}</TotalGrossAmount>
         <TotalGrossAmountBeforeTaxes>${decimal(invoice.subtotal)}</TotalGrossAmountBeforeTaxes>

@@ -14,6 +14,8 @@ Está pensado como evidencia operativa dentro de una instalación privada.
 - registro de nombre, email, NIF y comentario del firmante
 - fecha de solicitud, fecha de respuesta y caducidad
 - evidencia técnica mínima del navegador y del origen
+- hash de integridad del documento al generar el enlace
+- bloqueo de respuesta si el documento cambió después de emitir la solicitud
 - panel interno en `/firmas`
 
 ## Rutas
@@ -56,6 +58,7 @@ o ejecuta manualmente:
 - al aceptar un presupuesto desde el enlace, el documento pasa a `Aceptado`
 - al firmar un albarán desde el enlace, el documento pasa a `Firmado`
 - si se rechaza un presupuesto desde el enlace, pasa a `Rechazado`
+- si el documento cambia tras crear el enlace, la firma ya no se acepta y se pide emitir una nueva solicitud
 
 ## Limitaciones
 

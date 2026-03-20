@@ -10,7 +10,11 @@ import { getCommercialDocumentByIdForUser } from "@/lib/commercial-documents";
 import { isDemoMode } from "@/lib/demo";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { buildSignatureRequestInsertPayload } from "@/lib/signatures";
+import {
+  buildSignatureRequestInsertPayload,
+  hasSignatureSnapshotMismatch,
+} from "@/lib/signatures";
+import type { CommercialDocumentRecord } from "@/lib/types";
 
 function getActionError(error: unknown) {
   if (error instanceof ZodError) {
@@ -36,6 +40,10 @@ const revokeRequestSchema = z.object({
 const publicResponseSchema = z.object({
   token: z.string().trim().min(8, "Enlace no válido."),
   decision: z.enum(["accept", "reject"]),
+  acceptTerms: z
+    .string()
+    .optional()
+    .transform((value) => value === "1"),
   signerName: z.string().trim().min(2, "Indica tu nombre o razón social."),
   signerEmail: z
     .string()
@@ -47,6 +55,14 @@ const publicResponseSchema = z.object({
     }),
   signerNif: z.string().trim().max(40).optional(),
   signerMessage: z.string().trim().max(2000).optional(),
+}).superRefine((payload, ctx) => {
+  if (payload.decision === "accept" && !payload.acceptTerms) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Debes confirmar la aceptación del documento antes de firmarlo.",
+      path: ["acceptTerms"],
+    });
+  }
 });
 
 export async function createDocumentSignatureRequestAction(formData: FormData) {
@@ -178,6 +194,7 @@ export async function respondToDocumentSignatureAction(formData: FormData) {
     const payload = publicResponseSchema.parse({
       token: rawToken,
       decision: String(formData.get("decision") ?? ""),
+      acceptTerms: String(formData.get("acceptTerms") ?? ""),
       signerName: String(formData.get("signerName") ?? ""),
       signerEmail: String(formData.get("signerEmail") ?? ""),
       signerNif: String(formData.get("signerNif") ?? ""),
@@ -221,6 +238,27 @@ export async function respondToDocumentSignatureAction(formData: FormData) {
     const userAgent = requestHeaders.get("user-agent");
     const now = new Date().toISOString();
     const newStatus = payload.decision === "accept" ? "signed" : "rejected";
+    const { data: documentData, error: documentError } = await admin
+      .from("commercial_documents")
+      .select("*")
+      .eq("id", request.document_id)
+      .eq("user_id", request.user_id)
+      .maybeSingle();
+
+    if (documentError || !documentData) {
+      throw new Error("No se ha podido validar el documento asociado a la solicitud.");
+    }
+
+    if (
+      hasSignatureSnapshotMismatch(
+        request,
+        documentData as CommercialDocumentRecord,
+      )
+    ) {
+      throw new Error(
+        "El documento ha cambiado desde que se generó este enlace. Pide al emisor que cree una nueva solicitud de firma.",
+      );
+    }
 
     const { error: updateError } = await admin
       .from("document_signature_requests")
@@ -236,6 +274,8 @@ export async function respondToDocumentSignatureAction(formData: FormData) {
           ...(typeof request.evidence === "object" && request.evidence ? request.evidence : {}),
           forwardedFor,
           userAgent,
+          acceptedTerms: payload.acceptTerms,
+          decision: payload.decision,
           respondedAt: now,
         },
       })

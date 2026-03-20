@@ -15,6 +15,7 @@ import {
 } from "@/lib/commercial-documents";
 import { isDemoMode } from "@/lib/demo";
 import { calculateInvoice, getLogoStoragePath } from "@/lib/invoices";
+import { assertAllowedUpload, uploadRules } from "@/lib/security";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 function getFirstErrorMessage(error: unknown) {
@@ -46,6 +47,7 @@ async function persistIssuerProfile(
   let issuerLogoUrl = existingLogoUrl;
 
   if (logoFile instanceof File && logoFile.size > 0) {
+    assertAllowedUpload(logoFile, uploadRules.logo);
     const storagePath = getLogoStoragePath(userId, logoFile.name || "facturaia-logo.png");
     const { error: uploadError } = await supabase.storage
       .from("logos")

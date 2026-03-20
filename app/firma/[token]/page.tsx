@@ -5,6 +5,7 @@ import { respondToDocumentSignatureAction } from "@/lib/actions/signatures";
 import {
   documentSignatureKindLabels,
   documentSignatureStatusLabels,
+  extractSignatureSnapshot,
   getPublicSignatureRequestByToken,
   isSignatureExpired,
 } from "@/lib/signatures";
@@ -73,6 +74,7 @@ export default async function PublicSignaturePage({
   const rejected = getSingleSearchParam(paramsQuery.rejected);
   const error = getSingleSearchParam(paramsQuery.error);
   const isClosed = request.status !== "pending" || isSignatureExpired(request);
+  const snapshot = extractSignatureSnapshot(request.evidence);
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(233,244,240,0.92),rgba(255,255,255,0.98)_38%,rgba(244,233,215,0.76)_100%)] px-4 py-10 sm:px-6 lg:px-10">
@@ -186,6 +188,11 @@ export default async function PublicSignaturePage({
                     Este enlace caduca el {formatDateLong(request.expires_at)}.
                   </p>
                 ) : null}
+                {snapshot ? (
+                  <p className="mt-2 text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                    Hash de integridad {snapshot.hash.slice(0, 16)}…
+                  </p>
+                ) : null}
               </div>
 
               <div className="space-y-3">
@@ -253,6 +260,11 @@ export default async function PublicSignaturePage({
                       Se guarda la fecha de respuesta y metadatos técnicos básicos del navegador para
                       dejar constancia operativa dentro del entorno privado.
                     </p>
+                    {snapshot ? (
+                      <p className="mt-2 text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                        Documento firmado sobre hash {snapshot.hash.slice(0, 20)}…
+                      </p>
+                    ) : null}
                   </div>
                 </div>
               ) : (
@@ -284,6 +296,18 @@ export default async function PublicSignaturePage({
                       placeholder="Puedes añadir una observación o matiz antes de enviar la respuesta."
                     />
                   </div>
+
+                  <label className="flex items-start gap-3 rounded-[24px] bg-[color:rgba(241,246,243,0.82)] p-4 text-sm leading-6 text-muted-foreground">
+                    <input
+                      type="checkbox"
+                      name="acceptTerms"
+                      value="1"
+                      className="mt-1 h-4 w-4 rounded border-border"
+                    />
+                    <span>
+                      Confirmo que he revisado el contenido y que mi respuesta se registrará como evidencia operativa dentro de esta instalación privada.
+                    </span>
+                  </label>
 
                   <div className="grid gap-3 sm:grid-cols-2">
                     <SubmitButton
