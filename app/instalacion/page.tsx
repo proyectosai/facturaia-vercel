@@ -172,6 +172,12 @@ export default function InstalacionPage() {
                 icon: Database,
               },
               {
+                title: "Firma documental",
+                description:
+                  "Aceptación de presupuestos y firma básica de albaranes mediante enlaces públicos.",
+                icon: LockKeyhole,
+              },
+              {
                 title: "Gastos y OCR asistido",
                 description:
                   "Importa justificantes y revísalos dentro de la app sin depender de servicios externos.",
@@ -253,7 +259,14 @@ export default function InstalacionPage() {
                 label: "Abrir CRM",
               },
               {
-                title: "7. Activa documentos o mensajería",
+                title: "7. Valida una firma documental",
+                description:
+                  "Genera un enlace de aceptación desde un presupuesto o albarán y comprueba la respuesta en tu entorno.",
+                href: "/firmas",
+                label: "Abrir firmas",
+              },
+              {
+                title: "8. Activa documentos o mensajería",
                 description:
                   "Añade IA local y bandeja de mensajes solo si de verdad te aportan valor.",
                 href: "/documents-ai",

@@ -11,6 +11,7 @@ Documentos actuales:
 - `PRESUPUESTOS_ALBARANES.md` (primera entrega de pre-facturación ya operativa)
 - `GASTOS_OCR.md` (primera entrega de importación y revisión ya operativa)
 - `CRM_LIGERO.md` (primera entrega de fichas unificadas ya operativa)
+- `FIRMA_DOCUMENTAL.md` (primera entrega de aceptación y firma básica ya operativa)
 
 Documento general:
 

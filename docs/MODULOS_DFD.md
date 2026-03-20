@@ -87,16 +87,17 @@ flowchart LR
 - Presupuestos y albaranes: primera entrega operativa con persistencia, estados y conversión a factura.
 - OCR de gastos: primera entrega operativa con extracción de texto y revisión asistida.
 - CRM ligero: primera entrega operativa con fichas manuales, detección de contactos y timeline básica.
+- Firma documental: primera entrega operativa con enlaces públicos y evidencia básica.
 
 ## Siguiente módulo
 
-### Firma documental
+### Conciliación bancaria
 
 Motivo de prioridad:
 
-- se apoya en presupuestos y contratos ya presentes
-- cierra el ciclo documental privado sin depender de plataformas externas
-- añade aceptación o evidencia básica donde hoy solo hay estados manuales
+- aprovecha el módulo de gastos ya presente
+- cierra mejor el circuito de caja y cobro en instalaciones privadas
+- prepara la base para reporting y operativa contable más útil
 
 ## Documentación asociada
 
@@ -108,3 +109,4 @@ Motivo de prioridad:
 - `docs/modulos/PRESUPUESTOS_ALBARANES.md`
 - `docs/modulos/GASTOS_OCR.md`
 - `docs/modulos/CRM_LIGERO.md`
+- `docs/modulos/FIRMA_DOCUMENTAL.md`

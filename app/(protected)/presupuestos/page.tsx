@@ -6,6 +6,7 @@ import {
   convertCommercialDocumentToInvoiceAction,
   updateCommercialDocumentStatusAction,
 } from "@/lib/actions/commercial-documents";
+import { createDocumentSignatureRequestAction } from "@/lib/actions/signatures";
 import {
   buildCommercialDocumentMeta,
   buildCommercialDocumentStatusDescription,
@@ -21,8 +22,14 @@ import type { CommercialDocumentRecord } from "@/lib/types";
 import { getCurrentProfile } from "@/lib/auth";
 import { cn, formatCurrency } from "@/lib/utils";
 import { CommercialDocumentForm } from "@/components/commercial/commercial-document-form";
+import { CopyLinkButton } from "@/components/copy-link-button";
 import { RouteToast } from "@/components/route-toast";
 import { SubmitButton } from "@/components/submit-button";
+import {
+  documentSignatureStatusLabels,
+  getLatestSignatureRequestMapForUser,
+  type SignatureListItem,
+} from "@/lib/signatures";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -91,9 +98,11 @@ function buildCommercialHref({
 function DocumentCard({
   document,
   demoMode,
+  latestSignatureRequest,
 }: {
   document: CommercialDocumentRecord;
   demoMode: boolean;
+  latestSignatureRequest?: SignatureListItem;
 }) {
   const meta = buildCommercialDocumentMeta(document);
   const actions = getCommercialDocumentStatusActions(document);
@@ -165,6 +174,67 @@ function DocumentCard({
           {document.notes ? (
             <p className="mt-2 text-sm leading-6 text-muted-foreground">{document.notes}</p>
           ) : null}
+        </div>
+
+        <div className="rounded-[28px] bg-[color:rgba(251,247,241,0.72)] p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-medium text-foreground">
+                {document.document_type === "quote"
+                  ? "Aceptación del presupuesto"
+                  : "Firma del albarán"}
+              </p>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                {latestSignatureRequest
+                  ? `Último estado: ${documentSignatureStatusLabels[latestSignatureRequest.status]}.`
+                  : "Todavía no has generado un enlace público para este documento."}
+              </p>
+              {latestSignatureRequest?.request_note ? (
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  {latestSignatureRequest.request_note}
+                </p>
+              ) : null}
+            </div>
+            {latestSignatureRequest ? (
+              <Badge variant="secondary">
+                {documentSignatureStatusLabels[latestSignatureRequest.status]}
+              </Badge>
+            ) : null}
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            <form action={demoMode ? undefined : createDocumentSignatureRequestAction}>
+              <input type="hidden" name="documentId" value={document.id} />
+              <input type="hidden" name="requestNote" value="" />
+              <SubmitButton
+                variant="outline"
+                size="sm"
+                pendingLabel="Generando enlace..."
+                disabled={demoMode}
+              >
+                {latestSignatureRequest ? "Generar nuevo enlace" : "Solicitar firma"}
+              </SubmitButton>
+            </form>
+
+            {latestSignatureRequest ? (
+              <>
+                <CopyLinkButton
+                  value={latestSignatureRequest.publicUrl}
+                  label="Copiar enlace"
+                  variant="outline"
+                />
+                <Button variant="ghost" size="sm" asChild>
+                  <Link href={latestSignatureRequest.publicUrl} target="_blank">
+                    Abrir enlace público
+                  </Link>
+                </Button>
+              </>
+            ) : null}
+
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/firmas">Abrir módulo de firmas</Link>
+            </Button>
+          </div>
         </div>
 
         <div className="grid gap-3 xl:grid-cols-[1fr_auto] xl:items-start">
@@ -253,6 +323,10 @@ export default async function PresupuestosPage({
     (document) => document.document_type === "delivery_note",
   );
   const readyToInvoice = documents.filter((document) => canConvertCommercialDocument(document));
+  const latestSignatureRequests = await getLatestSignatureRequestMapForUser(
+    user.id,
+    documents.map((document) => document.id),
+  );
 
   return (
     <div className="space-y-8">
@@ -418,7 +492,12 @@ export default async function PresupuestosPage({
 
           {quotes.length > 0 ? (
             quotes.map((document) => (
-              <DocumentCard key={document.id} document={document} demoMode={demoMode} />
+              <DocumentCard
+                key={document.id}
+                document={document}
+                demoMode={demoMode}
+                latestSignatureRequest={latestSignatureRequests.get(document.id)}
+              />
             ))
           ) : (
             <Card className="border-dashed border-white/60 bg-white/74">
@@ -450,7 +529,12 @@ export default async function PresupuestosPage({
 
           {deliveryNotes.length > 0 ? (
             deliveryNotes.map((document) => (
-              <DocumentCard key={document.id} document={document} demoMode={demoMode} />
+              <DocumentCard
+                key={document.id}
+                document={document}
+                demoMode={demoMode}
+                latestSignatureRequest={latestSignatureRequests.get(document.id)}
+              />
             ))
           ) : (
             <Card className="border-dashed border-white/60 bg-white/74">
@@ -476,12 +560,17 @@ export default async function PresupuestosPage({
             </p>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
               Esta fase ya cubre persistencia, estados y conversión a factura. La
-              siguiente iteración añadirá PDF dedicado, firma/aceptación y enlace más
-              directo con la cabina documental.
+              siguiente iteración añadirá PDF dedicado y enlace más directo con la
+              cabina documental. La firma básica ya queda operativa en `/firmas`.
             </p>
           </div>
 
           <div className="flex flex-wrap gap-2">
+            <Link href="/firmas">
+              <Button variant="outline">
+                Abrir firmas
+              </Button>
+            </Link>
             <Link href="/documents-ai">
               <Button variant="outline">
                 <ReceiptText className="h-4 w-4" />

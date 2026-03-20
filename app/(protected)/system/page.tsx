@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
   Bot,
   Database,
+  FileSignature,
   Inbox,
   Mail,
   ArchiveRestore,
@@ -229,6 +230,14 @@ export default function SystemPage() {
             icon: Smartphone,
             href: "/modules",
             label: "Ver módulos",
+          },
+          {
+            title: "Firmas",
+            description:
+              "Genera enlaces públicos para aceptar presupuestos o firmar albaranes desde fuera de la app.",
+            icon: FileSignature,
+            href: "/firmas",
+            label: "Abrir firmas",
           },
           {
             title: "CRM ligero",

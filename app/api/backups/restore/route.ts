@@ -118,6 +118,30 @@ const backupSchema = z.object({
       }),
     )
     .default([]),
+  documentSignatureRequests: z
+    .array(
+      z.object({
+        id: z.string(),
+        document_id: z.string(),
+        document_type: z.enum(["quote", "delivery_note"]),
+        request_kind: z.enum(["quote_acceptance", "delivery_note_signature"]),
+        status: z.enum(["pending", "signed", "rejected", "revoked", "expired"]),
+        public_token: z.string(),
+        request_note: z.string().nullable().optional(),
+        requested_at: z.string(),
+        expires_at: z.string().nullable().optional(),
+        viewed_at: z.string().nullable().optional(),
+        responded_at: z.string().nullable().optional(),
+        signer_name: z.string().nullable().optional(),
+        signer_email: z.string().nullable().optional(),
+        signer_nif: z.string().nullable().optional(),
+        signer_message: z.string().nullable().optional(),
+        evidence: z.any(),
+        created_at: z.string().optional(),
+        updated_at: z.string().optional(),
+      }),
+    )
+    .default([]),
   expenses: z
     .array(
       z.object({

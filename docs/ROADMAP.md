@@ -26,7 +26,7 @@ Este documento resume la dirección prevista para FacturaIA como producto y como
 - históricos y duplicación de documentos
 - mejora de calidad de salida con IA local
 - PDF específico para presupuestos y albaranes
-- firma o aceptación documentada
+- recordatorios y seguimiento de firmas pendientes
 
 ### Operativa privada
 

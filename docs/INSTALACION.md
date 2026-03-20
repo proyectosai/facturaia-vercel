@@ -92,6 +92,7 @@ Ejecuta las migraciones en este orden:
 8. `supabase/migrations/202603201330_add_commercial_documents_module.sql`
 9. `supabase/migrations/202603201430_add_expenses_module.sql`
 10. `supabase/migrations/202603201520_add_clients_module.sql`
+11. `supabase/migrations/202603201640_add_document_signature_module.sql`
 
 Estas migraciones crean:
 
@@ -108,6 +109,7 @@ Estas migraciones crean:
 - flujo de presupuestos y albaranes previo a facturación
 - circuito inicial de gastos con justificantes y revisión
 - fichas de cliente y proveedor con notas internas y actividad relacionada
+- solicitudes públicas de aceptación y firma básica para documentos comerciales
 
 ## 4. Configurar correo saliente
 
@@ -354,3 +356,28 @@ Pasos:
 Guía completa:
 
 - `docs/modulos/CRM_LIGERO.md`
+
+## 16. Firma documental
+
+Este módulo genera enlaces públicos para aceptar presupuestos o firmar albaranes.
+
+Qué hace ahora:
+
+- crear enlaces públicos por documento
+- registrar aceptación o rechazo en presupuestos
+- registrar firma o no conformidad en albaranes
+- guardar evidencia operativa básica
+- revisar el historial en `/firmas`
+
+Pasos:
+
+1. aplica la migración `202603201640_add_document_signature_module.sql`
+2. reinicia FacturaIA
+3. abre `/presupuestos`
+4. pulsa `Solicitar firma` en un documento
+5. revisa el historial en `/firmas`
+6. valida el enlace público en `/firma/[token]`
+
+Guía completa:
+
+- `docs/modulos/FIRMA_DOCUMENTAL.md`

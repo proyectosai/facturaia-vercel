@@ -25,6 +25,9 @@ El formato está inspirado en Keep a Changelog y el versionado irá madurando co
 - Primera entrega del módulo CRM ligero con fichas manuales de cliente y proveedor.
 - Nueva ruta `/clientes`.
 - Migración `202603201520_add_clients_module.sql`.
+- Primera entrega del módulo de firma documental con enlaces públicos para presupuestos y albaranes.
+- Nuevas rutas `/firmas` y `/firma/[token]`.
+- Migración `202603201640_add_document_signature_module.sql`.
 
 ### Mejorado
 
@@ -36,8 +39,9 @@ El formato está inspirado en Keep a Changelog y el versionado irá madurando co
 - Los backups incluyen también los documentos de pre-facturación.
 - Los backups incluyen ahora también los gastos importados.
 - Los backups incluyen también las fichas guardadas del CRM ligero.
+- Los backups incluyen también las solicitudes de firma documental.
 - El módulo de presupuestos incorpora filtros y seguimiento más claro por estado y tipo.
-- El catálogo `/modules` adelanta ahora la firma documental como siguiente módulo del roadmap.
+- El catálogo `/modules` adelanta ahora la conciliación bancaria como siguiente módulo del roadmap.
 
 ## [0.1.0] - 2026-03-19
 

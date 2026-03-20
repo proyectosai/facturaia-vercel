@@ -219,6 +219,7 @@ WEBDAV_BACKUP_PATH=/FacturaIA
 13. Creación y conversión de un documento en `/presupuestos`.
 14. Importación y revisión de un justificante en `/gastos`.
 15. Creación o edición de una ficha en `/clientes`.
+16. Generación y prueba de un enlace en `/firmas`.
 
 ## Checklist de producción
 
@@ -231,6 +232,7 @@ WEBDAV_BACKUP_PATH=/FacturaIA
 - módulo de pre-facturación probado si lo vas a usar
 - módulo de gastos probado si lo vas a usar
 - módulo CRM probado si lo vas a usar
+- módulo de firma documental probado si lo vas a usar
 - variables WebDAV definidas si usarás backups remotos
 - build correcto
 - healthcheck manual sobre `/`, `/instalacion`, `/login`

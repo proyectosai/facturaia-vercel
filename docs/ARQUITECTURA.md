@@ -19,9 +19,11 @@ FacturaIA está diseñada como una aplicación Next.js 15 con App Router, priori
 - `app/login/page.tsx`
 - `app/instalacion/page.tsx`
 - `app/factura/[publicId]/page.tsx`
+- `app/firma/[token]/page.tsx`
 - `app/(protected)/dashboard/page.tsx`
 - `app/(protected)/new-invoice/page.tsx`
 - `app/(protected)/presupuestos/page.tsx`
+- `app/(protected)/firmas/page.tsx`
 - `app/(protected)/gastos/page.tsx`
 - `app/(protected)/clientes/page.tsx`
 - `app/(protected)/invoices/page.tsx`
@@ -178,7 +180,25 @@ Funciones:
 - timeline básica cruzando facturas, correo, mensajes, documentos y gastos
 - edición simple desde la propia ficha
 
-## 9. Email
+## 9. Firma documental
+
+Archivos clave:
+
+- `app/(protected)/firmas/page.tsx`
+- `app/firma/[token]/page.tsx`
+- `lib/signatures.ts`
+- `lib/actions/signatures.ts`
+- `supabase/migrations/202603201640_add_document_signature_module.sql`
+
+Funciones:
+
+- generación de enlaces públicos por documento comercial
+- aceptación de presupuestos
+- firma básica de albaranes
+- registro de firmante, respuesta y evidencia mínima
+- panel interno para revisar solicitudes pendientes o respondidas
+
+## 10. Email
 
 Archivos clave:
 
@@ -200,7 +220,7 @@ Funciones:
 - bandeja interna por remitente
 - historial de sincronizaciones entrantes
 
-## 10. Copias de seguridad
+## 11. Copias de seguridad
 
 Archivos clave:
 
@@ -219,10 +239,11 @@ Funciones:
 - resincronización de la secuencia de facturas
 - inclusión de presupuestos y albaranes en la copia
 - inclusión de gastos y justificantes asociados
+- inclusión de solicitudes de firma y respuestas
 - sincronización manual a WebDAV / Nextcloud
 - historial de últimas ejecuciones remotas
 
-## 11. Mensajería opcional
+## 12. Mensajería opcional
 
 Archivos clave:
 
@@ -248,6 +269,7 @@ Tablas principales:
 - `profiles`
 - `invoices`
 - `commercial_documents`
+- `document_signature_requests`
 - `expenses`
 - `clients`
 - `ai_usage`
@@ -284,6 +306,15 @@ Tablas principales:
 - estado y prioridad operativa
 - email, teléfono, NIF y dirección
 - notas internas y etiquetas
+
+## `document_signature_requests`
+
+- enlace público único por solicitud
+- tipo de solicitud según documento
+- estado de respuesta
+- fechas de solicitud, visualización y respuesta
+- identidad básica del firmante
+- evidencia técnica mínima
 - IVA
 - IRPF
 - total

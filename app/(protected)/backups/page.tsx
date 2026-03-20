@@ -53,7 +53,7 @@ export default async function BackupsPage() {
                   CRM, facturas, IA y mensajes
                 </p>
                 <p className="mt-2 text-sm leading-6 text-white/82">
-                  Perfil fiscal, fichas del CRM, histórico de uso y bandeja opcional incluidos.
+                  Perfil fiscal, CRM, firmas, histórico de uso y bandeja opcional incluidos.
                 </p>
               </div>
               <HardDriveDownload className="mt-1 h-5 w-5 text-white/70" />

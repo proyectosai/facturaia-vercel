@@ -35,6 +35,17 @@ export type ExpenseExtractionMethod =
   | "plain_text"
   | "unavailable";
 
+export type DocumentSignatureRequestKind =
+  | "quote_acceptance"
+  | "delivery_note_signature";
+
+export type DocumentSignatureStatus =
+  | "pending"
+  | "signed"
+  | "rejected"
+  | "revoked"
+  | "expired";
+
 export type ClientRelationKind = "client" | "supplier" | "mixed";
 
 export type ClientStatus = "lead" | "active" | "paused" | "archived";
@@ -160,6 +171,28 @@ export type CommercialDocumentRecord = {
   vat_breakdown: InvoiceVatBreakdown[];
   notes: string | null;
   converted_invoice_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type DocumentSignatureRequestRecord = {
+  id: string;
+  user_id: string;
+  document_id: string;
+  document_type: CommercialDocumentType;
+  request_kind: DocumentSignatureRequestKind;
+  status: DocumentSignatureStatus;
+  public_token: string;
+  request_note: string | null;
+  requested_at: string;
+  expires_at: string | null;
+  viewed_at: string | null;
+  responded_at: string | null;
+  signer_name: string | null;
+  signer_email: string | null;
+  signer_nif: string | null;
+  signer_message: string | null;
+  evidence: Record<string, unknown>;
   created_at: string;
   updated_at: string;
 };

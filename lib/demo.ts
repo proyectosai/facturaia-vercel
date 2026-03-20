@@ -2,6 +2,7 @@ import type {
   AppUserRecord,
   ClientRecord,
   CommercialDocumentRecord,
+  DocumentSignatureRequestRecord,
   ExpenseRecord,
   InvoiceRecord,
   MailMessage,
@@ -674,6 +675,56 @@ export const demoCommercialDocuments: CommercialDocumentRecord[] = [
   },
 ];
 
+export const demoDocumentSignatureRequests: DocumentSignatureRequestRecord[] = [
+  {
+    id: "91500000-0000-4000-8000-000000000001",
+    user_id: DEMO_USER_ID,
+    document_id: "90000000-0000-4000-8000-000000000001",
+    document_type: "quote",
+    request_kind: "quote_acceptance",
+    status: "signed",
+    public_token: "demo-firma-presupuesto-nexo",
+    request_note:
+      "Revisa alcance, calendario y condiciones de pago antes de aceptar el presupuesto.",
+    requested_at: "2026-03-12T09:00:00.000Z",
+    expires_at: "2026-04-10T23:59:59.000Z",
+    viewed_at: "2026-03-12T11:15:00.000Z",
+    responded_at: "2026-03-12T11:22:00.000Z",
+    signer_name: "Marina Lozano",
+    signer_email: "equipo@nexodigital.es",
+    signer_nif: "B88234110",
+    signer_message: "Presupuesto aprobado. Avanzamos con el diagnóstico esta semana.",
+    evidence: {
+      userAgent: "Demo Browser",
+      forwardedFor: "127.0.0.1",
+    },
+    created_at: "2026-03-12T09:00:00.000Z",
+    updated_at: "2026-03-12T11:22:00.000Z",
+  },
+  {
+    id: "91500000-0000-4000-8000-000000000002",
+    user_id: DEMO_USER_ID,
+    document_id: "90000000-0000-4000-8000-000000000003",
+    document_type: "delivery_note",
+    request_kind: "delivery_note_signature",
+    status: "pending",
+    public_token: "demo-firma-albaran-brisa",
+    request_note:
+      "Necesitamos la conformidad sobre la documentación operativa entregada.",
+    requested_at: "2026-03-19T12:46:00.000Z",
+    expires_at: "2026-04-02T23:59:59.000Z",
+    viewed_at: null,
+    responded_at: null,
+    signer_name: null,
+    signer_email: null,
+    signer_nif: null,
+    signer_message: null,
+    evidence: {},
+    created_at: "2026-03-19T12:46:00.000Z",
+    updated_at: "2026-03-19T12:46:00.000Z",
+  },
+];
+
 export const demoExpenses: ExpenseRecord[] = [
   {
     id: "92000000-0000-4000-8000-000000000001",
@@ -818,4 +869,17 @@ export function getDemoExpenseById(expenseId: string) {
 
 export function getDemoClientById(clientId: string) {
   return demoClients.find((client) => client.id === clientId) ?? null;
+}
+
+export function getDemoDocumentSignatureRequestById(requestId: string) {
+  return (
+    demoDocumentSignatureRequests.find((request) => request.id === requestId) ?? null
+  );
+}
+
+export function getDemoDocumentSignatureRequestByToken(token: string) {
+  return (
+    demoDocumentSignatureRequests.find((request) => request.public_token === token) ??
+    null
+  );
 }

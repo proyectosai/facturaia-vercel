@@ -12,6 +12,7 @@ FacturaIA es una aplicación Next.js 15 pensada para autónomos y pequeños nego
 - Gestión de perfil fiscal del emisor.
 - Creación de facturas con IVA, IRPF, numeración automática y PDF profesional.
 - Módulo de presupuestos y albaranes con conversión posterior a factura.
+- Módulo de firma documental para aceptar presupuestos y firmar albaranes desde un enlace público.
 - Módulo de gastos con importación de justificantes, extracción de texto y revisión.
 - Módulo CRM ligero para centralizar fichas de cliente y proveedor con actividad relacionada.
 - Historial de facturas con descarga de PDF y envío por email con SMTP o Resend.
@@ -54,6 +55,7 @@ FacturaIA es una aplicación Next.js 15 pensada para autónomos y pequeños nego
 - `/dashboard`
 - `/new-invoice`
 - `/presupuestos`
+- `/firmas`
 - `/gastos`
 - `/clientes`
 - `/invoices`
@@ -65,6 +67,7 @@ FacturaIA es una aplicación Next.js 15 pensada para autónomos y pequeños nego
 - `/backups`
 - `/profile`
 - `/factura/[publicId]`
+- `/firma/[token]`
 
 ## Instalación rápida
 
@@ -152,6 +155,7 @@ Migraciones incluidas:
 - [`supabase/migrations/202603201330_add_commercial_documents_module.sql`](./supabase/migrations/202603201330_add_commercial_documents_module.sql)
 - [`supabase/migrations/202603201430_add_expenses_module.sql`](./supabase/migrations/202603201430_add_expenses_module.sql)
 - [`supabase/migrations/202603201520_add_clients_module.sql`](./supabase/migrations/202603201520_add_clients_module.sql)
+- [`supabase/migrations/202603201640_add_document_signature_module.sql`](./supabase/migrations/202603201640_add_document_signature_module.sql)
 
 Tablas principales activas:
 
@@ -159,6 +163,7 @@ Tablas principales activas:
 - `profiles`
 - `invoices`
 - `commercial_documents`
+- `document_signature_requests`
 - `expenses`
 - `clients`
 - `ai_usage`
@@ -185,6 +190,7 @@ Tablas principales activas:
 - [Presupuestos y albaranes](./docs/modulos/PRESUPUESTOS_ALBARANES.md)
 - [OCR de gastos](./docs/modulos/GASTOS_OCR.md)
 - [CRM ligero](./docs/modulos/CRM_LIGERO.md)
+- [Firma documental](./docs/modulos/FIRMA_DOCUMENTAL.md)
 - [Hoja de ruta](./docs/ROADMAP.md)
 - [Guía de contribución](./CONTRIBUTING.md)
 - [Código de conducta](./CODE_OF_CONDUCT.md)
@@ -203,6 +209,7 @@ Tablas principales activas:
 - El módulo `/presupuestos` cubre la primera fase de pre-facturación: persistencia, estados y conversión a factura.
 - El módulo `/gastos` cubre la primera fase de importación y revisión de justificantes de gasto.
 - El módulo `/clientes` cubre la primera fase de fichas unificadas con actividad cruzada.
+- El módulo `/firmas` cubre la primera fase de aceptación y firma básica por enlace público.
 - La parte legal y fiscal mostrada en la UI no sustituye asesoramiento profesional.
 
 ## Verificación

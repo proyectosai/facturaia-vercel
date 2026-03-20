@@ -32,6 +32,7 @@ type BackupSummary = {
   clients: number;
   invoices: number;
   commercialDocuments: number;
+  documentSignatureRequests: number;
   expenses: number;
   aiUsageRows: number;
   messageConnections: number;
@@ -208,6 +209,7 @@ export function BackupCenter({
     { label: "Fichas CRM", value: summary.clients },
     { label: "Facturas", value: summary.invoices },
     { label: "Pre-facturación", value: summary.commercialDocuments },
+    { label: "Solicitudes firma", value: summary.documentSignatureRequests },
     { label: "Gastos", value: summary.expenses },
     { label: "Registros IA", value: summary.aiUsageRows },
     { label: "Conexiones", value: summary.messageConnections },
@@ -226,7 +228,7 @@ export function BackupCenter({
         </div>
       ) : null}
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-10">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-11">
         {stats.map((item) => (
           <Card key={item.label}>
             <CardContent className="space-y-2">
@@ -247,7 +249,7 @@ export function BackupCenter({
               <div>
                 <CardTitle>Exportar copia completa</CardTitle>
                 <CardDescription>
-                  Descarga un JSON con perfil, CRM, facturación, IA y mensajería del usuario autenticado.
+                  Descarga un JSON con perfil, CRM, firmas, facturación, IA y mensajería del usuario autenticado.
                 </CardDescription>
               </div>
             </div>

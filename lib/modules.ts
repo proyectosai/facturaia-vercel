@@ -244,8 +244,10 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
     title: "Firma documental",
     summary:
       "Aceptación o firma de propuestas y contratos con trazabilidad básica dentro del entorno privado.",
-    status: "next",
+    status: "partial",
     category: "documentos",
+    routeHref: "/firmas",
+    docsPath: "docs/modulos/FIRMA_DOCUMENTAL.md",
     requirements: [
       "Documentos persistentes",
       "Estados de aceptación",
@@ -263,7 +265,7 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
     title: "Conciliación bancaria",
     summary:
       "Importación de extractos para marcar facturas cobradas y ordenar movimientos.",
-    status: "planned",
+    status: "next",
     category: "finanzas",
     requirements: [
       "Importador CSV/OFX",
@@ -376,6 +378,11 @@ export function getModuleCatalog(): ModuleRuntimeState[] {
       configuredLabel = configured
         ? "Listo para centralizar fichas"
         : "Falta Supabase";
+    } else if (module.id === "document-signature") {
+      configured = hasSupabase() && Boolean(process.env.NEXT_PUBLIC_APP_URL);
+      configuredLabel = configured
+        ? "Listo para generar enlaces públicos"
+        : "Falta URL pública o Supabase";
     } else {
       configured = false;
       configuredLabel = "Pendiente de implementación";
