@@ -170,6 +170,26 @@ Funciones:
 - exportación a Word
 - plantillas listas para propuesta, presupuesto y contrato
 
+## 7.1. Memoria local y RAG propuestos
+
+Documento de referencia:
+
+- `docs/MEMORIA_LOCAL_LLM.md`
+
+Dirección recomendada:
+
+- LM Studio como motor local compatible con OpenAI
+- memoria factual separada de memoria semántica
+- parser documental local para PDFs e imágenes
+- índice vectorial local por usuario, cliente y ejercicio
+- resúmenes persistentes para reducir contexto y mejorar continuidad
+
+Objetivo:
+
+- responder preguntas sobre años de actividad sin depender de cloud
+- conservar trazabilidad documental
+- evitar que el LLM actúe como fuente única de verdad
+
 ## 8. CRM ligero
 
 Archivos clave:

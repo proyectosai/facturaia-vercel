@@ -125,6 +125,7 @@ Si buscas una guía clara antes de instalar nada:
 - [Estado real, módulo por módulo](./docs/ESTADO_REAL.md)
 - [QA / lectura ISO 25010](./docs/QA_ISO_25010.md)
 - [Plan de VeriFactu y firma digital](./docs/VERIFACTU_Y_FIRMA_DIGITAL.md)
+- [Memoria local para LLM y RAG](./docs/MEMORIA_LOCAL_LLM.md)
 
 ## Stack técnico
 
