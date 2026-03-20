@@ -26,6 +26,8 @@ Dar visibilidad operativa al estado económico de cada factura sin depender de h
 - actualiza el estado cuando un movimiento bancario conciliado se vincula a una factura
 - permite marcar una factura como cobrada manualmente
 - permite reabrir el seguimiento si el cobro se registró por error
+- permite enviar recordatorios de cobro por email
+- guarda `last_reminder_at` y `reminder_count`
 - refleja el estado en:
   - `/dashboard`
   - `/invoices`
@@ -77,14 +79,30 @@ Desde `/cobros` puedes:
 
 Esto sirve cuando el cobro no entra por conciliación bancaria o todavía no has importado el extracto.
 
+## Recordatorios de cobro
+
+Desde `/cobros` puedes enviar un recordatorio real por email.
+
+Comportamiento actual:
+
+- adjunta el PDF de la factura
+- usa IA local para redactar el mensaje si LM Studio está disponible
+- si la IA local falla o no está configurada, usa una plantilla interna
+- registra:
+  - último recordatorio enviado
+  - número total de recordatorios
+
+Esto permite ver desde la propia tarjeta si ya se ha insistido antes o no.
+
 ## Instalación
 
 1. aplica la migración `202603201900_add_invoice_collection_tracking.sql`
-2. reinicia la aplicación
-3. abre `/cobros`
-4. revisa el panel resumen
-5. emite una factura nueva con vencimiento
-6. concilia un ingreso en `/banca` o usa el marcado manual
+2. aplica la migración `202603201945_add_invoice_reminder_tracking.sql`
+3. reinicia la aplicación
+4. abre `/cobros`
+5. revisa el panel resumen
+6. emite una factura nueva con vencimiento
+7. concilia un ingreso en `/banca`, usa el marcado manual o envía un recordatorio
 
 ## Limitaciones actuales
 

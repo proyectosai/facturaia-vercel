@@ -34,6 +34,8 @@ El formato está inspirado en Keep a Changelog y el versionado irá madurando co
 - Primera entrega del centro de cobros y vencimientos.
 - Nueva ruta `/cobros`.
 - Migración `202603201900_add_invoice_collection_tracking.sql`.
+- Seguimiento de recordatorios de cobro con contador y última fecha enviada.
+- Migración `202603201945_add_invoice_reminder_tracking.sql`.
 - Primera entrega del módulo Facturae / VeriFactu con panel propio y exportación XML Facturae 3.2.2 sin firma.
 - Nuevas rutas `/facturae` y `app/api/invoices/[invoiceId]/facturae/route.ts`.
 
@@ -53,6 +55,7 @@ El formato está inspirado en Keep a Changelog y el versionado irá madurando co
 - El catálogo `/modules` pasa a reflejar Facturae / VeriFactu como módulo parcial ya operativo.
 - Dashboard, historial y CRM muestran ahora saldo pendiente, facturas vencidas y estado de cobro.
 - Los PDFs y la vista pública de factura muestran la fecha de vencimiento.
+- `/cobros` permite enviar recordatorios de pago por email con IA local como apoyo opcional y fallback local.
 
 ## [0.1.0] - 2026-03-19
 

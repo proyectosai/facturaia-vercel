@@ -5,12 +5,16 @@ import { redirect } from "next/navigation";
 import { z, ZodError } from "zod";
 
 import { requireFeatureAccess } from "@/lib/billing";
+import { generateBusinessDocument } from "@/lib/ai";
 import { requireUser } from "@/lib/auth";
 import { isDemoMode } from "@/lib/demo";
 import { getInvoicePdfFileName } from "@/lib/invoice-files";
 import { syncInvoicePaymentStatusFromBankMatches } from "@/lib/collections-server";
 import {
   buildInvoiceEmailHtml,
+  buildInvoiceReminderAiBrief,
+  buildInvoiceReminderEmailHtml,
+  buildInvoiceReminderEmailText,
   calculateInvoice,
   getLogoStoragePath,
   invoiceFormSchema,
@@ -18,9 +22,10 @@ import {
   renderInvoicePdfBuffer,
 } from "@/lib/invoices";
 import { sendTransactionalEmail } from "@/lib/mail";
+import { hasLocalAiEnv } from "@/lib/env";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { InvoiceRecord } from "@/lib/types";
-import { formatInvoiceNumber } from "@/lib/utils";
+import { formatCurrency, formatInvoiceNumber, toNumber } from "@/lib/utils";
 
 function getFirstErrorMessage(error: unknown) {
   if (error instanceof ZodError) {
@@ -271,5 +276,102 @@ export async function sendInvoiceEmailAction(formData: FormData) {
     redirect(`/invoices?emailed=${invoiceId}`);
   } catch (error) {
     redirect(`/invoices?error=${encodeURIComponent(getFirstErrorMessage(error))}`);
+  }
+}
+
+const sendInvoiceReminderSchema = z.object({
+  invoiceId: z.string().uuid("Factura no válida."),
+});
+
+export async function sendInvoiceReminderAction(formData: FormData) {
+  try {
+    if (isDemoMode()) {
+      redirect(
+        "/cobros?error=Modo%20demo:%20el%20env%C3%ADo%20de%20recordatorios%20est%C3%A1%20desactivado.",
+      );
+    }
+
+    const user = await requireUser();
+    const payload = sendInvoiceReminderSchema.parse({
+      invoiceId: String(formData.get("invoiceId") ?? ""),
+    });
+    const supabase = await createServerSupabaseClient();
+    const { data: invoice, error } = await supabase
+      .from("invoices")
+      .select("*")
+      .eq("id", payload.invoiceId)
+      .eq("user_id", user.id)
+      .single();
+
+    if (error || !invoice) {
+      throw new Error("No se ha podido cargar la factura para enviar el recordatorio.");
+    }
+
+    const typedInvoice = invoice as InvoiceRecord;
+
+    if (typedInvoice.payment_status === "paid") {
+      throw new Error("La factura ya consta como cobrada y no necesita recordatorio.");
+    }
+
+    const amountOutstanding = Math.max(
+      0,
+      toNumber(typedInvoice.grand_total) - toNumber(typedInvoice.amount_paid),
+    );
+
+    if (amountOutstanding <= 0) {
+      throw new Error("La factura ya no tiene saldo pendiente.");
+    }
+
+    let generatedReminderText: string | undefined;
+
+    if (hasLocalAiEnv()) {
+      try {
+        const generated = await generateBusinessDocument({
+          documentType: "payment_reminder",
+          brief: buildInvoiceReminderAiBrief(typedInvoice),
+          issuerName: typedInvoice.issuer_name,
+          clientName: typedInvoice.client_name,
+        });
+        generatedReminderText = generated.body;
+      } catch {
+        generatedReminderText = undefined;
+      }
+    }
+
+    const pdfBuffer = await renderInvoicePdfBuffer(typedInvoice);
+    await sendTransactionalEmail({
+      to: [typedInvoice.client_email],
+      subject: `Recordatorio de pago ${formatInvoiceNumber(typedInvoice.invoice_number)} · ${formatCurrency(amountOutstanding)} pendientes`,
+      html: buildInvoiceReminderEmailHtml(typedInvoice, generatedReminderText),
+      text: buildInvoiceReminderEmailText(typedInvoice, generatedReminderText),
+      replyTo: user.email ?? undefined,
+      attachments: [
+        {
+          filename: getInvoicePdfFileName(typedInvoice.invoice_number),
+          content: pdfBuffer,
+        },
+      ],
+    });
+
+    const { error: updateError } = await supabase
+      .from("invoices")
+      .update({
+        last_reminder_at: new Date().toISOString(),
+        reminder_count: (typedInvoice.reminder_count ?? 0) + 1,
+      })
+      .eq("id", payload.invoiceId)
+      .eq("user_id", user.id);
+
+    if (updateError) {
+      throw new Error("El recordatorio se envió, pero no se pudo registrar su seguimiento.");
+    }
+
+    revalidatePath("/dashboard");
+    revalidatePath("/invoices");
+    revalidatePath("/cobros");
+    revalidatePath("/clientes");
+    redirect(`/cobros?reminded=${payload.invoiceId}`);
+  } catch (error) {
+    redirect(`/cobros?error=${encodeURIComponent(getFirstErrorMessage(error))}`);
   }
 }

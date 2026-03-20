@@ -129,6 +129,8 @@ export type InvoiceRecord = {
   amount_paid: NumericLike;
   payment_status: InvoicePaymentStatus;
   paid_at: string | null;
+  last_reminder_at: string | null;
+  reminder_count: number;
   collection_notes: string | null;
   vat_breakdown: InvoiceVatBreakdown[];
   created_at: string;

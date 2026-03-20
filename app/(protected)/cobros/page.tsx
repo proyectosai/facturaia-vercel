@@ -3,6 +3,7 @@ import {
   ArrowRight,
   CircleDashed,
   Landmark,
+  Mail,
   ReceiptText,
   RotateCcw,
   Wallet,
@@ -15,7 +16,10 @@ import {
   getInvoiceCollectionSummary,
   invoiceCollectionStateLabels,
 } from "@/lib/collections";
-import { updateInvoicePaymentStateAction } from "@/lib/actions/invoices";
+import {
+  sendInvoiceReminderAction,
+  updateInvoicePaymentStateAction,
+} from "@/lib/actions/invoices";
 import { demoInvoices, isDemoMode } from "@/lib/demo";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { InvoiceCollectionState } from "@/lib/collections";
@@ -120,6 +124,7 @@ export default async function CobrosPage({
     q?: string | string[];
     state?: string | string[];
     updated?: string | string[];
+    reminded?: string | string[];
     error?: string | string[];
   }>;
 }) {
@@ -129,6 +134,7 @@ export default async function CobrosPage({
   const q = getSingleSearchParam(params.q);
   const state = getSingleSearchParam(params.state, "all");
   const updated = getSingleSearchParam(params.updated);
+  const reminded = getSingleSearchParam(params.reminded);
   const error = getSingleSearchParam(params.error);
   const supabase = demoMode ? null : await createServerSupabaseClient();
   const collectionFilter: CollectionFilter =
@@ -190,6 +196,10 @@ export default async function CobrosPage({
       <RouteToast
         type="success"
         message={updated ? "Estado de cobro actualizado correctamente." : null}
+      />
+      <RouteToast
+        type="success"
+        message={reminded ? "Recordatorio de cobro enviado correctamente." : null}
       />
       <RouteToast
         type="error"
@@ -382,6 +392,12 @@ export default async function CobrosPage({
                         <p>Cobrado: {formatCurrency(Number(invoice.amount_paid))}</p>
                         <p>Pendiente: {formatCurrency(amountOutstanding)}</p>
                         <p>
+                          Recordatorios: {invoice.reminder_count}
+                          {invoice.last_reminder_at
+                            ? ` · último ${formatDateShort(invoice.last_reminder_at)}`
+                            : ""}
+                        </p>
+                        <p>
                           {invoice.paid_at
                             ? `Último cierre ${formatDateLong(invoice.paid_at)}`
                             : "Todavía no consta como cobrada"}
@@ -403,6 +419,19 @@ export default async function CobrosPage({
                         <ArrowRight className="h-4 w-4" />
                       </Link>
                     </Button>
+                    {collectionState !== "paid" ? (
+                      <form action={demoMode ? undefined : sendInvoiceReminderAction}>
+                        <input type="hidden" name="invoiceId" value={invoice.id} />
+                        <SubmitButton
+                          variant="outline"
+                          pendingLabel="Enviando recordatorio..."
+                          disabled={demoMode}
+                        >
+                          <Mail className="h-4 w-4" />
+                          Enviar recordatorio
+                        </SubmitButton>
+                      </form>
+                    ) : null}
                     <form action={demoMode ? undefined : updateInvoicePaymentStateAction}>
                       <input type="hidden" name="invoiceId" value={invoice.id} />
                       <input

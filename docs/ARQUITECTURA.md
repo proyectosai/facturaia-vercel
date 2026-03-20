@@ -260,6 +260,7 @@ Funciones:
 - persistir vencimiento y estado económico en cada factura
 - mostrar saldo pendiente y facturas vencidas en dashboard, historial y CRM
 - marcar cobros manualmente
+- enviar recordatorios de cobro por email con apoyo opcional de IA local
 - recalcular cobros al conciliar ingresos bancarios
 - trasladar la fecha de vencimiento a PDF y factura pública
 

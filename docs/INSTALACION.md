@@ -450,15 +450,17 @@ Qué hace ahora:
 - calcula estados `pendiente`, `parcial`, `cobrada` y `vencida`
 - sincroniza cobros cuando una conciliación bancaria se vincula a una factura
 - permite marcar cobros manualmente desde la propia app
+- permite enviar recordatorios de cobro por email y registrar el último envío
 
 Pasos:
 
 1. aplica la migración `202603201900_add_invoice_collection_tracking.sql`
-2. reinicia FacturaIA
-3. abre `/cobros`
-4. emite una factura nueva con fecha de vencimiento
-5. concilia un ingreso en `/banca` o marca la factura como cobrada manualmente
-6. comprueba el reflejo del estado también en `/dashboard`, `/invoices` y `/clientes`
+2. aplica la migración `202603201945_add_invoice_reminder_tracking.sql`
+3. reinicia FacturaIA
+4. abre `/cobros`
+5. emite una factura nueva con fecha de vencimiento
+6. concilia un ingreso en `/banca`, marca la factura como cobrada o envía un recordatorio
+7. comprueba el reflejo del estado también en `/dashboard`, `/invoices` y `/clientes`
 
 Guía completa:
 

@@ -568,3 +568,117 @@ export function buildInvoiceEmailHtml(invoiceRecord: InvoiceRecord) {
     </div>
   `;
 }
+
+function getCollectionTimingCopy(invoice: NormalizedInvoiceRecord) {
+  const today = new Date();
+  const dueDate = new Date(`${invoice.due_date}T00:00:00.000Z`);
+  const diffDays = Math.round(
+    (dueDate.getTime() - Date.UTC(
+      today.getUTCFullYear(),
+      today.getUTCMonth(),
+      today.getUTCDate(),
+      0,
+      0,
+      0,
+      0,
+    )) /
+      (1000 * 60 * 60 * 24),
+  );
+
+  if (diffDays < 0) {
+    return `La factura está vencida desde hace ${Math.abs(diffDays)} día${Math.abs(diffDays) === 1 ? "" : "s"}.`;
+  }
+
+  if (diffDays === 0) {
+    return "La factura vence hoy.";
+  }
+
+  return `La factura vence en ${diffDays} día${diffDays === 1 ? "" : "s"}.`;
+}
+
+export function buildInvoiceReminderAiBrief(invoiceRecord: InvoiceRecord) {
+  const invoice = normaliseInvoiceRecord(invoiceRecord);
+  const outstanding = roundCurrency(invoice.grand_total - toNumber(invoice.amount_paid));
+
+  return [
+    `Factura: ${formatInvoiceNumber(invoice.invoice_number)}`,
+    `Fecha de emisión: ${invoice.issue_date}`,
+    `Fecha de vencimiento: ${invoice.due_date}`,
+    `Importe total: ${formatCurrency(invoice.grand_total)}`,
+    `Importe cobrado: ${formatCurrency(toNumber(invoice.amount_paid))}`,
+    `Importe pendiente: ${formatCurrency(outstanding)}`,
+    `Cliente: ${invoice.client_name}`,
+    `Contexto: ${getCollectionTimingCopy(invoice)}`,
+    invoice.collection_notes
+      ? `Nota interna: ${invoice.collection_notes}`
+      : null,
+    "Pide confirmación de pago o previsión realista sin sonar agresivo.",
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+export function buildInvoiceReminderEmailText(
+  invoiceRecord: InvoiceRecord,
+  generatedBody?: string,
+) {
+  const invoice = normaliseInvoiceRecord(invoiceRecord);
+  const outstanding = roundCurrency(invoice.grand_total - toNumber(invoice.amount_paid));
+
+  if (generatedBody?.trim()) {
+    return generatedBody.trim();
+  }
+
+  return [
+    `Hola ${invoice.client_name},`,
+    "",
+    `Te escribimos para recordarte la factura ${formatInvoiceNumber(invoice.invoice_number)}, emitida el ${formatDateLong(invoice.issue_date)} y con vencimiento previsto el ${formatDateLong(invoice.due_date)}.`,
+    `Actualmente queda pendiente ${formatCurrency(outstanding)}.`,
+    "",
+    "Si el pago ya está en curso, puedes ignorar este mensaje. Si necesitas que revisemos cualquier dato o quieres confirmarnos una fecha estimada, responde a este correo y lo vemos contigo.",
+    "",
+    "Gracias.",
+  ].join("\n");
+}
+
+export function buildInvoiceReminderEmailHtml(
+  invoiceRecord: InvoiceRecord,
+  generatedBody?: string,
+) {
+  const invoice = normaliseInvoiceRecord(invoiceRecord);
+  const outstanding = roundCurrency(invoice.grand_total - toNumber(invoice.amount_paid));
+  const body = buildInvoiceReminderEmailText(invoiceRecord, generatedBody)
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  return `
+    <div style="font-family: Arial, sans-serif; background: #f6f1e8; padding: 24px; color: #17323a;">
+      <div style="max-width: 620px; margin: 0 auto; background: #ffffff; border-radius: 20px; padding: 32px;">
+        <p style="margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.12em; color: #6c7b80;">
+          Recordatorio de cobro
+        </p>
+        <h1 style="margin: 0 0 10px; font-size: 28px;">
+          ${formatInvoiceNumber(invoice.invoice_number)}
+        </h1>
+        <p style="margin: 0 0 18px; line-height: 1.6; color: #5f6c72;">
+          Emitida el ${formatDateLong(invoice.issue_date)} · vencimiento ${formatDateLong(invoice.due_date)} · pendiente ${formatCurrency(outstanding)}
+        </p>
+        <div style="margin: 0 0 22px; padding: 16px 18px; background: #f5efe6; border-radius: 16px;">
+          ${body
+            .map(
+              (line) =>
+                `<p style="margin: 0 0 12px; line-height: 1.7;">${line}</p>`,
+            )
+            .join("")}
+        </div>
+        <p style="margin: 0; line-height: 1.6;">
+          También puedes revisar la factura aquí:
+          <a href="${buildPublicInvoiceUrl(invoice.public_id)}">
+            ${buildPublicInvoiceUrl(invoice.public_id)}
+          </a>
+        </p>
+      </div>
+    </div>
+  `;
+}
