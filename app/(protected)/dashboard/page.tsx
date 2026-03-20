@@ -19,8 +19,9 @@ import {
   invoiceCollectionStateLabels,
   isInvoiceOverdue,
 } from "@/lib/collections";
-import { demoInvoices, isDemoMode } from "@/lib/demo";
+import { demoInvoices, isDemoMode, isLocalFileMode } from "@/lib/demo";
 import { getCurrentAppUser, getCurrentProfile, requireUser } from "@/lib/auth";
+import { listLocalInvoicesForUser } from "@/lib/local-core";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { InvoiceRecord } from "@/lib/types";
 import {
@@ -52,7 +53,8 @@ export default async function DashboardPage() {
   const appUser = await getCurrentAppUser();
   const profile = await getCurrentProfile();
   const demoMode = isDemoMode();
-  const supabase = demoMode ? null : await createServerSupabaseClient();
+  const localFileMode = isLocalFileMode();
+  const supabase = demoMode || localFileMode ? null : await createServerSupabaseClient();
   const usage = await getCurrentUsageSnapshot(appUser);
   const aiUsage = await getCurrentAiUsageSnapshot(appUser);
   const profileChecks = [
@@ -86,7 +88,15 @@ export default async function DashboardPage() {
             .slice(0, 5),
         },
       ]
-    : await Promise.all([
+    : localFileMode
+      ? await (async () => {
+          const invoices = await listLocalInvoicesForUser(user.id);
+          return [
+            { data: invoices },
+            { data: invoices.slice(0, 5) },
+          ];
+        })()
+      : await Promise.all([
         supabase!
           .from("invoices")
           .select("*")

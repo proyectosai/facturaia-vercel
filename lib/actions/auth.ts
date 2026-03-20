@@ -1,12 +1,20 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { ZodError, z } from "zod";
 
 import { requireUser } from "@/lib/auth";
-import { isDemoMode, isLocalBootstrapEnabled, isLocalMode } from "@/lib/demo";
+import { isDemoMode, isLocalBootstrapEnabled, isLocalFileMode, isLocalMode } from "@/lib/demo";
 import { getLogoStoragePath } from "@/lib/invoices";
+import {
+  ensureInitialLocalUser,
+  fileToDataUrl,
+  getLocalSessionCookieName,
+  saveLocalProfile,
+  signLocalSessionToken,
+} from "@/lib/local-core";
 import { assertAllowedUpload, uploadRules } from "@/lib/security";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
@@ -50,16 +58,6 @@ export async function signInLocalPasswordAction(formData: FormData) {
     redirect("/login?error=El%20acceso%20local%20no%20est%C3%A1%20habilitado.");
   }
 
-  if (
-    !process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ||
-    !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() ||
-    !process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()
-  ) {
-    redirect(
-      "/login?error=Faltan%20variables%20de%20backend%20local%20para%20usar%20este%20modo.",
-    );
-  }
-
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
 
@@ -69,6 +67,42 @@ export async function signInLocalPasswordAction(formData: FormData) {
 
   if (password.length < 8) {
     redirect("/login?error=La%20contrase%C3%B1a%20debe%20tener%20al%20menos%208%20caracteres.");
+  }
+
+  if (isLocalFileMode()) {
+    if (isLocalBootstrapEnabled()) {
+      await ensureInitialLocalUser(email, password);
+    }
+
+    const { authenticateLocalUser } = await import("@/lib/local-core");
+    const user = await authenticateLocalUser(email, password);
+
+    if (!user) {
+      redirect(
+        "/login?error=No%20se%20ha%20podido%20iniciar%20sesi%C3%B3n%20en%20modo%20local.%20Revisa%20las%20credenciales.",
+      );
+    }
+
+    const cookieStore = await cookies();
+    cookieStore.set(getLocalSessionCookieName(), signLocalSessionToken(user.id), {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 30,
+    });
+
+    redirect("/dashboard");
+  }
+
+  if (
+    !process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ||
+    !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() ||
+    !process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()
+  ) {
+    redirect(
+      "/login?error=Faltan%20variables%20de%20backend%20local%20para%20usar%20este%20modo.",
+    );
   }
 
   if (isLocalBootstrapEnabled()) {
@@ -123,6 +157,12 @@ export async function signOutAction() {
     redirect("/");
   }
 
+  if (isLocalFileMode()) {
+    const cookieStore = await cookies();
+    cookieStore.delete(getLocalSessionCookieName());
+    redirect("/");
+  }
+
   const supabase = await createServerSupabaseClient();
 
   await supabase.auth.signOut();
@@ -156,7 +196,6 @@ export async function updateProfileAction(formData: FormData) {
     }
 
     const user = await requireUser();
-    const supabase = await createServerSupabaseClient();
     const payload = profileSchema.parse({
       fullName: String(formData.get("fullName") ?? ""),
       nif: String(formData.get("nif") ?? ""),
@@ -170,6 +209,30 @@ export async function updateProfileAction(formData: FormData) {
 
     let logoPath = existingLogoPath;
     let logoUrl = existingLogoUrl;
+
+    if (isLocalFileMode()) {
+      if (logoFile instanceof File && logoFile.size > 0) {
+        assertAllowedUpload(logoFile, uploadRules.logo);
+        logoUrl = await fileToDataUrl(logoFile);
+        logoPath = null;
+      }
+
+      await saveLocalProfile({
+        userId: user.id,
+        email: user.email ?? "",
+        fullName: payload.fullName,
+        nif: payload.nif,
+        address: payload.address,
+        logoUrl,
+      });
+
+      revalidatePath("/dashboard");
+      revalidatePath("/new-invoice");
+      revalidatePath("/profile");
+      redirect("/profile?updated=1");
+    }
+
+    const supabase = await createServerSupabaseClient();
 
     if (logoFile instanceof File && logoFile.size > 0) {
       assertAllowedUpload(logoFile, uploadRules.logo);

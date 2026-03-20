@@ -2,7 +2,8 @@ import Link from "next/link";
 import { Download, ExternalLink } from "lucide-react";
 import { notFound } from "next/navigation";
 
-import { getDemoInvoiceByPublicId, isDemoMode } from "@/lib/demo";
+import { getDemoInvoiceByPublicId, isDemoMode, isLocalFileMode } from "@/lib/demo";
+import { getLocalInvoiceByPublicId } from "@/lib/local-core";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import type { InvoiceRecord } from "@/lib/types";
 import {
@@ -27,6 +28,8 @@ export default async function PublicInvoicePage({
   const { publicId } = await params;
   const invoice = isDemoMode()
     ? getDemoInvoiceByPublicId(publicId)
+    : isLocalFileMode()
+      ? await getLocalInvoiceByPublicId(publicId)
     : (
         await createAdminSupabaseClient()
           .from("invoices")

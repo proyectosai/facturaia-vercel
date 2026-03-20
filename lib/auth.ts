@@ -1,5 +1,6 @@
 import { cache } from "react";
 import type { User } from "@supabase/supabase-js";
+import { cookies } from "next/headers";
 
 import { redirect } from "next/navigation";
 
@@ -7,7 +8,14 @@ import {
   demoAppUser,
   demoProfile,
   isDemoMode,
+  isLocalFileMode,
 } from "@/lib/demo";
+import {
+  getLocalAppUserById,
+  getLocalProfile,
+  getLocalSessionCookieName,
+  verifyLocalSessionToken,
+} from "@/lib/local-core";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { AppUserRecord, Profile } from "@/lib/types";
 
@@ -16,6 +24,27 @@ export const getOptionalUser = cache(async () => {
     return {
       id: demoAppUser.id,
       email: demoAppUser.email,
+    } as User;
+  }
+
+  if (isLocalFileMode()) {
+    const cookieStore = await cookies();
+    const token = cookieStore.get(getLocalSessionCookieName())?.value;
+    const userId = verifyLocalSessionToken(token);
+
+    if (!userId) {
+      return null;
+    }
+
+    const user = await getLocalAppUserById(userId);
+
+    if (!user) {
+      return null;
+    }
+
+    return {
+      id: user.id,
+      email: user.email,
     } as User;
   }
 
@@ -65,6 +94,11 @@ export const getCurrentProfile = cache(async (): Promise<Profile> => {
   }
 
   const user = await requireUser();
+
+  if (isLocalFileMode()) {
+    return getLocalProfile(user.id, user.email ?? "");
+  }
+
   const supabase = await createServerSupabaseClient();
 
   const { data: existingProfile } = await supabase
@@ -99,6 +133,17 @@ export const getCurrentAppUser = cache(async (): Promise<AppUserRecord> => {
   }
 
   const user = await requireUser();
+
+  if (isLocalFileMode()) {
+    const localUser = await getLocalAppUserById(user.id);
+
+    if (!localUser) {
+      throw new Error("No se pudo preparar el registro local del usuario.");
+    }
+
+    return localUser;
+  }
+
   const supabase = await createServerSupabaseClient();
 
   const { data: existingUser } = await supabase

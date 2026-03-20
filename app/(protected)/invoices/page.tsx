@@ -7,8 +7,9 @@ import {
   getInvoiceCollectionSummary,
   isInvoiceOverdue,
 } from "@/lib/collections";
-import { demoInvoices, isDemoMode } from "@/lib/demo";
+import { demoInvoices, isDemoMode, isLocalFileMode } from "@/lib/demo";
 import { buildPublicInvoiceUrl } from "@/lib/invoice-files";
+import { listLocalInvoicesForUser } from "@/lib/local-core";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { InvoiceMonthGroup, InvoiceRecord } from "@/lib/types";
 import { formatCurrency, formatDateShort } from "@/lib/utils";
@@ -157,7 +158,8 @@ export default async function InvoicesPage({
 }) {
   const user = await requireUser();
   const demoMode = isDemoMode();
-  const supabase = demoMode ? null : await createServerSupabaseClient();
+  const localFileMode = isLocalFileMode();
+  const supabase = demoMode || localFileMode ? null : await createServerSupabaseClient();
   const { q = "", from = "", to = "", created, emailed, error } =
     await searchParams;
 
@@ -190,6 +192,31 @@ export default async function InvoicesPage({
     }
 
     typedInvoices.sort((a, b) => b.issue_date.localeCompare(a.issue_date));
+  } else if (localFileMode) {
+    typedInvoices = await listLocalInvoicesForUser(user.id);
+
+    if (q) {
+      const safeQuery = q.replaceAll(",", " ").trim().toLowerCase();
+      typedInvoices = typedInvoices.filter((invoice) => {
+        const matchesText =
+          invoice.client_name.toLowerCase().includes(safeQuery) ||
+          invoice.client_email.toLowerCase().includes(safeQuery) ||
+          invoice.client_nif.toLowerCase().includes(safeQuery);
+        const matchesNumber =
+          !Number.isNaN(Number(safeQuery)) &&
+          invoice.invoice_number === Number(safeQuery);
+
+        return matchesText || matchesNumber;
+      });
+    }
+
+    if (from) {
+      typedInvoices = typedInvoices.filter((invoice) => invoice.issue_date >= from);
+    }
+
+    if (to) {
+      typedInvoices = typedInvoices.filter((invoice) => invoice.issue_date <= to);
+    }
   } else {
     let query = supabase!
       .from("invoices")

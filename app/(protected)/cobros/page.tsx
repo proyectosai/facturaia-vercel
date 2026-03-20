@@ -23,7 +23,11 @@ import {
   sendInvoiceReminderAction,
   updateInvoicePaymentStateAction,
 } from "@/lib/actions/invoices";
-import { demoInvoiceReminders, demoInvoices, isDemoMode } from "@/lib/demo";
+import { demoInvoiceReminders, demoInvoices, isDemoMode, isLocalFileMode } from "@/lib/demo";
+import {
+  listLocalInvoiceRemindersForUser,
+  listLocalInvoicesForUser,
+} from "@/lib/local-core";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { InvoiceCollectionState } from "@/lib/collections";
 import type { InvoiceRecord, InvoiceReminderRecord } from "@/lib/types";
@@ -153,6 +157,7 @@ export default async function CobrosPage({
 }) {
   const user = await requireUser();
   const demoMode = isDemoMode();
+  const localFileMode = isLocalFileMode();
   const params = await searchParams;
   const q = getSingleSearchParam(params.q);
   const state = getSingleSearchParam(params.state, "all");
@@ -160,7 +165,7 @@ export default async function CobrosPage({
   const reminded = getSingleSearchParam(params.reminded);
   const batchMessage = getSingleSearchParam(params.batchMessage);
   const error = getSingleSearchParam(params.error);
-  const supabase = demoMode ? null : await createServerSupabaseClient();
+  const supabase = demoMode || localFileMode ? null : await createServerSupabaseClient();
   const collectionFilter: CollectionFilter =
     state === "pending" ||
     state === "partial" ||
@@ -171,6 +176,8 @@ export default async function CobrosPage({
 
   const typedInvoices = demoMode
     ? [...demoInvoices]
+    : localFileMode
+      ? await listLocalInvoicesForUser(user.id)
     : (((await supabase!
         .from("invoices")
         .select("*")
@@ -212,6 +219,8 @@ export default async function CobrosPage({
     ? [...demoInvoiceReminders]
         .sort((left, right) => right.sent_at.localeCompare(left.sent_at))
         .slice(0, 8)
+    : localFileMode
+      ? (await listLocalInvoiceRemindersForUser(user.id)).slice(0, 8)
     : (((await supabase!
         .from("invoice_reminders")
         .select("*")

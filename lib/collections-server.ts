@@ -1,6 +1,6 @@
 import "server-only";
 
-import { isDemoMode } from "@/lib/demo";
+import { isDemoMode, isLocalFileMode } from "@/lib/demo";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { InvoicePaymentStatus, InvoiceRecord } from "@/lib/types";
 import { roundCurrency, toNumber } from "@/lib/utils";
@@ -32,7 +32,7 @@ export async function syncInvoicePaymentStatusFromBankMatches(
   userId: string,
   invoiceIds: string[],
 ) {
-  if (isDemoMode()) {
+  if (isDemoMode() || isLocalFileMode()) {
     return;
   }
 

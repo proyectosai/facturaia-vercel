@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 
-import { getDemoInvoiceByPublicId, isDemoMode } from "@/lib/demo";
+import { getDemoInvoiceByPublicId, isDemoMode, isLocalFileMode } from "@/lib/demo";
 import { getInvoicePdfFileName } from "@/lib/invoice-files";
 import { renderInvoicePdfBuffer } from "@/lib/invoices";
+import { getLocalInvoiceByPublicId } from "@/lib/local-core";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import type { InvoiceRecord } from "@/lib/types";
 
@@ -16,6 +17,23 @@ export async function GET(
 
   if (isDemoMode()) {
     const invoice = getDemoInvoiceByPublicId(publicId);
+
+    if (!invoice) {
+      return NextResponse.json({ error: "Factura no encontrada." }, { status: 404 });
+    }
+
+    const pdfBuffer = await renderInvoicePdfBuffer(invoice);
+
+    return new NextResponse(new Uint8Array(pdfBuffer), {
+      headers: {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `inline; filename="${getInvoicePdfFileName(invoice.invoice_number)}"`,
+      },
+    });
+  }
+
+  if (isLocalFileMode()) {
+    const invoice = await getLocalInvoiceByPublicId(publicId);
 
     if (!invoice) {
       return NextResponse.json({ error: "Factura no encontrada." }, { status: 404 });

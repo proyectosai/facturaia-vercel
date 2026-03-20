@@ -11,7 +11,7 @@ import {
   type InvoiceReminderBatchKey,
   matchesInvoiceReminderBatch,
 } from "@/lib/collections";
-import { isDemoMode } from "@/lib/demo";
+import { isDemoMode, isLocalFileMode } from "@/lib/demo";
 import { getInvoicePdfFileName } from "@/lib/invoice-files";
 import { syncInvoicePaymentStatusFromBankMatches } from "@/lib/collections-server";
 import {
@@ -20,11 +20,20 @@ import {
   buildInvoiceReminderEmailHtml,
   buildInvoiceReminderEmailText,
   calculateInvoice,
-  getLogoStoragePath,
   invoiceFormSchema,
+  getLogoStoragePath,
   parseInvoiceLines,
   renderInvoicePdfBuffer,
 } from "@/lib/invoices";
+import {
+  createLocalInvoiceRecord,
+  fileToDataUrl,
+  getLocalInvoiceById,
+  listLocalInvoicesForUser,
+  recordLocalInvoiceReminder,
+  saveLocalProfile,
+  updateLocalInvoicePaymentState,
+} from "@/lib/local-core";
 import { sendTransactionalEmail } from "@/lib/mail";
 import { hasLocalAiEnv } from "@/lib/env";
 import { assertAllowedUpload, uploadRules } from "@/lib/security";
@@ -44,18 +53,12 @@ function getFirstErrorMessage(error: unknown) {
   return "Ha ocurrido un error inesperado.";
 }
 
-async function sendReminderForInvoice({
+async function deliverInvoiceReminderEmail({
   invoice,
   userEmail,
-  supabase,
-  triggerMode,
-  batchKey,
 }: {
   invoice: InvoiceRecord;
   userEmail: string | null | undefined;
-  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>;
-  triggerMode: "manual" | "batch";
-  batchKey?: InvoiceReminderBatchKey | null;
 }) {
   if (invoice.payment_status === "paid") {
     throw new Error("La factura ya consta como cobrada y no necesita recordatorio.");
@@ -102,6 +105,27 @@ async function sendReminderForInvoice({
     ],
   });
 
+  return subject;
+}
+
+async function sendReminderForInvoice({
+  invoice,
+  userEmail,
+  supabase,
+  triggerMode,
+  batchKey,
+}: {
+  invoice: InvoiceRecord;
+  userEmail: string | null | undefined;
+  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>;
+  triggerMode: "manual" | "batch";
+  batchKey?: InvoiceReminderBatchKey | null;
+}) {
+  const subject = await deliverInvoiceReminderEmail({
+    invoice,
+    userEmail,
+  });
+
   const { error: updateError } = await supabase
     .from("invoices")
     .update({
@@ -146,7 +170,6 @@ export async function createInvoiceAction(formData: FormData) {
 
     const user = await requireUser();
     await requireFeatureAccess("create_invoices");
-    const supabase = await createServerSupabaseClient();
     const payload = invoiceFormSchema.parse({
       issuerName: String(formData.get("issuerName") ?? ""),
       issuerNif: String(formData.get("issuerNif") ?? ""),
@@ -169,6 +192,43 @@ export async function createInvoiceAction(formData: FormData) {
 
     let issuerLogoPath = existingLogoPath;
     let issuerLogoUrl = existingLogoUrl;
+
+    if (isLocalFileMode()) {
+      if (logoFile instanceof File && logoFile.size > 0) {
+        assertAllowedUpload(logoFile, uploadRules.logo);
+        issuerLogoUrl = await fileToDataUrl(logoFile);
+        issuerLogoPath = null;
+      }
+
+      await saveLocalProfile({
+        userId: user.id,
+        email: user.email ?? "",
+        fullName: payload.issuerName,
+        nif: payload.issuerNif,
+        address: payload.issuerAddress,
+        logoUrl: issuerLogoUrl,
+      });
+
+      const invoice = await createLocalInvoiceRecord({
+        userId: user.id,
+        payload,
+        lineItems,
+        totals,
+        issuerLogoUrl,
+      });
+
+      revalidatePath("/dashboard");
+      revalidatePath("/new-invoice");
+      revalidatePath("/invoices");
+      revalidatePath("/profile");
+      revalidatePath("/cobros");
+      revalidatePath("/clientes");
+      revalidatePath(`/factura/${invoice.public_id}`);
+
+      redirect(`/invoices?created=${invoice.id}`);
+    }
+
+    const supabase = await createServerSupabaseClient();
 
     if (logoFile instanceof File && logoFile.size > 0) {
       assertAllowedUpload(logoFile, uploadRules.logo);
@@ -273,6 +333,26 @@ export async function updateInvoicePaymentStateAction(formData: FormData) {
       invoiceId: String(formData.get("invoiceId") ?? ""),
       actionKind: String(formData.get("actionKind") ?? ""),
     });
+
+    if (isLocalFileMode()) {
+      const invoice = await updateLocalInvoicePaymentState(
+        user.id,
+        payload.invoiceId,
+        payload.actionKind,
+      );
+
+      if (!invoice) {
+        throw new Error("No se ha podido cargar la factura.");
+      }
+
+      revalidatePath("/dashboard");
+      revalidatePath("/invoices");
+      revalidatePath("/cobros");
+      revalidatePath("/clientes");
+      revalidatePath("/banca");
+      redirect("/cobros?updated=1");
+    }
+
     const supabase = await createServerSupabaseClient();
     const { data: invoice, error: invoiceError } = await supabase
       .from("invoices")
@@ -338,11 +418,36 @@ export async function sendInvoiceEmailAction(formData: FormData) {
 
     const user = await requireUser();
     const invoiceId = String(formData.get("invoiceId") ?? "").trim();
-    const supabase = await createServerSupabaseClient();
 
     if (!invoiceId) {
       throw new Error("Factura no encontrada.");
     }
+
+    if (isLocalFileMode()) {
+      const invoice = await getLocalInvoiceById(user.id, invoiceId);
+
+      if (!invoice) {
+        throw new Error("No se ha podido cargar la factura.");
+      }
+
+      const pdfBuffer = await renderInvoicePdfBuffer(invoice);
+      await sendTransactionalEmail({
+        to: [invoice.client_email],
+        subject: `Tu factura ${formatInvoiceNumber(invoice.invoice_number)}`,
+        html: buildInvoiceEmailHtml(invoice),
+        attachments: [
+          {
+            filename: getInvoicePdfFileName(invoice.invoice_number),
+            content: pdfBuffer,
+          },
+        ],
+      });
+
+      revalidatePath("/invoices");
+      redirect(`/invoices?emailed=${invoiceId}`);
+    }
+
+    const supabase = await createServerSupabaseClient();
 
     const { data: invoice, error } = await supabase
       .from("invoices")
@@ -393,6 +498,35 @@ export async function sendInvoiceReminderAction(formData: FormData) {
     const payload = sendInvoiceReminderSchema.parse({
       invoiceId: String(formData.get("invoiceId") ?? ""),
     });
+
+    if (isLocalFileMode()) {
+      const invoice = await getLocalInvoiceById(user.id, payload.invoiceId);
+
+      if (!invoice) {
+        throw new Error("No se ha podido cargar la factura para enviar el recordatorio.");
+      }
+
+      const subject = await deliverInvoiceReminderEmail({
+        invoice,
+        userEmail: user.email,
+      });
+
+      await recordLocalInvoiceReminder({
+        userId: user.id,
+        invoiceId: invoice.id,
+        recipientEmail: invoice.client_email,
+        subject,
+        triggerMode: "manual",
+        batchKey: null,
+      });
+
+      revalidatePath("/dashboard");
+      revalidatePath("/invoices");
+      revalidatePath("/cobros");
+      revalidatePath("/clientes");
+      redirect(`/cobros?reminded=${payload.invoiceId}`);
+    }
+
     const supabase = await createServerSupabaseClient();
     const { data: invoice, error } = await supabase
       .from("invoices")
@@ -439,6 +573,64 @@ export async function sendInvoiceBatchReminderAction(formData: FormData) {
     const payload = sendInvoiceBatchReminderSchema.parse({
       batchKey: String(formData.get("batchKey") ?? ""),
     });
+
+    if (isLocalFileMode()) {
+      const invoices = await listLocalInvoicesForUser(user.id);
+      const candidates = invoices.filter((invoice) =>
+        matchesInvoiceReminderBatch(invoice, payload.batchKey as InvoiceReminderBatchKey),
+      );
+
+      if (candidates.length === 0) {
+        throw new Error("No hay facturas que encajen con esa regla de recordatorio.");
+      }
+
+      let sentCount = 0;
+      let failedCount = 0;
+      let firstFailure: Error | null = null;
+
+      for (const invoice of candidates) {
+        try {
+          const subject = await deliverInvoiceReminderEmail({
+            invoice,
+            userEmail: user.email,
+          });
+
+          await recordLocalInvoiceReminder({
+            userId: user.id,
+            invoiceId: invoice.id,
+            recipientEmail: invoice.client_email,
+            subject,
+            triggerMode: "batch",
+            batchKey: payload.batchKey,
+          });
+          sentCount += 1;
+        } catch (error) {
+          failedCount += 1;
+          firstFailure =
+            firstFailure ??
+            (error instanceof Error
+              ? error
+              : new Error("No se ha podido enviar uno de los recordatorios."));
+        }
+      }
+
+      if (sentCount === 0) {
+        throw firstFailure ?? new Error("No se ha podido enviar ningún recordatorio.");
+      }
+
+      revalidatePath("/dashboard");
+      revalidatePath("/invoices");
+      revalidatePath("/cobros");
+      revalidatePath("/clientes");
+
+      const message =
+        failedCount > 0
+          ? `Se han enviado ${sentCount} recordatorio(s) y ${failedCount} han fallado.`
+          : `Se han enviado ${sentCount} recordatorio(s) por lote.`;
+
+      redirect(`/cobros?batchMessage=${encodeURIComponent(message)}`);
+    }
+
     const supabase = await createServerSupabaseClient();
     const { data: invoices, error } = await supabase
       .from("invoices")

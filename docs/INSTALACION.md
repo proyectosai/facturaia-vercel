@@ -6,9 +6,16 @@
 
 - Node.js 20 o superior
 - npm
-- Proyecto Supabase
 - SMTP o cuenta Resend si vas a usar correo saliente
 - LM Studio disponible en red local o en la misma máquina
+
+Si solo quieres el núcleo local privado, hoy ya puedes arrancar sin Supabase para:
+
+- acceso local
+- perfil fiscal
+- facturas
+- PDF y factura pública
+- cobros y recordatorios
 
 ## Camino rápido con Docker
 
@@ -51,6 +58,10 @@ Variables relevantes:
 ```env
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 FACTURAIA_DEMO_MODE=0
+FACTURAIA_LOCAL_MODE=0
+FACTURAIA_LOCAL_BOOTSTRAP=0
+FACTURAIA_LOCAL_SESSION_SECRET=
+FACTURAIA_DATA_DIR=
 
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
@@ -87,6 +98,26 @@ WEBDAV_USERNAME=
 WEBDAV_PASSWORD=
 WEBDAV_BACKUP_PATH=/FacturaIA
 ```
+
+### Opción A. Núcleo 100% local en el ordenador del cliente
+
+```env
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+FACTURAIA_LOCAL_MODE=1
+FACTURAIA_LOCAL_BOOTSTRAP=1
+FACTURAIA_LOCAL_SESSION_SECRET=pon-aqui-un-secreto-largo
+FACTURAIA_DATA_DIR=.facturaia-local
+```
+
+En esta modalidad no hace falta definir Supabase para usar el núcleo.
+
+### Opción B. Instalación completa con Supabase
+
+Mantén configuradas:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
 
 ## 3. Configurar Supabase
 

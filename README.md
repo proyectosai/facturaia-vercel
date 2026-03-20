@@ -89,24 +89,27 @@ Primero configura solo:
 
 ### Modo local privado sin magic link
 
-Si el cliente quiere entrar con email y contraseña dentro de su propia instalación:
+Si el cliente quiere entrar con email y contraseña dentro de su propia instalación, sin depender de Supabase para el núcleo:
 
 ```env
 FACTURAIA_LOCAL_MODE=1
 FACTURAIA_LOCAL_BOOTSTRAP=1
+FACTURAIA_LOCAL_SESSION_SECRET=pon-aqui-un-secreto-largo
+FACTURAIA_DATA_DIR=.facturaia-local
 ```
 
 Comportamiento:
 
 - el login cambia a email + contraseña
 - si aún no existe ningún usuario, la primera sesión crea la cuenta local inicial
+- el perfil fiscal, las facturas, el PDF, la factura pública, los cobros y los recordatorios se guardan en un fichero local dentro del equipo
 - después conviene poner `FACTURAIA_LOCAL_BOOTSTRAP=0`
 
 Importante:
 
-- esta fase elimina la dependencia del correo para entrar
-- hoy sigue usando el backend de datos compatible con la arquitectura actual
-- el siguiente paso del proyecto es reducir aún más esa dependencia
+- este modo ya permite usar el núcleo sin `NEXT_PUBLIC_SUPABASE_URL` ni `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- los módulos más avanzados siguen necesitando más trabajo para vivir completamente en local
+- conviene guardar `FACTURAIA_DATA_DIR` en una carpeta incluida en tu estrategia de backup
 
 ## Estado real del producto
 
@@ -201,6 +204,8 @@ NEXT_PUBLIC_APP_URL=
 FACTURAIA_DEMO_MODE=
 FACTURAIA_LOCAL_MODE=
 FACTURAIA_LOCAL_BOOTSTRAP=
+FACTURAIA_LOCAL_SESSION_SECRET=
+FACTURAIA_DATA_DIR=
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=

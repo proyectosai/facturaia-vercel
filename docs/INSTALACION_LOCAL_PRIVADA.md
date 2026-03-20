@@ -8,16 +8,19 @@ Este modo está pensado para clientes que quieren ejecutar FacturaIA en su propi
 
 - acceso por email y contraseña dentro de la instalación privada
 - alta inicial del primer usuario local
-- continuidad con el modelo actual de datos sin romper compatibilidad
+- almacenamiento local del núcleo en el propio equipo
+- continuidad con el resto del proyecto sin romper compatibilidad
 
 ## Qué no resuelve todavía
 
-Todavía no sustituye por completo toda la capa central de persistencia.
+Todavía no sustituye por completo todos los módulos avanzados.
 
 Hoy el modo local privado:
 
 - elimina la dependencia del correo para entrar
-- sigue necesitando que el backend de datos corra dentro de la instalación del cliente
+- guarda el núcleo en un fichero local JSON dentro del equipo
+- cubre perfil, facturas, PDF, factura pública, cobros y recordatorios
+- deja todavía fuera de ese núcleo local completo a piezas como IMAP, banca, CRM, firma, OCR o mensajería
 
 ## Variables mínimas
 
@@ -25,9 +28,8 @@ Hoy el modo local privado:
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 FACTURAIA_LOCAL_MODE=1
 FACTURAIA_LOCAL_BOOTSTRAP=1
-NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
-NEXT_PUBLIC_SUPABASE_ANON_KEY=...
-SUPABASE_SERVICE_ROLE_KEY=...
+FACTURAIA_LOCAL_SESSION_SECRET=pon-aqui-un-secreto-largo
+FACTURAIA_DATA_DIR=.facturaia-local
 ```
 
 ## Primer arranque
@@ -50,13 +52,16 @@ FACTURAIA_LOCAL_BOOTSTRAP=0
 
 Para clientes no técnicos, la evolución correcta del proyecto es empaquetar:
 
-- backend local
 - app
-- almacenamiento
+- almacenamiento local
 - copia de seguridad
 
 en una receta de instalación cada vez más cerrada y reproducible.
 
 ## Siguiente objetivo técnico
 
-El siguiente bloque importante es reducir la dependencia estructural de `auth.users` y avanzar hacia una persistencia todavía más local.
+Los siguientes bloques importantes son:
+
+- ampliar el mismo patrón local a gastos, clientes y presupuestos
+- empaquetar una instalación aún más simple con Docker o instalador
+- endurecer backups automáticos sobre `FACTURAIA_DATA_DIR`

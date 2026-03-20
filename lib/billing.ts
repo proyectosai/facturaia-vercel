@@ -1,6 +1,11 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getCurrentAppUser } from "@/lib/auth";
-import { demoAiUsage, demoInvoices, isDemoMode } from "@/lib/demo";
+import { demoAiUsage, demoInvoices, isDemoMode, isLocalFileMode } from "@/lib/demo";
+import {
+  getLocalDailyAiUsage,
+  getLocalMonthlyInvoiceUsage,
+  incrementLocalDailyAiUsage,
+} from "@/lib/local-core";
 import type { AppUserRecord } from "@/lib/types";
 
 function getMonthStartIso() {
@@ -22,6 +27,10 @@ export async function getMonthlyInvoiceUsage(userId: string) {
       (invoice) =>
         invoice.user_id === userId && invoice.issue_date >= getMonthStartIso(),
     ).length;
+  }
+
+  if (isLocalFileMode()) {
+    return getLocalMonthlyInvoiceUsage(userId, getMonthStartIso());
   }
 
   const supabase = await createServerSupabaseClient();
@@ -59,6 +68,10 @@ export async function getDailyAiUsage(
     return userId === demoInvoices[0]?.user_id && usageDate === demoAiUsage.date
       ? demoAiUsage.used
       : 0;
+  }
+
+  if (isLocalFileMode()) {
+    return getLocalDailyAiUsage(userId, usageDate);
   }
 
   const supabase = await createServerSupabaseClient();
@@ -106,6 +119,10 @@ export async function incrementDailyAiUsage(
     }
 
     return demoAiUsage.used + 1;
+  }
+
+  if (isLocalFileMode()) {
+    return incrementLocalDailyAiUsage(userId, usageDate, limit);
   }
 
   const supabase = await createServerSupabaseClient();

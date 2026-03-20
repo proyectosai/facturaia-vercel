@@ -9,7 +9,8 @@ import {
 } from "lucide-react";
 
 import { getCurrentProfile, requireUser } from "@/lib/auth";
-import { isDemoMode, demoInvoices } from "@/lib/demo";
+import { demoInvoices, isDemoMode, isLocalFileMode } from "@/lib/demo";
+import { listLocalInvoicesForUser } from "@/lib/local-core";
 import { getOutboundMailStatusSummary } from "@/lib/mail";
 import { getRemoteBackupStatusSummary } from "@/lib/remote-backups";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
@@ -26,11 +27,14 @@ import {
 export default async function PrimerosPasosPage() {
   const user = await requireUser();
   const demoMode = isDemoMode();
+  const localFileMode = isLocalFileMode();
   const profile = await getCurrentProfile();
   const outboundMail = getOutboundMailStatusSummary();
   const remoteBackups = getRemoteBackupStatusSummary();
   const invoiceCount = demoMode
     ? demoInvoices.filter((invoice) => invoice.user_id === user.id).length
+    : localFileMode
+      ? (await listLocalInvoicesForUser(user.id)).length
     : Number(
         (
           await (await createServerSupabaseClient())

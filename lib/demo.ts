@@ -30,6 +30,10 @@ export function isLocalBootstrapEnabled() {
   return process.env.FACTURAIA_LOCAL_BOOTSTRAP === "1";
 }
 
+export function isLocalFileMode() {
+  return isLocalMode() && !hasSupabasePublicEnv();
+}
+
 export function isDemoMode() {
   return process.env.FACTURAIA_DEMO_MODE === "1" ||
     (!isLocalMode() && !hasSupabasePublicEnv());
