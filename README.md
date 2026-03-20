@@ -45,6 +45,7 @@ La línea principal es reforzar la instalación privada del cliente:
 - Script `npm run doctor` para validar la instalación local.
 - Cabeceras de seguridad y validación estricta de uploads en puntos sensibles.
 - Suite de tests unitarios para cobros, seguridad, Facturae y firma.
+- Suite unitaria específica para el núcleo local y su persistencia.
 - Smoke tests de rutas clave sobre `next start` real.
 - Modo demo local para revisar la interfaz sin servicios reales.
 
@@ -123,6 +124,7 @@ Si buscas una guía clara antes de instalar nada:
 
 - [Guía en 15 minutos](./docs/GUIA_15_MINUTOS.md)
 - [Estado real, módulo por módulo](./docs/ESTADO_REAL.md)
+- [Estándar de calidad para el modo local](./docs/CALIDAD_LOCAL.md)
 - [QA / lectura ISO 25010](./docs/QA_ISO_25010.md)
 - [Plan de VeriFactu y firma digital](./docs/VERIFACTU_Y_FIRMA_DIGITAL.md)
 - [Memoria local para LLM y RAG](./docs/MEMORIA_LOCAL_LLM.md)
@@ -182,6 +184,13 @@ npm install
 cp .env.example .env.local
 npm run doctor
 npm run dev
+```
+
+Chequeos de calidad recomendados antes de entregar una instalación local:
+
+```bash
+npm run test:local-core
+npm run test:quality
 ```
 
 Modo demo:
