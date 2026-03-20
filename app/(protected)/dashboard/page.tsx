@@ -10,14 +10,21 @@ import {
   ReceiptText,
   Settings2,
   Sparkles,
+  Wallet,
 } from "lucide-react";
 
 import { getCurrentAiUsageSnapshot, getCurrentUsageSnapshot } from "@/lib/billing";
+import {
+  getInvoiceCollectionSummary,
+  invoiceCollectionStateLabels,
+  isInvoiceOverdue,
+} from "@/lib/collections";
 import { demoInvoices, isDemoMode } from "@/lib/demo";
 import { getCurrentAppUser, getCurrentProfile, requireUser } from "@/lib/auth";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { InvoiceRecord } from "@/lib/types";
 import {
+  cn,
   formatCurrency,
   formatDateShort,
   formatInvoiceNumber,
@@ -68,17 +75,11 @@ export default async function DashboardPage() {
   );
 
   const [
-    { count: invoiceCount },
-    { data: revenueRows },
+    { data: allInvoices },
     { data: recentInvoices },
   ] = demoMode
     ? [
-        { count: demoInvoices.length },
-        {
-          data: demoInvoices.map((invoice) => ({
-            grand_total: invoice.grand_total,
-          })),
-        },
+        { data: demoInvoices },
         {
           data: [...demoInvoices]
             .sort((a, b) => b.issue_date.localeCompare(a.issue_date))
@@ -88,12 +89,9 @@ export default async function DashboardPage() {
     : await Promise.all([
         supabase!
           .from("invoices")
-          .select("*", { count: "exact", head: true })
-          .eq("user_id", user.id),
-        supabase!
-          .from("invoices")
-          .select("grand_total")
-          .eq("user_id", user.id),
+          .select("*")
+          .eq("user_id", user.id)
+          .order("issue_date", { ascending: false }),
         supabase!
           .from("invoices")
           .select("*")
@@ -102,22 +100,42 @@ export default async function DashboardPage() {
           .limit(5),
       ]);
 
-  const totalBilled = (revenueRows ?? []).reduce(
+  const normalizedInvoices = (allInvoices as InvoiceRecord[] | null) ?? [];
+  const invoiceCount = normalizedInvoices.length;
+  const totalBilled = normalizedInvoices.reduce(
     (sum, invoice) => sum + Number(invoice.grand_total),
     0,
   );
+  const collectionSummary = getInvoiceCollectionSummary(normalizedInvoices);
   const invoiceUsagePercent = getUsagePercent(usage.used, usage.limit);
   const aiUsagePercent = getUsagePercent(aiUsage.used, aiUsage.limit);
   const recommendedAction =
+    collectionSummary.overdue > 0
+      ? {
+          title: "Atiende los cobros vencidos",
+          description:
+            "Tienes facturas fuera de plazo. Revisa cobros, marca pagos recibidos o enlázalos con banca antes de que se enfríen.",
+          href: "/cobros",
+          label: "Abrir Cobros",
+        }
+      : collectionSummary.amountPending > 0 && invoiceCount > 0
+        ? {
+            title: "Haz seguimiento del saldo pendiente",
+            description:
+              "Ya has facturado, pero todavía queda importe por cobrar. Usa el panel de cobros para priorizar vencimientos y pendientes.",
+            href: "/cobros",
+            label: "Revisar cobros",
+          }
+        :
     completedProfileFields < profileChecks.length
       ? {
           title: "Completa tus datos fiscales",
           description:
             "Antes de emitir más facturas, deja tu perfil fiscal redondo para reutilizarlo en todos los PDFs.",
           href: "/profile",
-          label: "Ir a Mi Perfil",
-        }
-      : (invoiceCount ?? 0) === 0
+            label: "Ir a Mi Perfil",
+          }
+      : invoiceCount === 0
         ? {
             title: "Emite tu primera factura",
             description:
@@ -151,21 +169,26 @@ export default async function DashboardPage() {
       step: "02",
       title: "Emite y valida el flujo",
       description:
-        (invoiceCount ?? 0) > 0
+        invoiceCount > 0
           ? "Ya has generado facturas. Usa el historial para descargar, reenviar o revisar importes."
           : "Crea la primera factura para activar de verdad el ciclo operativo y ver métricas reales.",
-      href: (invoiceCount ?? 0) > 0 ? "/invoices" : "/new-invoice",
-      label: (invoiceCount ?? 0) > 0 ? "Abrir historial" : "Crear primera factura",
-      done: (invoiceCount ?? 0) > 0,
+      href: invoiceCount > 0 ? "/invoices" : "/new-invoice",
+      label: invoiceCount > 0 ? "Abrir historial" : "Crear primera factura",
+      done: invoiceCount > 0,
     },
     {
       step: "03",
-      title: "Activa tu flujo privado de automatización",
+      title:
+        collectionSummary.amountPending > 0
+          ? "Sigue los cobros pendientes"
+          : "Activa tu flujo privado de automatización",
       description:
-        "Tu instalación no depende de planes. Usa la IA local, los documentos y la bandeja de mensajes según tu propia operativa.",
-      href: "/documents-ai",
-      label: "Abrir documentos IA",
-      done: true,
+        collectionSummary.amountPending > 0
+          ? "El siguiente salto de madurez es controlar vencimientos, cobros parciales y facturas liquidadas desde un solo sitio."
+          : "Tu instalación no depende de planes. Usa la IA local, los documentos y la bandeja de mensajes según tu propia operativa.",
+      href: collectionSummary.amountPending > 0 ? "/cobros" : "/documents-ai",
+      label: collectionSummary.amountPending > 0 ? "Abrir cobros" : "Abrir documentos IA",
+      done: collectionSummary.amountPending === 0,
     },
   ];
 
@@ -338,12 +361,12 @@ export default async function DashboardPage() {
         </Card>
       </section>
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         {[
           {
             icon: ReceiptText,
             label: "Facturas emitidas",
-            value: String(invoiceCount ?? 0),
+            value: String(invoiceCount),
             foot: "Acumulado total",
           },
           {
@@ -351,6 +374,18 @@ export default async function DashboardPage() {
             label: "Importe total",
             value: formatCurrency(totalBilled),
             foot: "Volumen emitido",
+          },
+          {
+            icon: Wallet,
+            label: "Pendiente de cobro",
+            value: formatCurrency(collectionSummary.amountPending),
+            foot: `${collectionSummary.pending + collectionSummary.partial} abiertas`,
+          },
+          {
+            icon: CircleDashed,
+            label: "Facturas vencidas",
+            value: String(collectionSummary.overdue),
+            foot: "Seguimiento prioritario",
           },
           {
             icon: Sparkles,
@@ -520,15 +555,35 @@ export default async function DashboardPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             {(recentInvoices as InvoiceRecord[] | null)?.length ? (
-              (recentInvoices as InvoiceRecord[]).map((invoice) => (
+              (recentInvoices as InvoiceRecord[]).map((invoice) => {
+                const collectionState = isInvoiceOverdue(invoice)
+                  ? "overdue"
+                  : invoice.payment_status;
+
+                return (
                 <div
                   key={invoice.id}
                   className="flex flex-col gap-4 rounded-[28px] border border-white/60 bg-white/75 p-5 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div>
-                    <p className="text-sm uppercase tracking-[0.16em] text-muted-foreground">
-                      {formatInvoiceNumber(invoice.invoice_number)}
-                    </p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm uppercase tracking-[0.16em] text-muted-foreground">
+                        {formatInvoiceNumber(invoice.invoice_number)}
+                      </p>
+                      <Badge
+                        variant={collectionState === "paid" ? "success" : "secondary"}
+                        className={cn(
+                          collectionState === "overdue"
+                            ? "bg-[color:rgba(180,68,54,0.14)] text-[color:#8f2f2f]"
+                            : "",
+                          collectionState === "partial"
+                            ? "bg-[color:rgba(16,115,112,0.14)] text-[color:#0f5f63]"
+                            : "",
+                        )}
+                      >
+                        {invoiceCollectionStateLabels[collectionState]}
+                      </Badge>
+                    </div>
                     <h3 className="mt-2 text-xl font-semibold text-foreground">
                       {invoice.client_name}
                     </h3>
@@ -541,11 +596,12 @@ export default async function DashboardPage() {
                       {formatCurrency(Number(invoice.grand_total))}
                     </p>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      {formatDateShort(invoice.issue_date)}
+                      Emisión {formatDateShort(invoice.issue_date)} · Vence {formatDateShort(invoice.due_date)}
                     </p>
                   </div>
                 </div>
-              ))
+                );
+              })
             ) : (
               <div className="rounded-[28px] bg-[color:var(--color-panel)] p-6">
                 <p className="text-muted-foreground">

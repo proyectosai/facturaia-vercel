@@ -50,6 +50,8 @@ export type BankMovementDirection = "credit" | "debit";
 
 export type BankMovementStatus = "pending" | "reconciled" | "ignored";
 
+export type InvoicePaymentStatus = "pending" | "partial" | "paid";
+
 export type ClientRelationKind = "client" | "supplier" | "mixed";
 
 export type ClientStatus = "lead" | "active" | "paused" | "archived";
@@ -109,6 +111,7 @@ export type InvoiceRecord = {
   public_id: string;
   invoice_number: number;
   issue_date: string;
+  due_date: string;
   issuer_name: string;
   issuer_nif: string;
   issuer_address: string;
@@ -123,6 +126,10 @@ export type InvoiceRecord = {
   irpf_rate: NumericLike;
   irpf_amount: NumericLike;
   grand_total: NumericLike;
+  amount_paid: NumericLike;
+  payment_status: InvoicePaymentStatus;
+  paid_at: string | null;
+  collection_notes: string | null;
   vat_breakdown: InvoiceVatBreakdown[];
   created_at: string;
   updated_at: string;
@@ -133,11 +140,17 @@ export type InvoiceListItem = {
   publicUrl: string;
   invoiceNumber: number;
   issueDate: string;
+  dueDate: string;
   clientName: string;
   clientNif: string;
   clientAddress: string;
   clientEmail: string;
   grandTotal: number;
+  amountPaid: number;
+  amountOutstanding: number;
+  paymentStatus: InvoicePaymentStatus;
+  paidAt: string | null;
+  isOverdue: boolean;
   conceptsCount: number;
   isRecent: boolean;
 };

@@ -26,6 +26,7 @@ FacturaIA está diseñada como una aplicación Next.js 15 con App Router, priori
 - `app/(protected)/presupuestos/page.tsx`
 - `app/(protected)/firmas/page.tsx`
 - `app/(protected)/gastos/page.tsx`
+- `app/(protected)/cobros/page.tsx`
 - `app/(protected)/banca/page.tsx`
 - `app/(protected)/clientes/page.tsx`
 - `app/(protected)/invoices/page.tsx`
@@ -78,6 +79,8 @@ Archivos clave:
 - `lib/actions/invoices.ts`
 - `lib/invoices.tsx`
 - `lib/invoice-math.ts`
+- `lib/collections.ts`
+- `lib/collections-server.ts`
 
 Responsabilidades:
 
@@ -86,6 +89,7 @@ Responsabilidades:
 - persistencia en Supabase
 - generación de PDF
 - enlace público y QR
+- vencimiento y seguimiento básico de cobro
 
 ## 3. Uso privado y métricas internas
 
@@ -240,7 +244,26 @@ Funciones:
 - conciliación manual o descarte de movimientos
 - inclusión del histórico bancario en backups y restauración
 
-## 12. Facturae / VeriFactu
+## 12. Cobros y vencimientos
+
+Archivos clave:
+
+- `app/(protected)/cobros/page.tsx`
+- `lib/collections.ts`
+- `lib/collections-server.ts`
+- `lib/actions/invoices.ts`
+- `lib/actions/banking.ts`
+- `supabase/migrations/202603201900_add_invoice_collection_tracking.sql`
+
+Funciones:
+
+- persistir vencimiento y estado económico en cada factura
+- mostrar saldo pendiente y facturas vencidas en dashboard, historial y CRM
+- marcar cobros manualmente
+- recalcular cobros al conciliar ingresos bancarios
+- trasladar la fecha de vencimiento a PDF y factura pública
+
+## 13. Facturae / VeriFactu
 
 Archivos clave:
 
@@ -256,7 +279,7 @@ Funciones:
 - acceso a fuentes oficiales de BOE, Facturae y AEAT
 - punto de partida para cumplimiento más avanzado
 
-## 13. Copias de seguridad
+## 14. Copias de seguridad
 
 Archivos clave:
 

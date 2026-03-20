@@ -2,12 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { ZodError } from "zod";
+import { z, ZodError } from "zod";
 
 import { requireFeatureAccess } from "@/lib/billing";
 import { requireUser } from "@/lib/auth";
 import { isDemoMode } from "@/lib/demo";
 import { getInvoicePdfFileName } from "@/lib/invoice-files";
+import { syncInvoicePaymentStatusFromBankMatches } from "@/lib/collections-server";
 import {
   buildInvoiceEmailHtml,
   calculateInvoice,
@@ -53,6 +54,7 @@ export async function createInvoiceAction(formData: FormData) {
       clientAddress: String(formData.get("clientAddress") ?? ""),
       clientEmail: String(formData.get("clientEmail") ?? ""),
       issueDate: String(formData.get("issueDate") ?? ""),
+      dueDate: String(formData.get("dueDate") ?? ""),
       irpfRate: Number(formData.get("irpfRate") ?? 0),
     });
     const lines = parseInvoiceLines(String(formData.get("lines") ?? "[]"));
@@ -124,6 +126,10 @@ export async function createInvoiceAction(formData: FormData) {
         irpf_rate: totals.irpfRate,
         irpf_amount: totals.irpfAmount,
         grand_total: totals.grandTotal,
+        due_date: payload.dueDate,
+        payment_status: "pending",
+        amount_paid: 0,
+        paid_at: null,
       })
       .select("*")
       .single();
@@ -136,11 +142,86 @@ export async function createInvoiceAction(formData: FormData) {
     revalidatePath("/new-invoice");
     revalidatePath("/invoices");
     revalidatePath("/profile");
+    revalidatePath("/cobros");
+    revalidatePath("/clientes");
     revalidatePath(`/factura/${invoice.public_id}`);
 
     redirect(`/invoices?created=${invoice.id}`);
   } catch (error) {
     redirect(`/new-invoice?error=${encodeURIComponent(getFirstErrorMessage(error))}`);
+  }
+}
+
+const updateInvoicePaymentStateSchema = z.object({
+  invoiceId: z.string().uuid("Factura no válida."),
+  actionKind: z.enum(["mark_paid", "reopen"]),
+});
+
+export async function updateInvoicePaymentStateAction(formData: FormData) {
+  try {
+    if (isDemoMode()) {
+      redirect(
+        "/cobros?error=Modo%20demo:%20la%20actualizaci%C3%B3n%20manual%20de%20cobros%20est%C3%A1%20desactivada.",
+      );
+    }
+
+    const user = await requireUser();
+    const payload = updateInvoicePaymentStateSchema.parse({
+      invoiceId: String(formData.get("invoiceId") ?? ""),
+      actionKind: String(formData.get("actionKind") ?? ""),
+    });
+    const supabase = await createServerSupabaseClient();
+    const { data: invoice, error: invoiceError } = await supabase
+      .from("invoices")
+      .select("id, grand_total")
+      .eq("id", payload.invoiceId)
+      .eq("user_id", user.id)
+      .single();
+
+    if (invoiceError || !invoice) {
+      throw new Error("No se ha podido cargar la factura.");
+    }
+
+    if (payload.actionKind === "mark_paid") {
+      const { error } = await supabase
+        .from("invoices")
+        .update({
+          payment_status: "paid",
+          amount_paid: (invoice as Pick<InvoiceRecord, "grand_total">).grand_total,
+          paid_at: new Date().toISOString(),
+        })
+        .eq("id", payload.invoiceId)
+        .eq("user_id", user.id);
+
+      if (error) {
+        throw new Error("No se ha podido marcar la factura como cobrada.");
+      }
+    } else {
+      const { error } = await supabase
+        .from("invoices")
+        .update({
+          payment_status: "pending",
+          amount_paid: 0,
+          paid_at: null,
+        })
+        .eq("id", payload.invoiceId)
+        .eq("user_id", user.id);
+
+      if (error) {
+        throw new Error("No se ha podido reabrir el seguimiento de cobro.");
+      }
+
+      await syncInvoicePaymentStatusFromBankMatches(user.id, [payload.invoiceId]);
+    }
+
+    revalidatePath("/dashboard");
+    revalidatePath("/invoices");
+    revalidatePath("/cobros");
+    revalidatePath("/clientes");
+    revalidatePath("/banca");
+    redirect("/cobros?updated=1");
+  } catch (error) {
+    redirect(`/cobros?error=${encodeURIComponent(getFirstErrorMessage(error))}`);
   }
 }
 

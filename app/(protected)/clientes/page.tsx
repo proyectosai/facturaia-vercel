@@ -590,7 +590,7 @@ export default async function ClientesPage({
                     </div>
                   </div>
 
-                  <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                  <div className="mt-4 grid gap-3 sm:grid-cols-4">
                     <div className="rounded-2xl bg-white/80 px-3 py-2">
                       <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
                         Facturación
@@ -609,10 +609,18 @@ export default async function ClientesPage({
                     </div>
                     <div className="rounded-2xl bg-white/80 px-3 py-2">
                       <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-                        Importe
+                        Emitido
                       </p>
                       <p className="mt-2 text-sm font-medium text-foreground">
                         {formatCurrency(client.metrics.totalBilled)}
+                      </p>
+                    </div>
+                    <div className="rounded-2xl bg-white/80 px-3 py-2">
+                      <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                        Pendiente
+                      </p>
+                      <p className="mt-2 text-sm font-medium text-foreground">
+                        {formatCurrency(client.metrics.outstandingAmount)}
                       </p>
                     </div>
                   </div>
@@ -643,7 +651,7 @@ export default async function ClientesPage({
                 </TabsList>
 
                 <TabsContent value="summary" className="space-y-6">
-                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
                     <div className="rounded-[26px] bg-[color:rgba(241,246,243,0.82)] p-4">
                       <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
                         Facturación emitida
@@ -658,6 +666,22 @@ export default async function ClientesPage({
                       </p>
                       <p className="mt-2 text-2xl font-semibold text-foreground">
                         {formatCurrency(selectedSnapshot.metrics.pipelineAmount)}
+                      </p>
+                    </div>
+                    <div className="rounded-[26px] bg-[color:rgba(241,246,243,0.82)] p-4">
+                      <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                        Saldo pendiente
+                      </p>
+                      <p className="mt-2 text-2xl font-semibold text-foreground">
+                        {formatCurrency(selectedSnapshot.metrics.outstandingAmount)}
+                      </p>
+                    </div>
+                    <div className="rounded-[26px] bg-[color:rgba(241,246,243,0.82)] p-4">
+                      <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                        Facturas vencidas
+                      </p>
+                      <p className="mt-2 text-2xl font-semibold text-foreground">
+                        {selectedSnapshot.metrics.overdueInvoices}
                       </p>
                     </div>
                     <div className="rounded-[26px] bg-[color:rgba(241,246,243,0.82)] p-4">

@@ -13,6 +13,7 @@ import {
 import { toast } from "sonner";
 
 import { sendInvoiceEmailAction } from "@/lib/actions/invoices";
+import { invoiceCollectionStateLabels } from "@/lib/collections";
 import { getInvoicePdfFileName } from "@/lib/invoice-files";
 import type { InvoiceMonthGroup } from "@/lib/types";
 import {
@@ -27,6 +28,15 @@ import { SubmitButton } from "@/components/submit-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+
+function getCollectionTone(state: "pending" | "partial" | "paid" | "overdue") {
+  return {
+    pending: "bg-[color:rgba(202,145,34,0.14)] text-[color:#8b5b00]",
+    partial: "bg-[color:rgba(16,115,112,0.14)] text-[color:#0f5f63]",
+    paid: "bg-[color:rgba(47,125,50,0.12)] text-[color:var(--color-success)]",
+    overdue: "bg-[color:rgba(180,68,54,0.14)] text-[color:#8f2f2f]",
+  }[state];
+}
 
 export function InvoicesCollection({
   groups,
@@ -196,6 +206,9 @@ export function InvoicesCollection({
             <div className="grid gap-4">
               {group.items.map((invoice) => {
                 const isSelected = selectedIds.includes(invoice.id);
+                const collectionState = invoice.isOverdue
+                  ? "overdue"
+                  : invoice.paymentStatus;
 
                 return (
                   <Card
@@ -224,6 +237,19 @@ export function InvoicesCollection({
                               {formatDateLong(invoice.issueDate)}
                             </Badge>
                             <Badge variant="secondary">{invoice.clientNif}</Badge>
+                            <span
+                              className={cn(
+                                "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em]",
+                                getCollectionTone(collectionState),
+                              )}
+                            >
+                              {invoiceCollectionStateLabels[collectionState]}
+                            </span>
+                            <Badge variant="secondary">
+                              {invoice.paidAt
+                                ? `Cobrada ${formatDateShort(invoice.paidAt)}`
+                                : `Vence ${formatDateShort(invoice.dueDate)}`}
+                            </Badge>
                             {invoice.isRecent ? (
                               <Badge variant="success">Reciente</Badge>
                             ) : null}
@@ -253,6 +279,11 @@ export function InvoicesCollection({
                             {invoice.conceptsCount} concepto
                             {invoice.conceptsCount === 1 ? "" : "s"}
                           </p>
+                          <p className="mt-2 text-sm opacity-90">
+                            {invoice.amountOutstanding > 0
+                              ? `${formatCurrency(invoice.amountOutstanding)} pendientes`
+                              : "Sin saldo pendiente"}
+                          </p>
                         </div>
                       </div>
 
@@ -267,6 +298,9 @@ export function InvoicesCollection({
                           </Link>
                           <p className="mt-3 text-sm text-muted-foreground">
                             Última emisión: {formatDateShort(invoice.issueDate)}
+                          </p>
+                          <p className="mt-2 text-sm text-muted-foreground">
+                            Cobrado hasta ahora: {formatCurrency(invoice.amountPaid)}
                           </p>
                         </div>
 

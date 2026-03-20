@@ -54,7 +54,7 @@ Este documento resume la dirección prevista para FacturaIA como producto y como
 
 - vinculación automática de fichas al emitir facturas o presupuestos
 - histórico de notas por cliente
-- recordatorios y seguimiento básico
+- recordatorios y seguimiento básico sobre el nuevo centro de cobros
 - filtros por clientes sin respuesta, sin cobro o con documentación pendiente
 
 ## Infraestructura y calidad

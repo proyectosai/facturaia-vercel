@@ -80,6 +80,9 @@ export default async function PublicInvoicePage({
                   {typedInvoice.client_nif}
                 </p>
                 <p className="mt-1 text-sm text-muted-foreground">
+                  Vencimiento: {formatDateLong(typedInvoice.due_date)}
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
                   {typedInvoice.client_email}
                 </p>
               </div>
@@ -89,7 +92,7 @@ export default async function PublicInvoicePage({
               <div className="mb-4 flex items-center justify-between">
                 <p className="font-semibold text-foreground">Conceptos</p>
                 <p className="text-sm text-muted-foreground">
-                  {formatDateLong(typedInvoice.issue_date)}
+                  Emitida {formatDateLong(typedInvoice.issue_date)} · Vence {formatDateLong(typedInvoice.due_date)}
                 </p>
               </div>
               <div className="space-y-3">

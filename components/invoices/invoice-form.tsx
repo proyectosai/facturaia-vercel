@@ -49,6 +49,16 @@ const DESCRIPTION_TEMPLATES = [
   "Auditoría y optimización de procesos",
 ];
 
+function getTodayIsoDate() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function getDefaultDueDateIso() {
+  const date = new Date();
+  date.setUTCDate(date.getUTCDate() + 30);
+  return date.toISOString().slice(0, 10);
+}
+
 function createEmptyLine(): InvoiceLineItemInput {
   return {
     description: "",
@@ -374,7 +384,18 @@ export function InvoiceForm({
                     id="issueDate"
                     name="issueDate"
                     type="date"
-                    defaultValue={new Date().toISOString().slice(0, 10)}
+                    defaultValue={getTodayIsoDate()}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="dueDate">Fecha de vencimiento</Label>
+                  <Input
+                    id="dueDate"
+                    name="dueDate"
+                    type="date"
+                    defaultValue={getDefaultDueDateIso()}
                     required
                   />
                 </div>

@@ -11,6 +11,10 @@ import {
   demoMessageThreads,
   isDemoMode,
 } from "@/lib/demo";
+import {
+  getInvoiceAmountOutstanding,
+  getInvoiceCollectionState,
+} from "@/lib/collections";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type {
   ClientPriority,
@@ -47,6 +51,8 @@ export type ClientMetrics = {
   mails: number;
   expenses: number;
   totalBilled: number;
+  outstandingAmount: number;
+  overdueInvoices: number;
   pipelineAmount: number;
   lastActivityAt: string | null;
 };
@@ -85,7 +91,10 @@ export type DetectedClientSuggestion = {
   companyName: string | null;
   lastActivityAt: string | null;
   sourceLabels: string[];
-  counts: Omit<ClientMetrics, "totalBilled" | "pipelineAmount" | "lastActivityAt">;
+  counts: Omit<
+    ClientMetrics,
+    "totalBilled" | "outstandingAmount" | "overdueInvoices" | "pipelineAmount" | "lastActivityAt"
+  >;
 };
 
 export type ClientHubSummary = {
@@ -465,6 +474,13 @@ export async function getClientActivitySnapshotForUser(
     mails: mails.length,
     expenses: expenses.length,
     totalBilled: invoices.reduce((sum, invoice) => sum + toNumber(invoice.grand_total), 0),
+    outstandingAmount: invoices.reduce(
+      (sum, invoice) => sum + getInvoiceAmountOutstanding(invoice),
+      0,
+    ),
+    overdueInvoices: invoices.filter(
+      (invoice) => getInvoiceCollectionState(invoice) === "overdue",
+    ).length,
     pipelineAmount: documents.reduce(
       (sum, document) =>
         document.status === "converted" ? sum : sum + toNumber(document.grand_total),

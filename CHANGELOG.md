@@ -31,6 +31,9 @@ El formato está inspirado en Keep a Changelog y el versionado irá madurando co
 - Primera entrega del módulo de conciliación bancaria con extractos CSV y conciliación manual.
 - Nueva ruta `/banca`.
 - Migración `202603201730_add_bank_reconciliation_module.sql`.
+- Primera entrega del centro de cobros y vencimientos.
+- Nueva ruta `/cobros`.
+- Migración `202603201900_add_invoice_collection_tracking.sql`.
 - Primera entrega del módulo Facturae / VeriFactu con panel propio y exportación XML Facturae 3.2.2 sin firma.
 - Nuevas rutas `/facturae` y `app/api/invoices/[invoiceId]/facturae/route.ts`.
 
@@ -48,6 +51,8 @@ El formato está inspirado en Keep a Changelog y el versionado irá madurando co
 - Los backups incluyen también el histórico de movimientos bancarios.
 - El módulo de presupuestos incorpora filtros y seguimiento más claro por estado y tipo.
 - El catálogo `/modules` pasa a reflejar Facturae / VeriFactu como módulo parcial ya operativo.
+- Dashboard, historial y CRM muestran ahora saldo pendiente, facturas vencidas y estado de cobro.
+- Los PDFs y la vista pública de factura muestran la fecha de vencimiento.
 
 ## [0.1.0] - 2026-03-19
 

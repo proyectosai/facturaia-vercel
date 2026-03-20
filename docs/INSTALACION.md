@@ -438,3 +438,28 @@ Notas:
 Guía completa:
 
 - `docs/modulos/FACTURAE_VERIFACTU.md`
+
+## 19. Cobros y vencimientos
+
+Este bloque añade seguimiento real del dinero pendiente alrededor de cada factura.
+
+Qué hace ahora:
+
+- añade la pantalla `/cobros`
+- permite definir vencimiento al emitir facturas nuevas
+- calcula estados `pendiente`, `parcial`, `cobrada` y `vencida`
+- sincroniza cobros cuando una conciliación bancaria se vincula a una factura
+- permite marcar cobros manualmente desde la propia app
+
+Pasos:
+
+1. aplica la migración `202603201900_add_invoice_collection_tracking.sql`
+2. reinicia FacturaIA
+3. abre `/cobros`
+4. emite una factura nueva con fecha de vencimiento
+5. concilia un ingreso en `/banca` o marca la factura como cobrada manualmente
+6. comprueba el reflejo del estado también en `/dashboard`, `/invoices` y `/clientes`
+
+Guía completa:
+
+- `docs/modulos/COBROS_Y_VENCIMIENTOS.md`

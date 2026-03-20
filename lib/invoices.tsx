@@ -46,6 +46,7 @@ export const invoiceFormSchema = z.object({
   clientAddress: z.string().trim().min(8, "Indica la dirección del cliente."),
   clientEmail: z.email("Indica un email válido para el cliente."),
   issueDate: z.string().min(1, "Selecciona la fecha de emisión."),
+  dueDate: z.string().min(1, "Selecciona la fecha de vencimiento."),
   irpfRate: z.number().min(0).max(100),
 });
 
@@ -396,6 +397,9 @@ function InvoicePdfDocument({
               </Text>
               <Text style={pdfStyles.subtitle}>
                 Factura emitida el {formatDateLong(invoice.issue_date)}
+              </Text>
+              <Text style={pdfStyles.subtitle}>
+                Vencimiento previsto: {formatDateLong(invoice.due_date)}
               </Text>
               <Text style={pdfStyles.subtitle}>{publicUrl}</Text>
             </View>

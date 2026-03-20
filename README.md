@@ -15,6 +15,7 @@ FacturaIA es una aplicación Next.js 15 pensada para autónomos y pequeños nego
 - Módulo de firma documental para aceptar presupuestos y firmar albaranes desde un enlace público.
 - Módulo de gastos con importación de justificantes, extracción de texto y revisión.
 - Módulo de conciliación bancaria con importación CSV y enlace manual de movimientos con facturas o gastos.
+- Seguimiento de cobros y vencimientos con centro dedicado, marcado manual y sincronización básica con banca.
 - Módulo Facturae / VeriFactu con panel de preparación y exportación inicial XML Facturae 3.2.2 sin firma.
 - Módulo CRM ligero para centralizar fichas de cliente y proveedor con actividad relacionada.
 - Historial de facturas con descarga de PDF y envío por email con SMTP o Resend.
@@ -59,6 +60,7 @@ FacturaIA es una aplicación Next.js 15 pensada para autónomos y pequeños nego
 - `/presupuestos`
 - `/firmas`
 - `/gastos`
+- `/cobros`
 - `/banca`
 - `/clientes`
 - `/invoices`
@@ -161,6 +163,7 @@ Migraciones incluidas:
 - [`supabase/migrations/202603201520_add_clients_module.sql`](./supabase/migrations/202603201520_add_clients_module.sql)
 - [`supabase/migrations/202603201640_add_document_signature_module.sql`](./supabase/migrations/202603201640_add_document_signature_module.sql)
 - [`supabase/migrations/202603201730_add_bank_reconciliation_module.sql`](./supabase/migrations/202603201730_add_bank_reconciliation_module.sql)
+- [`supabase/migrations/202603201900_add_invoice_collection_tracking.sql`](./supabase/migrations/202603201900_add_invoice_collection_tracking.sql)
 
 Tablas principales activas:
 
@@ -198,6 +201,7 @@ Tablas principales activas:
 - [CRM ligero](./docs/modulos/CRM_LIGERO.md)
 - [Firma documental](./docs/modulos/FIRMA_DOCUMENTAL.md)
 - [Conciliación bancaria](./docs/modulos/CONCILIACION_BANCARIA.md)
+- [Cobros y vencimientos](./docs/modulos/COBROS_Y_VENCIMIENTOS.md)
 - [Facturae / VeriFactu](./docs/modulos/FACTURAE_VERIFACTU.md)
 - [Hoja de ruta](./docs/ROADMAP.md)
 - [Guía de contribución](./CONTRIBUTING.md)
@@ -217,6 +221,7 @@ Tablas principales activas:
 - El módulo `/presupuestos` cubre la primera fase de pre-facturación: persistencia, estados y conversión a factura.
 - El módulo `/gastos` cubre la primera fase de importación y revisión de justificantes de gasto.
 - El módulo `/banca` cubre la primera fase de importación de extractos CSV y conciliación manual.
+- El módulo `/cobros` cubre la primera fase de seguimiento económico: vencimientos, cobros parciales y cierre manual.
 - El módulo `/facturae` cubre la primera fase de exportación XML Facturae 3.2.2 sin firma.
 - El módulo `/clientes` cubre la primera fase de fichas unificadas con actividad cruzada.
 - El módulo `/firmas` cubre la primera fase de aceptación y firma básica por enlace público.

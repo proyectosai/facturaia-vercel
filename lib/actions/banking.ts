@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import { requireUser } from "@/lib/auth";
 import { getBankMovementByIdForUser, parseBankCsvFile } from "@/lib/banking";
+import { syncInvoicePaymentStatusFromBankMatches } from "@/lib/collections-server";
 import { isDemoMode } from "@/lib/demo";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
@@ -133,6 +134,12 @@ export async function reconcileBankMovementAction(formData: FormData) {
     }
 
     const supabase = await createServerSupabaseClient();
+    const affectedInvoiceIds = new Set<string>();
+
+    if (movement.matched_invoice_id) {
+      affectedInvoiceIds.add(movement.matched_invoice_id);
+    }
+
     let updatePayload:
       | {
           status: "pending" | "reconciled" | "ignored";
@@ -147,6 +154,7 @@ export async function reconcileBankMovementAction(formData: FormData) {
         throw new Error("Selecciona una factura para conciliar el movimiento.");
       }
 
+      affectedInvoiceIds.add(payload.targetId);
       updatePayload = {
         status: "reconciled",
         matched_invoice_id: payload.targetId,
@@ -190,7 +198,16 @@ export async function reconcileBankMovementAction(formData: FormData) {
       throw new Error("No se ha podido actualizar el estado del movimiento.");
     }
 
+    await syncInvoicePaymentStatusFromBankMatches(
+      user.id,
+      Array.from(affectedInvoiceIds),
+    );
+
     revalidatePath("/banca");
+    revalidatePath("/dashboard");
+    revalidatePath("/invoices");
+    revalidatePath("/cobros");
+    revalidatePath("/clientes");
     revalidatePath("/backups");
     redirect("/banca?updated=1");
   } catch (error) {

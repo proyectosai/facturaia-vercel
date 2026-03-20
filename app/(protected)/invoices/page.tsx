@@ -2,6 +2,11 @@ import Link from "next/link";
 import { CalendarRange, FilterX, Plus, Search } from "lucide-react";
 
 import { requireUser } from "@/lib/auth";
+import {
+  getInvoiceAmountOutstanding,
+  getInvoiceCollectionSummary,
+  isInvoiceOverdue,
+} from "@/lib/collections";
 import { demoInvoices, isDemoMode } from "@/lib/demo";
 import { buildPublicInvoiceUrl } from "@/lib/invoice-files";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
@@ -118,11 +123,17 @@ function groupInvoicesByMonth(invoices: InvoiceRecord[]): InvoiceMonthGroup[] {
       publicUrl: buildPublicInvoiceUrl(invoice.public_id),
       invoiceNumber: invoice.invoice_number,
       issueDate: invoice.issue_date,
+      dueDate: invoice.due_date,
       clientName: invoice.client_name,
       clientNif: invoice.client_nif,
       clientAddress: invoice.client_address,
       clientEmail: invoice.client_email,
       grandTotal: Number(invoice.grand_total),
+      amountPaid: Number(invoice.amount_paid),
+      amountOutstanding: getInvoiceAmountOutstanding(invoice),
+      paymentStatus: invoice.payment_status,
+      paidAt: invoice.paid_at,
+      isOverdue: isInvoiceOverdue(invoice),
       conceptsCount: invoice.line_items?.length ?? 0,
       isRecent:
         (Date.now() - new Date(invoice.issue_date).getTime()) /
@@ -217,6 +228,7 @@ export default async function InvoicesPage({
     (sum, invoice) => sum + Number(invoice.grand_total),
     0,
   );
+  const collectionSummary = getInvoiceCollectionSummary(typedInvoices);
   const monthlyGroups = groupInvoicesByMonth(typedInvoices);
   const hasFilters = Boolean(q || from || to);
   const quickRanges = [
@@ -313,7 +325,7 @@ export default async function InvoicesPage({
         </div>
 
         <Card className="overflow-hidden bg-[linear-gradient(150deg,rgba(255,255,255,0.95),rgba(238,247,244,0.88))]">
-          <CardContent className="grid gap-4 sm:grid-cols-3">
+          <CardContent className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <div className="rounded-[24px] bg-white/80 p-4">
               <p className="text-sm text-muted-foreground">Facturas visibles</p>
               <p className="mt-2 font-display text-4xl text-foreground">
@@ -327,9 +339,21 @@ export default async function InvoicesPage({
               </p>
             </div>
             <div className="rounded-[24px] bg-white/80 p-4">
-              <p className="text-sm text-muted-foreground">Periodo</p>
+              <p className="text-sm text-muted-foreground">Pendiente de cobro</p>
               <p className="mt-2 text-lg font-semibold text-foreground">
-                {getRangeLabel(from, to)}
+                {formatCurrency(collectionSummary.amountPending)}
+              </p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {collectionSummary.pending + collectionSummary.partial} facturas abiertas
+              </p>
+            </div>
+            <div className="rounded-[24px] bg-white/80 p-4">
+              <p className="text-sm text-muted-foreground">Vencidas</p>
+              <p className="mt-2 text-lg font-semibold text-foreground">
+                {collectionSummary.overdue}
+              </p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Periodo actual: {getRangeLabel(from, to)}
               </p>
             </div>
           </CardContent>

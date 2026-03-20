@@ -13,6 +13,7 @@ Documentos actuales:
 - `CRM_LIGERO.md` (primera entrega de fichas unificadas ya operativa)
 - `FIRMA_DOCUMENTAL.md` (primera entrega de aceptación y firma básica ya operativa)
 - `CONCILIACION_BANCARIA.md` (primera entrega con extractos CSV y conciliación manual ya operativa)
+- `COBROS_Y_VENCIMIENTOS.md` (primera entrega del circuito de cobro ya operativa)
 - `FACTURAE_VERIFACTU.md` (primera entrega con panel de preparación y exportación XML Facturae ya operativa)
 
 Documento general:
