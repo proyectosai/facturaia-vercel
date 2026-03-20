@@ -22,8 +22,17 @@ export function hasSupabasePublicEnv() {
     Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim());
 }
 
+export function isLocalMode() {
+  return process.env.FACTURAIA_LOCAL_MODE === "1";
+}
+
+export function isLocalBootstrapEnabled() {
+  return process.env.FACTURAIA_LOCAL_BOOTSTRAP === "1";
+}
+
 export function isDemoMode() {
-  return process.env.FACTURAIA_DEMO_MODE === "1" || !hasSupabasePublicEnv();
+  return process.env.FACTURAIA_DEMO_MODE === "1" ||
+    (!isLocalMode() && !hasSupabasePublicEnv());
 }
 
 export const DEMO_USER_ID = "00000000-0000-4000-8000-000000000001";

@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { MailCheck, MoveRight } from "lucide-react";
+import { KeyRound, MailCheck, MoveRight } from "lucide-react";
 import { redirect } from "next/navigation";
 
 import { getOptionalUser } from "@/lib/auth";
-import { requestMagicLinkAction } from "@/lib/actions/auth";
-import { isDemoMode } from "@/lib/demo";
+import { requestMagicLinkAction, signInLocalPasswordAction } from "@/lib/actions/auth";
+import { isDemoMode, isLocalBootstrapEnabled, isLocalMode } from "@/lib/demo";
 import { SubmitButton } from "@/components/submit-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,8 @@ export default async function LoginPage({
   const user = await getOptionalUser();
   const { error, sent } = await searchParams;
   const demoMode = isDemoMode();
+  const localMode = isLocalMode();
+  const localBootstrap = isLocalBootstrapEnabled();
 
   if (user) {
     redirect("/dashboard");
@@ -35,15 +37,22 @@ export default async function LoginPage({
     <main className="page-shell flex min-h-screen items-center px-2 py-12">
       <div className="grid w-full gap-8 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
         <div className="space-y-6">
-          <Badge className="w-fit">Acceso por email</Badge>
+          <Badge className="w-fit">
+            {localMode ? "Acceso local" : "Acceso por email"}
+          </Badge>
           <div className="space-y-4">
-            <p className="section-kicker">Inicio de sesión sin contraseña</p>
+            <p className="section-kicker">
+              {localMode ? "Inicio privado en tu propio equipo" : "Inicio de sesión sin contraseña"}
+            </p>
             <h1 className="font-display text-5xl leading-none tracking-tight text-foreground">
-              Entra con enlace mágico y sigue facturando.
+              {localMode
+                ? "Entra con tu cuenta local y sigue facturando."
+                : "Entra con enlace mágico y sigue facturando."}
             </h1>
             <p className="max-w-xl text-lg leading-8 text-muted-foreground">
-              Supabase Auth enviará un enlace a tu correo. Al abrirlo, volverás
-              al dashboard con la sesión ya creada.
+              {localMode
+                ? "Este modo está pensado para instalaciones privadas en el ordenador o servidor del cliente. El acceso usa email y contraseña dentro del propio entorno."
+                : "Supabase Auth enviará un enlace a tu correo. Al abrirlo, volverás al dashboard con la sesión ya creada."}
             </p>
           </div>
 
@@ -53,7 +62,11 @@ export default async function LoginPage({
             </p>
             <ul className="mt-4 space-y-3 text-sm leading-6 text-foreground/90">
               <li>Dashboard protegido con middleware y verificación de sesión.</li>
-              <li>Perfil fiscal persistido en Supabase.</li>
+              <li>
+                {localMode
+                  ? "Acceso por email y contraseña sin depender de correo saliente."
+                  : "Perfil fiscal persistido en Supabase."}
+              </li>
               <li>Generación y gestión de facturas desde el panel.</li>
             </ul>
           </div>
@@ -61,13 +74,17 @@ export default async function LoginPage({
 
         <Card className="mx-auto w-full max-w-xl">
           <CardHeader>
-            <CardTitle>Recibir enlace de acceso</CardTitle>
+            <CardTitle>
+              {localMode ? "Entrar con tu cuenta local" : "Recibir enlace de acceso"}
+            </CardTitle>
             <CardDescription>
-              Introduce tu correo y te enviaremos un enlace para entrar.
+              {localMode
+                ? "Introduce el email y la contraseña de la cuenta local de FacturaIA."
+                : "Introduce tu correo y te enviaremos un enlace para entrar."}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
-            {sent ? (
+            {sent && !localMode ? (
               <div className="status-banner">
                 Hemos enviado el magic link. Revisa tu bandeja de entrada y
                 vuelve a FacturaIA desde el enlace del email.
@@ -86,7 +103,19 @@ export default async function LoginPage({
               </div>
             ) : null}
 
-            <form action={requestMagicLinkAction} className="space-y-5">
+            {localMode ? (
+              <div className="status-banner">
+                Modo local privado activado. El acceso se resuelve dentro de la instalación del cliente.
+                {localBootstrap
+                  ? " Si aún no existe ningún usuario, la primera sesión creará la cuenta local inicial con estas credenciales."
+                  : ""}
+              </div>
+            ) : null}
+
+            <form
+              action={localMode ? signInLocalPasswordAction : requestMagicLinkAction}
+              className="space-y-5"
+            >
               <div className="space-y-2">
                 <Label htmlFor="email">Email de acceso</Label>
                 <Input
@@ -98,9 +127,29 @@ export default async function LoginPage({
                 />
               </div>
 
-              <SubmitButton pendingLabel="Enviando enlace..." className="w-full">
-                <MailCheck className="h-4 w-4" />
-                {demoMode ? "Entrar en demo local" : "Enviarme enlace mágico"}
+              {localMode ? (
+                <div className="space-y-2">
+                  <Label htmlFor="password">Contraseña</Label>
+                  <Input
+                    id="password"
+                    name="password"
+                    type="password"
+                    placeholder="Mínimo 8 caracteres"
+                    required
+                  />
+                </div>
+              ) : null}
+
+              <SubmitButton
+                pendingLabel={localMode ? "Entrando..." : "Enviando enlace..."}
+                className="w-full"
+              >
+                {localMode ? <KeyRound className="h-4 w-4" /> : <MailCheck className="h-4 w-4" />}
+                {demoMode
+                  ? "Entrar en demo local"
+                  : localMode
+                    ? "Entrar con cuenta local"
+                    : "Enviarme enlace mágico"}
               </SubmitButton>
             </form>
 

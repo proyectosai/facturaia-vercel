@@ -49,6 +49,9 @@ El formato está inspirado en Keep a Changelog y el versionado irá madurando co
 
 ### Mejorado
 
+- Nuevo modo local privado con acceso por email y contraseña dentro de la instalación del cliente.
+- Bootstrap opcional del primer usuario local sin depender de magic link ni correo.
+- Documentación nueva para instalaciones privadas locales en `docs/INSTALACION_LOCAL_PRIVADA.md`.
 - CI ampliada a Linux y Windows con `lint`, `typecheck`, tests unitarios, build demo y smoke tests.
 - Scripts demo rehechos para ser multiplataforma y no depender de sintaxis Unix.
 - Nueva batería `npm run test:smoke` contra un `next start` real en modo demo.

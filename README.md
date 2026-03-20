@@ -5,6 +5,15 @@
 
 FacturaIA es una aplicación Next.js 15 pensada para autónomos y pequeños negocios españoles que quieren gestionar facturas, documentos y mensajería desde una instalación privada en su propio ordenador o servidor.
 
+## Prioridad actual del proyecto
+
+La línea principal es reforzar la instalación privada del cliente:
+
+- acceso local
+- menos dependencia de servicios externos
+- más control de datos en el propio ordenador o servidor
+- simplificación progresiva del despliegue
+
 ## Qué incluye
 
 - Autenticación por magic link con Supabase.
@@ -77,6 +86,27 @@ Primero configura solo:
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
 - tu bloque de correo saliente
+
+### Modo local privado sin magic link
+
+Si el cliente quiere entrar con email y contraseña dentro de su propia instalación:
+
+```env
+FACTURAIA_LOCAL_MODE=1
+FACTURAIA_LOCAL_BOOTSTRAP=1
+```
+
+Comportamiento:
+
+- el login cambia a email + contraseña
+- si aún no existe ningún usuario, la primera sesión crea la cuenta local inicial
+- después conviene poner `FACTURAIA_LOCAL_BOOTSTRAP=0`
+
+Importante:
+
+- esta fase elimina la dependencia del correo para entrar
+- hoy sigue usando el backend de datos compatible con la arquitectura actual
+- el siguiente paso del proyecto es reducir aún más esa dependencia
 
 ## Estado real del producto
 
@@ -169,6 +199,8 @@ Las variables base están documentadas en [`.env.example`](./.env.example):
 ```env
 NEXT_PUBLIC_APP_URL=
 FACTURAIA_DEMO_MODE=
+FACTURAIA_LOCAL_MODE=
+FACTURAIA_LOCAL_BOOTSTRAP=
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=

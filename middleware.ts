@@ -6,8 +6,13 @@ function hasSupabasePublicEnv() {
     Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim());
 }
 
+function isLocalMode() {
+  return process.env.FACTURAIA_LOCAL_MODE === "1";
+}
+
 function isDemoMode() {
-  return process.env.FACTURAIA_DEMO_MODE === "1" || !hasSupabasePublicEnv();
+  return process.env.FACTURAIA_DEMO_MODE === "1" ||
+    (!isLocalMode() && !hasSupabasePublicEnv());
 }
 
 export async function middleware(request: NextRequest) {

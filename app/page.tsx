@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ArrowRight, CheckCircle2, FileText, HardDrive, Shield } from "lucide-react";
 
 import { getOptionalUser } from "@/lib/auth";
-import { isDemoMode } from "@/lib/demo";
+import { isDemoMode, isLocalMode } from "@/lib/demo";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 export default async function Home() {
   const user = await getOptionalUser();
   const demoMode = isDemoMode();
+  const localMode = isLocalMode();
 
   return (
     <div className="relative overflow-hidden pb-16">
@@ -27,15 +28,19 @@ export default async function Home() {
               </h1>
               <p className="max-w-2xl text-lg leading-8 text-muted-foreground">
                 FacturaIA centraliza tu emisión de facturas, genera PDF con QR y
-                URL pública, guarda todo en Supabase y te prepara para una operativa
-                compatible con VeriFactu sin depender de un SaaS comercial.
+                URL pública y está evolucionando para que cada vez más piezas puedan
+                funcionar dentro de la instalación privada del cliente.
               </p>
             </div>
 
             <div className="flex flex-wrap gap-3">
               <Button asChild size="lg">
                 <Link href={user ? "/dashboard" : "/login"}>
-                  {user ? "Abrir panel" : "Entrar con enlace mágico"}
+                  {user
+                    ? "Abrir panel"
+                    : localMode
+                      ? "Entrar con cuenta local"
+                      : "Entrar con enlace mágico"}
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
@@ -56,7 +61,7 @@ export default async function Home() {
               </span>
               <span className="metric-pill">
                 <Shield className="h-4 w-4 text-[color:var(--color-brand)]" />
-                RLS en Supabase
+                {localMode ? "Acceso local con contraseña" : "RLS en Supabase"}
               </span>
               <span className="metric-pill">
                 <HardDrive className="h-4 w-4 text-[color:var(--color-brand)]" />

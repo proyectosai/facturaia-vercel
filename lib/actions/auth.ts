@@ -5,15 +5,22 @@ import { redirect } from "next/navigation";
 import { ZodError, z } from "zod";
 
 import { requireUser } from "@/lib/auth";
-import { isDemoMode } from "@/lib/demo";
+import { isDemoMode, isLocalBootstrapEnabled, isLocalMode } from "@/lib/demo";
 import { getLogoStoragePath } from "@/lib/invoices";
 import { assertAllowedUpload, uploadRules } from "@/lib/security";
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getBaseUrl } from "@/lib/utils";
 
 export async function requestMagicLinkAction(formData: FormData) {
   if (isDemoMode()) {
     redirect("/dashboard");
+  }
+
+  if (isLocalMode()) {
+    redirect(
+      "/login?error=El%20modo%20local%20usa%20email%20y%20contrase%C3%B1a%2C%20no%20enlace%20m%C3%A1gico.",
+    );
   }
 
   const email = String(formData.get("email") ?? "").trim();
@@ -36,6 +43,79 @@ export async function requestMagicLinkAction(formData: FormData) {
   }
 
   redirect("/login?sent=1");
+}
+
+export async function signInLocalPasswordAction(formData: FormData) {
+  if (!isLocalMode()) {
+    redirect("/login?error=El%20acceso%20local%20no%20est%C3%A1%20habilitado.");
+  }
+
+  if (
+    !process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ||
+    !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() ||
+    !process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()
+  ) {
+    redirect(
+      "/login?error=Faltan%20variables%20de%20backend%20local%20para%20usar%20este%20modo.",
+    );
+  }
+
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const password = String(formData.get("password") ?? "");
+
+  if (!email) {
+    redirect("/login?error=Indica%20un%20email%20v%C3%A1lido.");
+  }
+
+  if (password.length < 8) {
+    redirect("/login?error=La%20contrase%C3%B1a%20debe%20tener%20al%20menos%208%20caracteres.");
+  }
+
+  if (isLocalBootstrapEnabled()) {
+    const admin = createAdminSupabaseClient();
+    const { data, error } = await admin.auth.admin.listUsers({
+      page: 1,
+      perPage: 1,
+    });
+
+    if (error) {
+      redirect(
+        `/login?error=${encodeURIComponent("No se ha podido revisar el usuario local inicial.")}`,
+      );
+    }
+
+    if ((data?.users?.length ?? 0) === 0) {
+      const { error: createError } = await admin.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+      });
+
+      if (createError) {
+        redirect(
+          `/login?error=${encodeURIComponent(
+            createError.message || "No se ha podido crear el usuario local inicial.",
+          )}`,
+        );
+      }
+    }
+  }
+
+  const supabase = await createServerSupabaseClient();
+  const { error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+
+  if (error) {
+    redirect(
+      `/login?error=${encodeURIComponent(
+        "No se ha podido iniciar sesión. Revisa las credenciales o confirma que el usuario local ya fue creado.",
+      )}`,
+    );
+  }
+
+  redirect("/dashboard");
 }
 
 export async function signOutAction() {

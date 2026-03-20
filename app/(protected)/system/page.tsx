@@ -14,7 +14,7 @@ import {
   Landmark,
 } from "lucide-react";
 
-import { isDemoMode } from "@/lib/demo";
+import { isDemoMode, isLocalBootstrapEnabled, isLocalMode } from "@/lib/demo";
 import { getInboundMailStatusSummary } from "@/lib/inbound-mail";
 import { getOutboundMailStatusSummary } from "@/lib/mail";
 import { getRemoteBackupStatusSummary } from "@/lib/remote-backups";
@@ -35,6 +35,8 @@ function getEnvironmentFlags() {
 
   return {
     demoMode: isDemoMode(),
+    localMode: isLocalMode(),
+    localBootstrap: isLocalBootstrapEnabled(),
     hasSupabase:
       Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL) &&
       Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) &&
@@ -64,10 +66,14 @@ export default function SystemPage() {
   const env = getEnvironmentFlags();
   const checks = [
     {
-      title: "Supabase",
+      title: env.localMode ? "Backend local" : "Supabase",
       description: env.hasSupabase
-        ? "Auth, base de datos y storage listos."
-        : "Faltan variables de Supabase para usar persistencia real.",
+        ? env.localMode
+          ? "Auth, base de datos y storage listos dentro de tu instalación privada."
+          : "Auth, base de datos y storage listos."
+        : env.localMode
+          ? "Faltan variables del backend local para persistir datos reales en esta instalación."
+          : "Faltan variables de Supabase para usar persistencia real.",
       ready: env.hasSupabase,
       icon: Database,
     },
@@ -124,6 +130,7 @@ export default function SystemPage() {
             <div className="flex flex-wrap gap-2">
               <Badge variant="success">Uso privado</Badge>
               {env.demoMode ? <Badge variant="secondary">Modo demo</Badge> : null}
+              {env.localMode ? <Badge variant="secondary">Modo local</Badge> : null}
             </div>
             <div>
               <CardTitle className="font-display text-4xl text-foreground">
@@ -144,7 +151,9 @@ export default function SystemPage() {
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
                 {env.demoMode
                   ? "La interfaz se puede recorrer sin persistencia real."
-                  : "La instalación está preparada para trabajar con datos reales."}
+                  : env.localMode
+                    ? "La instalación está preparada para trabajar con datos dentro del entorno privado del cliente."
+                    : "La instalación está preparada para trabajar con datos reales."}
               </p>
             </div>
 
@@ -154,7 +163,9 @@ export default function SystemPage() {
                 {env.appUrl.replace(/^https?:\/\//, "")}
               </p>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                Se usa para enlaces mágicos, URLs públicas y QR de facturas.
+                {env.localMode
+                  ? "Se usa para la instalación privada, enlaces internos y QR de facturas."
+                  : "Se usa para enlaces mágicos, URLs públicas y QR de facturas."}
               </p>
             </div>
 
@@ -219,6 +230,16 @@ export default function SystemPage() {
           </CardHeader>
           <CardContent className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
             <div className="rounded-[26px] bg-[color:var(--color-panel)] p-5">
+              <p className="text-sm font-medium text-foreground">Acceso local</p>
+              <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                {env.localMode
+                  ? env.localBootstrap
+                    ? "Modo local activo y bootstrap inicial todavía habilitado. Conviene desactivarlo después de crear la primera cuenta."
+                    : "Modo local activo con email y contraseña dentro de la instalación privada."
+                  : "Ahora mismo el acceso sigue orientado a magic link o a demo."}
+              </p>
+            </div>
+            <div className="rounded-[26px] bg-[color:var(--color-panel)] p-5">
               <p className="text-sm font-medium text-foreground">Comando recomendado</p>
               <pre className="mt-3 overflow-x-auto rounded-2xl bg-[color:rgba(19,45,52,0.94)] p-4 text-sm text-white">
                 <code>npm run doctor</code>
@@ -227,7 +248,7 @@ export default function SystemPage() {
                 Este script revisa Node, URL pública, Supabase, correo, LM Studio e integraciones opcionales desde tu propia instalación.
               </p>
             </div>
-            <div className="rounded-[26px] bg-[color:rgba(251,247,241,0.82)] p-5">
+            <div className="rounded-[26px] bg-[color:rgba(251,247,241,0.82)] p-5 xl:col-span-2">
               <p className="text-sm font-medium text-foreground">Variables críticas pendientes</p>
               {env.missingCoreEnv.length > 0 ? (
                 <ul className="mt-3 space-y-2 text-sm leading-6 text-muted-foreground">
