@@ -91,6 +91,7 @@ Ejecuta las migraciones en este orden:
 7. `supabase/migrations/202603201200_add_inbound_mail_module.sql`
 8. `supabase/migrations/202603201330_add_commercial_documents_module.sql`
 9. `supabase/migrations/202603201430_add_expenses_module.sql`
+10. `supabase/migrations/202603201520_add_clients_module.sql`
 
 Estas migraciones crean:
 
@@ -106,6 +107,7 @@ Estas migraciones crean:
 - bandeja interna de correo entrante por IMAP
 - flujo de presupuestos y albaranes previo a facturación
 - circuito inicial de gastos con justificantes y revisión
+- fichas de cliente y proveedor con notas internas y actividad relacionada
 
 ## 4. Configurar correo saliente
 
@@ -329,3 +331,26 @@ WEBDAV_BACKUP_PATH=/FacturaIA
 - mantén HTTPS en la URL WebDAV
 - prueba primero con una carpeta dedicada solo a FacturaIA
 - consulta `docs/modulos/BACKUPS_REMOTOS.md` para la guía detallada
+
+## 15. CRM ligero
+
+Este módulo crea fichas manuales de cliente o proveedor y las cruza con la actividad ya existente.
+
+Qué hace ahora:
+
+- guardar fichas con estado, prioridad y etiquetas
+- detectar contactos desde facturas, mensajes, correo, documentos y gastos
+- mostrar una timeline básica por ficha
+- editar notas internas desde la propia pantalla
+
+Pasos:
+
+1. aplica la migración `202603201520_add_clients_module.sql`
+2. reinicia FacturaIA
+3. abre `/clientes`
+4. crea una ficha manual o usa una sugerencia detectada
+5. revisa la actividad relacionada
+
+Guía completa:
+
+- `docs/modulos/CRM_LIGERO.md`

@@ -224,8 +224,10 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
     title: "CRM ligero",
     summary:
       "Ficha unificada de cliente con notas, documentos, mensajes y estado operativo.",
-    status: "next",
+    status: "partial",
     category: "canales",
+    routeHref: "/clientes",
+    docsPath: "docs/modulos/CRM_LIGERO.md",
     requirements: [
       "Modelo de cliente consolidado",
       "Historial cruzado de facturas, mensajes y documentos",
@@ -242,7 +244,7 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
     title: "Firma documental",
     summary:
       "Aceptación o firma de propuestas y contratos con trazabilidad básica dentro del entorno privado.",
-    status: "planned",
+    status: "next",
     category: "documentos",
     requirements: [
       "Documentos persistentes",
@@ -368,6 +370,11 @@ export function getModuleCatalog(): ModuleRuntimeState[] {
       configured = hasSupabase();
       configuredLabel = configured
         ? "Listo para importar justificantes"
+        : "Falta Supabase";
+    } else if (module.id === "crm-light") {
+      configured = hasSupabase();
+      configuredLabel = configured
+        ? "Listo para centralizar fichas"
         : "Falta Supabase";
     } else {
       configured = false;

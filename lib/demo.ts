@@ -1,5 +1,6 @@
 import type {
   AppUserRecord,
+  ClientRecord,
   CommercialDocumentRecord,
   ExpenseRecord,
   InvoiceRecord,
@@ -728,6 +729,69 @@ export const demoExpenses: ExpenseRecord[] = [
   },
 ];
 
+export const demoClients: ClientRecord[] = [
+  {
+    id: "93000000-0000-4000-8000-000000000001",
+    user_id: DEMO_USER_ID,
+    relation_kind: "client",
+    status: "active",
+    priority: "high",
+    display_name: "Nexo Digital S.L.",
+    first_name: "Equipo",
+    last_name: "Finanzas",
+    company_name: "Nexo Digital S.L.",
+    email: "finanzas@nexodigital.es",
+    phone: "+34 640 12 34 56",
+    nif: "B76543210",
+    address: "Avenida de América 27, 28002 Madrid",
+    notes:
+      "Cliente activo con seguimiento mensual. Conviene revisar propuesta y próxima factura cada semana.",
+    tags: ["mantenimiento", "mensual", "automatización"],
+    created_at: "2026-03-03T08:00:00.000Z",
+    updated_at: "2026-03-19T10:00:00.000Z",
+  },
+  {
+    id: "93000000-0000-4000-8000-000000000002",
+    user_id: DEMO_USER_ID,
+    relation_kind: "client",
+    status: "active",
+    priority: "high",
+    display_name: "Brisa Legal S.L.",
+    first_name: "Administración",
+    last_name: "Brisa Legal",
+    company_name: "Brisa Legal S.L.",
+    email: "administracion@brisalegal.es",
+    phone: "+34 600 11 12 22",
+    nif: "B87654321",
+    address: "Paseo de Gràcia 11, 08007 Barcelona",
+    notes:
+      "Cliente sensible a incidencias de facturación. Mantener respuesta rápida y revisar datos fiscales antes de emitir.",
+    tags: ["urgente", "facturación", "jurídico"],
+    created_at: "2026-03-10T09:00:00.000Z",
+    updated_at: "2026-03-19T15:40:00.000Z",
+  },
+  {
+    id: "93000000-0000-4000-8000-000000000003",
+    user_id: DEMO_USER_ID,
+    relation_kind: "supplier",
+    status: "active",
+    priority: "medium",
+    display_name: "Hosting Norte S.L.",
+    first_name: null,
+    last_name: null,
+    company_name: "Hosting Norte S.L.",
+    email: null,
+    phone: null,
+    nif: "B74122991",
+    address: null,
+    notes:
+      "Proveedor de infraestructura. Revisar cada mes si el gasto corresponde al entorno principal o al de pruebas.",
+    tags: ["hosting", "proveedor", "infraestructura"],
+    created_at: "2026-03-19T09:00:00.000Z",
+    updated_at: "2026-03-19T09:20:00.000Z",
+  },
+];
+
 export function getDemoInvoiceById(invoiceId: string) {
   return demoInvoices.find((invoice) => invoice.id === invoiceId) ?? null;
 }
@@ -750,4 +814,8 @@ export function getDemoCommercialDocumentById(documentId: string) {
 
 export function getDemoExpenseById(expenseId: string) {
   return demoExpenses.find((expense) => expense.id === expenseId) ?? null;
+}
+
+export function getDemoClientById(clientId: string) {
+  return demoClients.find((client) => client.id === clientId) ?? null;
 }

@@ -50,10 +50,10 @@ export default async function BackupsPage() {
               <div>
                 <p className="text-sm text-white/70">Cobertura actual</p>
                 <p className="mt-2 font-display text-3xl text-white">
-                  Facturas, IA y mensajes
+                  CRM, facturas, IA y mensajes
                 </p>
                 <p className="mt-2 text-sm leading-6 text-white/82">
-                  Perfil fiscal, histórico de uso y bandeja opcional de mensajería incluidos.
+                  Perfil fiscal, fichas del CRM, histórico de uso y bandeja opcional incluidos.
                 </p>
               </div>
               <HardDriveDownload className="mt-1 h-5 w-5 text-white/70" />

@@ -166,6 +166,12 @@ export default function InstalacionPage() {
                 icon: Database,
               },
               {
+                title: "CRM ligero",
+                description:
+                  "Fichas de cliente y proveedor con contexto cruzado desde facturas, correo, chats y gastos.",
+                icon: Database,
+              },
+              {
                 title: "Gastos y OCR asistido",
                 description:
                   "Importa justificantes y revísalos dentro de la app sin depender de servicios externos.",
@@ -240,7 +246,14 @@ export default function InstalacionPage() {
                 label: "Abrir gastos",
               },
               {
-                title: "6. Activa documentos o mensajería",
+                title: "6. Crea tus primeras fichas de cliente",
+                description:
+                  "Centraliza datos de contacto y deja notas internas antes de trabajar a diario con documentos y mensajes.",
+                href: "/clientes",
+                label: "Abrir CRM",
+              },
+              {
+                title: "7. Activa documentos o mensajería",
                 description:
                   "Añade IA local y bandeja de mensajes solo si de verdad te aportan valor.",
                 href: "/documents-ai",

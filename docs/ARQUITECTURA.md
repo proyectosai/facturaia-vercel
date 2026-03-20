@@ -23,6 +23,7 @@ FacturaIA está diseñada como una aplicación Next.js 15 con App Router, priori
 - `app/(protected)/new-invoice/page.tsx`
 - `app/(protected)/presupuestos/page.tsx`
 - `app/(protected)/gastos/page.tsx`
+- `app/(protected)/clientes/page.tsx`
 - `app/(protected)/invoices/page.tsx`
 - `app/(protected)/messages/page.tsx`
 - `app/(protected)/documents-ai/page.tsx`
@@ -160,7 +161,24 @@ Funciones:
 - exportación a Word
 - plantillas listas para propuesta, presupuesto y contrato
 
-## 8. Email
+## 8. CRM ligero
+
+Archivos clave:
+
+- `app/(protected)/clientes/page.tsx`
+- `lib/clients.ts`
+- `lib/actions/clients.ts`
+- `supabase/migrations/202603201520_add_clients_module.sql`
+
+Funciones:
+
+- fichas manuales de cliente y proveedor
+- prioridad, estado, etiquetas y notas internas
+- detección de contactos a partir de actividad ya existente
+- timeline básica cruzando facturas, correo, mensajes, documentos y gastos
+- edición simple desde la propia ficha
+
+## 9. Email
 
 Archivos clave:
 
@@ -182,7 +200,7 @@ Funciones:
 - bandeja interna por remitente
 - historial de sincronizaciones entrantes
 
-## 9. Copias de seguridad
+## 10. Copias de seguridad
 
 Archivos clave:
 
@@ -204,7 +222,7 @@ Funciones:
 - sincronización manual a WebDAV / Nextcloud
 - historial de últimas ejecuciones remotas
 
-## 10. Mensajería opcional
+## 11. Mensajería opcional
 
 Archivos clave:
 
@@ -231,6 +249,7 @@ Tablas principales:
 - `invoices`
 - `commercial_documents`
 - `expenses`
+- `clients`
 - `ai_usage`
 - `message_connections`
 - `message_threads`
@@ -258,6 +277,13 @@ Tablas principales:
 - datos del emisor
 - datos del cliente
 - líneas
+
+## `clients`
+
+- fichas ligeras de cliente o proveedor
+- estado y prioridad operativa
+- email, teléfono, NIF y dirección
+- notas internas y etiquetas
 - IVA
 - IRPF
 - total

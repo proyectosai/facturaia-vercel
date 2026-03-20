@@ -22,6 +22,9 @@ El formato está inspirado en Keep a Changelog y el versionado irá madurando co
 - Primera entrega del módulo OCR de gastos con subida de justificantes, extracción de texto y revisión.
 - Nueva ruta `/gastos`.
 - Migración `202603201430_add_expenses_module.sql`.
+- Primera entrega del módulo CRM ligero con fichas manuales de cliente y proveedor.
+- Nueva ruta `/clientes`.
+- Migración `202603201520_add_clients_module.sql`.
 
 ### Mejorado
 
@@ -32,7 +35,9 @@ El formato está inspirado en Keep a Changelog y el versionado irá madurando co
 - Los backups ahora incluyen también el inbox de correo y su historial de sincronización.
 - Los backups incluyen también los documentos de pre-facturación.
 - Los backups incluyen ahora también los gastos importados.
+- Los backups incluyen también las fichas guardadas del CRM ligero.
 - El módulo de presupuestos incorpora filtros y seguimiento más claro por estado y tipo.
+- El catálogo `/modules` adelanta ahora la firma documental como siguiente módulo del roadmap.
 
 ## [0.1.0] - 2026-03-19
 

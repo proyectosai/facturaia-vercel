@@ -29,6 +29,28 @@ const backupSchema = z.object({
     })
     .nullable()
     .optional(),
+  clients: z
+    .array(
+      z.object({
+        id: z.string(),
+        relation_kind: z.enum(["client", "supplier", "mixed"]),
+        status: z.enum(["lead", "active", "paused", "archived"]),
+        priority: z.enum(["low", "medium", "high"]),
+        display_name: z.string(),
+        first_name: z.string().nullable().optional(),
+        last_name: z.string().nullable().optional(),
+        company_name: z.string().nullable().optional(),
+        email: z.string().nullable().optional(),
+        phone: z.string().nullable().optional(),
+        nif: z.string().nullable().optional(),
+        address: z.string().nullable().optional(),
+        notes: z.string().nullable().optional(),
+        tags: z.array(z.string()).default([]),
+        created_at: z.string().optional(),
+        updated_at: z.string().optional(),
+      }),
+    )
+    .default([]),
   invoices: z
     .array(
       z.object({

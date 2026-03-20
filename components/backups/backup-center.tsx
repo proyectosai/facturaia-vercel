@@ -29,6 +29,7 @@ import { Label } from "@/components/ui/label";
 import type { RemoteBackupRun } from "@/lib/types";
 
 type BackupSummary = {
+  clients: number;
   invoices: number;
   commercialDocuments: number;
   expenses: number;
@@ -204,6 +205,7 @@ export function BackupCenter({
   }
 
   const stats = [
+    { label: "Fichas CRM", value: summary.clients },
     { label: "Facturas", value: summary.invoices },
     { label: "Pre-facturación", value: summary.commercialDocuments },
     { label: "Gastos", value: summary.expenses },
@@ -224,7 +226,7 @@ export function BackupCenter({
         </div>
       ) : null}
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-9">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-10">
         {stats.map((item) => (
           <Card key={item.label}>
             <CardContent className="space-y-2">
@@ -245,7 +247,7 @@ export function BackupCenter({
               <div>
                 <CardTitle>Exportar copia completa</CardTitle>
                 <CardDescription>
-                  Descarga un JSON con perfil, facturas, IA y mensajería del usuario autenticado.
+                  Descarga un JSON con perfil, CRM, facturación, IA y mensajería del usuario autenticado.
                 </CardDescription>
               </div>
             </div>

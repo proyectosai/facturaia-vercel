@@ -35,6 +35,12 @@ export type ExpenseExtractionMethod =
   | "plain_text"
   | "unavailable";
 
+export type ClientRelationKind = "client" | "supplier" | "mixed";
+
+export type ClientStatus = "lead" | "active" | "paused" | "archived";
+
+export type ClientPriority = "low" | "medium" | "high";
+
 export type Profile = {
   id: string;
   email: string;
@@ -177,6 +183,26 @@ export type ExpenseRecord = {
   text_extraction_method: ExpenseExtractionMethod;
   raw_text: string | null;
   extracted_payload: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ClientRecord = {
+  id: string;
+  user_id: string;
+  relation_kind: ClientRelationKind;
+  status: ClientStatus;
+  priority: ClientPriority;
+  display_name: string;
+  first_name: string | null;
+  last_name: string | null;
+  company_name: string | null;
+  email: string | null;
+  phone: string | null;
+  nif: string | null;
+  address: string | null;
+  notes: string | null;
+  tags: string[];
   created_at: string;
   updated_at: string;
 };

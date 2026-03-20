@@ -48,6 +48,13 @@ Este documento resume la dirección prevista para FacturaIA como producto y como
 - conciliación con movimientos bancarios
 - exportes para asesoría o reporting interno
 
+### CRM y seguimiento
+
+- vinculación automática de fichas al emitir facturas o presupuestos
+- histórico de notas por cliente
+- recordatorios y seguimiento básico
+- filtros por clientes sin respuesta, sin cobro o con documentación pendiente
+
 ## Infraestructura y calidad
 
 - más validaciones automáticas

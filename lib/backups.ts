@@ -2,6 +2,7 @@ import "server-only";
 
 import {
   demoAiUsage,
+  demoClients,
   demoCommercialDocuments,
   demoExpenses,
   demoInvoices,
@@ -16,6 +17,7 @@ import {
 } from "@/lib/demo";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import type {
+  ClientRecord,
   CommercialDocumentRecord,
   ExpenseRecord,
   InvoiceRecord,
@@ -46,6 +48,7 @@ export type FacturaIaBackup = {
     email: string;
   };
   profile: Profile | null;
+  clients: ClientRecord[];
   invoices: InvoiceRecord[];
   commercialDocuments: CommercialDocumentRecord[];
   expenses: ExpenseRecord[];
@@ -63,6 +66,7 @@ export type FacturaIaBackup = {
 };
 
 export type BackupSummary = {
+  clients: number;
   invoices: number;
   commercialDocuments: number;
   expenses: number;
@@ -85,6 +89,7 @@ export function buildBackupFilename(date = new Date()) {
 export async function getBackupSummary(userId: string): Promise<BackupSummary> {
   if (isDemoMode()) {
     return {
+      clients: demoClients.length,
       invoices: demoInvoices.length,
       commercialDocuments: demoCommercialDocuments.length,
       expenses: demoExpenses.length,
@@ -99,6 +104,7 @@ export async function getBackupSummary(userId: string): Promise<BackupSummary> {
 
   const admin = createAdminSupabaseClient();
   const [
+    clients,
     invoices,
     commercialDocuments,
     expenses,
@@ -109,6 +115,7 @@ export async function getBackupSummary(userId: string): Promise<BackupSummary> {
     mailThreads,
     mailMessages,
   ] = await Promise.all([
+    admin.from("clients").select("*", { count: "exact", head: true }).eq("user_id", userId),
     admin.from("invoices").select("*", { count: "exact", head: true }).eq("user_id", userId),
     admin
       .from("commercial_documents")
@@ -127,6 +134,7 @@ export async function getBackupSummary(userId: string): Promise<BackupSummary> {
   ]);
 
   return {
+    clients: clients.count ?? 0,
     invoices: invoices.count ?? 0,
     commercialDocuments: commercialDocuments.count ?? 0,
     expenses: expenses.count ?? 0,
@@ -151,6 +159,7 @@ export async function exportBackupForUser(
       appUrl: getAppUrl(),
       user: { id: userId, email },
       profile: demoProfile,
+      clients: demoClients,
       invoices: demoInvoices,
       commercialDocuments: demoCommercialDocuments,
       expenses: demoExpenses,
@@ -177,6 +186,7 @@ export async function exportBackupForUser(
   const admin = createAdminSupabaseClient();
   const [
     profile,
+    clients,
     invoices,
     commercialDocuments,
     expenses,
@@ -189,6 +199,7 @@ export async function exportBackupForUser(
     mailSyncRuns,
   ] = await Promise.all([
     admin.from("profiles").select("*").eq("id", userId).maybeSingle(),
+    admin.from("clients").select("*").eq("user_id", userId).order("updated_at", { ascending: false }),
     admin.from("invoices").select("*").eq("user_id", userId).order("issue_date", { ascending: true }),
     admin
       .from("commercial_documents")
@@ -222,6 +233,7 @@ export async function exportBackupForUser(
   }
 
   if (
+    clients.error ||
     invoices.error ||
     commercialDocuments.error ||
     expenses.error ||
@@ -243,6 +255,7 @@ export async function exportBackupForUser(
     appUrl: getAppUrl(),
     user: { id: userId, email },
     profile: (profile.data as Profile | null) ?? null,
+    clients: (clients.data as ClientRecord[] | null) ?? [],
     invoices: (invoices.data as InvoiceRecord[] | null) ?? [],
     commercialDocuments:
       (commercialDocuments.data as CommercialDocumentRecord[] | null) ?? [],
@@ -288,6 +301,7 @@ export async function restoreBackupForUser(
     admin.from("mail_messages").delete().eq("user_id", userId),
     admin.from("mail_threads").delete().eq("user_id", userId),
     admin.from("mail_sync_runs").delete().eq("user_id", userId),
+    admin.from("clients").delete().eq("user_id", userId),
     admin.from("message_messages").delete().eq("user_id", userId),
     admin.from("message_threads").delete().eq("user_id", userId),
     admin.from("message_connections").delete().eq("user_id", userId),
@@ -339,6 +353,19 @@ export async function restoreBackupForUser(
 
     if (aiInsert.error) {
       throw new Error("No se ha podido restaurar el histórico de IA.");
+    }
+  }
+
+  if (backup.clients.length > 0) {
+    const clientsInsert = await admin.from("clients").insert(
+      backup.clients.map((row) => ({
+        ...row,
+        user_id: userId,
+      })),
+    );
+
+    if (clientsInsert.error) {
+      throw new Error("No se han podido restaurar las fichas del CRM.");
     }
   }
 
@@ -466,6 +493,7 @@ export async function restoreBackupForUser(
   }
 
   return {
+    clients: backup.clients.length,
     invoices: backup.invoices.length,
     commercialDocuments: backup.commercialDocuments.length,
     expenses: backup.expenses.length,

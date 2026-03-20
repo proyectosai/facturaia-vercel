@@ -71,8 +71,8 @@ flowchart LR
 - Backups remotos depende del sistema de backups local.
 - Correo entrante depende de tener antes correo saliente y modelo de cliente más maduro.
 - Presupuestos y albaranes dependen del núcleo documental y de facturación.
-- OCR de gastos depende de un modelo de gastos todavía no implementado.
-- CRM ligero depende de mensajería, facturación y documentos.
+- OCR de gastos depende del bucket privado de justificantes y de un parser local o asistido.
+- CRM ligero depende de mensajería, facturación, documentos y correo para dar contexto completo.
 - Firma documental depende de persistencia documental.
 - Banca depende de modelo de cobros.
 - Facturae / VeriFactu depende de la madurez del núcleo fiscal.
@@ -86,16 +86,17 @@ flowchart LR
 - Correo entrante: primera entrega operativa con importación IMAP manual.
 - Presupuestos y albaranes: primera entrega operativa con persistencia, estados y conversión a factura.
 - OCR de gastos: primera entrega operativa con extracción de texto y revisión asistida.
+- CRM ligero: primera entrega operativa con fichas manuales, detección de contactos y timeline básica.
 
 ## Siguiente módulo
 
-### CRM ligero
+### Firma documental
 
 Motivo de prioridad:
 
-- conecta facturas, mensajes, correo, gastos y documentos en torno al cliente
-- aprovecha la base modular ya existente
-- mejora mucho la operativa diaria sin exigir integraciones nuevas
+- se apoya en presupuestos y contratos ya presentes
+- cierra el ciclo documental privado sin depender de plataformas externas
+- añade aceptación o evidencia básica donde hoy solo hay estados manuales
 
 ## Documentación asociada
 
@@ -106,3 +107,4 @@ Motivo de prioridad:
 - `docs/modulos/CORREO_ENTRANTE.md`
 - `docs/modulos/PRESUPUESTOS_ALBARANES.md`
 - `docs/modulos/GASTOS_OCR.md`
+- `docs/modulos/CRM_LIGERO.md`

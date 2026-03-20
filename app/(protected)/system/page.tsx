@@ -5,6 +5,7 @@ import {
   Inbox,
   Mail,
   ArchiveRestore,
+  ContactRound,
   ServerCog,
   ShieldCheck,
   Smartphone,
@@ -228,6 +229,14 @@ export default function SystemPage() {
             icon: Smartphone,
             href: "/modules",
             label: "Ver módulos",
+          },
+          {
+            title: "CRM ligero",
+            description:
+              "Centraliza fichas de cliente o proveedor y cruza actividad de facturas, correo, mensajes y gastos.",
+            icon: ContactRound,
+            href: "/clientes",
+            label: "Abrir CRM",
           },
           {
             title: "Gastos",
