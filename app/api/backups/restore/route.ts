@@ -167,6 +167,32 @@ const backupSchema = z.object({
       }),
     )
     .default([]),
+  bankMovements: z
+    .array(
+      z.object({
+        id: z.string(),
+        account_label: z.string(),
+        booking_date: z.string(),
+        value_date: z.string().nullable().optional(),
+        description: z.string(),
+        counterparty_name: z.string().nullable().optional(),
+        amount: z.union([z.number(), z.string()]),
+        currency: z.string().default("EUR"),
+        direction: z.enum(["credit", "debit"]),
+        balance: z.union([z.number(), z.string()]).nullable().optional(),
+        status: z.enum(["pending", "reconciled", "ignored"]),
+        matched_invoice_id: z.string().nullable().optional(),
+        matched_expense_id: z.string().nullable().optional(),
+        notes: z.string().nullable().optional(),
+        source_file_name: z.string().nullable().optional(),
+        source_hash: z.string(),
+        raw_row: z.any(),
+        imported_at: z.string(),
+        created_at: z.string().optional(),
+        updated_at: z.string().optional(),
+      }),
+    )
+    .default([]),
   aiUsage: z
     .array(
       z.object({

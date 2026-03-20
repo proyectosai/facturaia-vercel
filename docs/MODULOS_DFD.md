@@ -88,16 +88,17 @@ flowchart LR
 - OCR de gastos: primera entrega operativa con extracción de texto y revisión asistida.
 - CRM ligero: primera entrega operativa con fichas manuales, detección de contactos y timeline básica.
 - Firma documental: primera entrega operativa con enlaces públicos y evidencia básica.
+- Conciliación bancaria: primera entrega operativa con importación CSV, sugerencias y conciliación manual.
 
 ## Siguiente módulo
 
-### Conciliación bancaria
+### Facturae / VeriFactu
 
 Motivo de prioridad:
 
-- aprovecha el módulo de gastos ya presente
-- cierra mejor el circuito de caja y cobro en instalaciones privadas
-- prepara la base para reporting y operativa contable más útil
+- reutiliza el núcleo de facturación ya consolidado
+- encaja con el foco español del proyecto
+- aporta una salida estructurada útil para asesoría y cumplimiento futuro
 
 ## Documentación asociada
 
@@ -110,3 +111,4 @@ Motivo de prioridad:
 - `docs/modulos/GASTOS_OCR.md`
 - `docs/modulos/CRM_LIGERO.md`
 - `docs/modulos/FIRMA_DOCUMENTAL.md`
+- `docs/modulos/CONCILIACION_BANCARIA.md`

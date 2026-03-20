@@ -46,6 +46,10 @@ export type DocumentSignatureStatus =
   | "revoked"
   | "expired";
 
+export type BankMovementDirection = "credit" | "debit";
+
+export type BankMovementStatus = "pending" | "reconciled" | "ignored";
+
 export type ClientRelationKind = "client" | "supplier" | "mixed";
 
 export type ClientStatus = "lead" | "active" | "paused" | "archived";
@@ -193,6 +197,30 @@ export type DocumentSignatureRequestRecord = {
   signer_nif: string | null;
   signer_message: string | null;
   evidence: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+};
+
+export type BankMovementRecord = {
+  id: string;
+  user_id: string;
+  account_label: string;
+  booking_date: string;
+  value_date: string | null;
+  description: string;
+  counterparty_name: string | null;
+  amount: NumericLike;
+  currency: string;
+  direction: BankMovementDirection;
+  balance: NumericLike | null;
+  status: BankMovementStatus;
+  matched_invoice_id: string | null;
+  matched_expense_id: string | null;
+  notes: string | null;
+  source_file_name: string | null;
+  source_hash: string;
+  raw_row: Record<string, unknown>;
+  imported_at: string;
   created_at: string;
   updated_at: string;
 };

@@ -1,5 +1,6 @@
 import type {
   AppUserRecord,
+  BankMovementRecord,
   ClientRecord,
   CommercialDocumentRecord,
   DocumentSignatureRequestRecord,
@@ -725,6 +726,117 @@ export const demoDocumentSignatureRequests: DocumentSignatureRequestRecord[] = [
   },
 ];
 
+export const demoBankMovements: BankMovementRecord[] = [
+  {
+    id: "94000000-0000-4000-8000-000000000001",
+    user_id: DEMO_USER_ID,
+    account_label: "Cuenta principal",
+    booking_date: "2026-03-17",
+    value_date: "2026-03-17",
+    description: "Transferencia recibida FAC-001027 Brisa Legal",
+    counterparty_name: "Brisa Legal S.L.",
+    amount: 1185.8,
+    currency: "EUR",
+    direction: "credit",
+    balance: 6420.55,
+    status: "reconciled",
+    matched_invoice_id: "20000000-0000-4000-8000-000000000001",
+    matched_expense_id: null,
+    notes: "Cobro localizado por número de factura y por importe exacto.",
+    source_file_name: "extracto-marzo.csv",
+    source_hash: "demo-bank-0001",
+    raw_row: {
+      fecha: "17/03/2026",
+      concepto: "Transferencia recibida FAC-001027 Brisa Legal",
+      importe: "1185,80",
+    },
+    imported_at: "2026-03-19T18:00:00.000Z",
+    created_at: "2026-03-19T18:00:00.000Z",
+    updated_at: "2026-03-19T18:15:00.000Z",
+  },
+  {
+    id: "94000000-0000-4000-8000-000000000002",
+    user_id: DEMO_USER_ID,
+    account_label: "Cuenta principal",
+    booking_date: "2026-03-19",
+    value_date: "2026-03-19",
+    description: "Cargo Hosting Norte marzo",
+    counterparty_name: "Hosting Norte S.L.",
+    amount: -58.08,
+    currency: "EUR",
+    direction: "debit",
+    balance: 6362.47,
+    status: "reconciled",
+    matched_invoice_id: null,
+    matched_expense_id: "92000000-0000-4000-8000-000000000002",
+    notes: "Gasto mensual de infraestructura vinculado al PDF importado.",
+    source_file_name: "extracto-marzo.csv",
+    source_hash: "demo-bank-0002",
+    raw_row: {
+      fecha: "19/03/2026",
+      concepto: "Cargo Hosting Norte marzo",
+      importe: "-58,08",
+    },
+    imported_at: "2026-03-19T18:00:00.000Z",
+    created_at: "2026-03-19T18:00:00.000Z",
+    updated_at: "2026-03-19T18:10:00.000Z",
+  },
+  {
+    id: "94000000-0000-4000-8000-000000000003",
+    user_id: DEMO_USER_ID,
+    account_label: "Cuenta principal",
+    booking_date: "2026-03-18",
+    value_date: "2026-03-18",
+    description: "Transferencia Atalaya Studio",
+    counterparty_name: "Atalaya Studio",
+    amount: 774.4,
+    currency: "EUR",
+    direction: "credit",
+    balance: 5784.75,
+    status: "pending",
+    matched_invoice_id: null,
+    matched_expense_id: null,
+    notes: null,
+    source_file_name: "extracto-marzo.csv",
+    source_hash: "demo-bank-0003",
+    raw_row: {
+      fecha: "18/03/2026",
+      concepto: "Transferencia Atalaya Studio",
+      importe: "774,40",
+    },
+    imported_at: "2026-03-19T18:00:00.000Z",
+    created_at: "2026-03-19T18:00:00.000Z",
+    updated_at: "2026-03-19T18:00:00.000Z",
+  },
+  {
+    id: "94000000-0000-4000-8000-000000000004",
+    user_id: DEMO_USER_ID,
+    account_label: "Cuenta principal",
+    booking_date: "2026-03-17",
+    value_date: "2026-03-17",
+    description: "Cargo Papelería Goya",
+    counterparty_name: "Papelería Goya",
+    amount: -22.51,
+    currency: "EUR",
+    direction: "debit",
+    balance: 6418.04,
+    status: "pending",
+    matched_invoice_id: null,
+    matched_expense_id: null,
+    notes: null,
+    source_file_name: "extracto-marzo.csv",
+    source_hash: "demo-bank-0004",
+    raw_row: {
+      fecha: "17/03/2026",
+      concepto: "Cargo Papelería Goya",
+      importe: "-22,51",
+    },
+    imported_at: "2026-03-19T18:00:00.000Z",
+    created_at: "2026-03-19T18:00:00.000Z",
+    updated_at: "2026-03-19T18:00:00.000Z",
+  },
+];
+
 export const demoExpenses: ExpenseRecord[] = [
   {
     id: "92000000-0000-4000-8000-000000000001",
@@ -882,4 +994,8 @@ export function getDemoDocumentSignatureRequestByToken(token: string) {
     demoDocumentSignatureRequests.find((request) => request.public_token === token) ??
     null
   );
+}
+
+export function getDemoBankMovementById(movementId: string) {
+  return demoBankMovements.find((movement) => movement.id === movementId) ?? null;
 }

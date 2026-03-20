@@ -93,6 +93,7 @@ Ejecuta las migraciones en este orden:
 9. `supabase/migrations/202603201430_add_expenses_module.sql`
 10. `supabase/migrations/202603201520_add_clients_module.sql`
 11. `supabase/migrations/202603201640_add_document_signature_module.sql`
+12. `supabase/migrations/202603201730_add_bank_reconciliation_module.sql`
 
 Estas migraciones crean:
 
@@ -110,6 +111,7 @@ Estas migraciones crean:
 - circuito inicial de gastos con justificantes y revisión
 - fichas de cliente y proveedor con notas internas y actividad relacionada
 - solicitudes públicas de aceptación y firma básica para documentos comerciales
+- movimientos bancarios con conciliación manual por CSV
 
 ## 4. Configurar correo saliente
 
@@ -381,3 +383,28 @@ Pasos:
 Guía completa:
 
 - `docs/modulos/FIRMA_DOCUMENTAL.md`
+
+## 17. Conciliación bancaria
+
+Este módulo añade una primera entrega útil para revisar extractos dentro de tu propia instalación.
+
+Qué hace ahora:
+
+- importar CSV bancario manualmente
+- detectar ingresos y cargos
+- sugerir vínculos con facturas y gastos por importe, fecha y contraparte
+- marcar movimientos como conciliados o ignorados
+- incluir la bandeja bancaria en los backups
+
+Pasos:
+
+1. aplica la migración `202603201730_add_bank_reconciliation_module.sql`
+2. reinicia FacturaIA
+3. abre `/banca`
+4. exporta desde tu banco un CSV pequeño
+5. importa el fichero indicando un alias de cuenta
+6. confirma manualmente las sugerencias más claras
+
+Guía completa:
+
+- `docs/modulos/CONCILIACION_BANCARIA.md`

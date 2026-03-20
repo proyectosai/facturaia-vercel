@@ -10,6 +10,7 @@ import {
   ServerCog,
   ShieldCheck,
   Smartphone,
+  Landmark,
 } from "lucide-react";
 
 import { isDemoMode } from "@/lib/demo";
@@ -250,10 +251,18 @@ export default function SystemPage() {
           {
             title: "Gastos",
             description:
-              "Importa justificantes y revisa gastos dentro de la app antes de avanzar hacia conciliación.",
+              "Importa justificantes y revisa gastos dentro de la app para que luego aparezcan como sugerencias de conciliación.",
             icon: Database,
             href: "/gastos",
             label: "Abrir gastos",
+          },
+          {
+            title: "Banca",
+            description:
+              "Importa extractos CSV y enlaza cada movimiento con una factura o un gasto ya existente.",
+            icon: Landmark,
+            href: "/banca",
+            label: "Abrir banca",
           },
         ].map((item) => {
           const Icon = item.icon;

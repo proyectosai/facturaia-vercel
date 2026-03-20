@@ -68,6 +68,7 @@ Hay bastante trabajo hecho en:
 - panel protegido
 - facturación
 - generación documental
+- conciliación bancaria inicial
 - mensajería opcional
 - documentación del repositorio
 
@@ -109,6 +110,8 @@ Todavía faltan piezas importantes para considerarlo un producto completamente m
 - eliminación de la monetización integrada como eje del producto
 - base preparada para que cada usuario active solo las integraciones que quiera usar
 - backups manuales desde la propia interfaz
+- backups remotos por WebDAV / Nextcloud
+- primera entrega de conciliación bancaria con importación CSV
 
 ### IA y documentos
 
@@ -144,6 +147,13 @@ Estas partes existen, pero no están cerradas del todo:
 - la cabina documental funciona, pero necesita más plantillas y más control sobre bloques reutilizables
 - falta histórico persistente de documentos generados
 - falta duplicación, versionado y biblioteca de plantillas propias del usuario
+- la firma documental ya existe en una primera fase, pero necesita mayor solidez operativa y legal
+
+### Finanzas privadas
+
+- la conciliación bancaria ya importa CSV y propone enlaces, pero todavía no cubre reglas automáticas ni estado de cobro real
+- faltan formatos adicionales como OFX o Norma 43
+- falta reporting sencillo de caja y vencimientos
 
 ### Instalación privada
 
@@ -175,7 +185,7 @@ Esto forma parte de la visión, pero hoy no está implementado o no está comple
 - guardado permanente de propuestas, contratos y presupuestos
 - biblioteca de plantillas por usuario
 - colaboración o revisión entre varias personas
-- firma o flujo de aceptación documental
+- firma avanzada o flujo de aceptación más sólido y auditable
 
 ### IA más madura
 
@@ -191,6 +201,7 @@ Esto forma parte de la visión, pero hoy no está implementado o no está comple
 - métricas de uso más claras en dashboard
 - experiencia móvil todavía más fina en flujos densos
 - herramientas mejores para administración self-hosted
+- reglas de conciliación más automáticas para banca y caja
 
 ### Infraestructura
 

@@ -2,6 +2,7 @@ import "server-only";
 
 import {
   demoAiUsage,
+  demoBankMovements,
   demoClients,
   demoCommercialDocuments,
   demoDocumentSignatureRequests,
@@ -18,6 +19,7 @@ import {
 } from "@/lib/demo";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import type {
+  BankMovementRecord,
   ClientRecord,
   CommercialDocumentRecord,
   DocumentSignatureRequestRecord,
@@ -55,6 +57,7 @@ export type FacturaIaBackup = {
   commercialDocuments: CommercialDocumentRecord[];
   documentSignatureRequests: DocumentSignatureRequestRecord[];
   expenses: ExpenseRecord[];
+  bankMovements: BankMovementRecord[];
   aiUsage: BackupAiUsageRow[];
   messages: {
     connections: MessageConnection[];
@@ -74,6 +77,7 @@ export type BackupSummary = {
   commercialDocuments: number;
   documentSignatureRequests: number;
   expenses: number;
+  bankMovements: number;
   aiUsageRows: number;
   messageConnections: number;
   messageThreads: number;
@@ -98,6 +102,7 @@ export async function getBackupSummary(userId: string): Promise<BackupSummary> {
       commercialDocuments: demoCommercialDocuments.length,
       documentSignatureRequests: demoDocumentSignatureRequests.length,
       expenses: demoExpenses.length,
+      bankMovements: demoBankMovements.length,
       aiUsageRows: 1,
       messageConnections: demoMessageConnections.length,
       messageThreads: demoMessageThreads.length,
@@ -114,6 +119,7 @@ export async function getBackupSummary(userId: string): Promise<BackupSummary> {
     commercialDocuments,
     documentSignatureRequests,
     expenses,
+    bankMovements,
     aiUsage,
     connections,
     threads,
@@ -132,6 +138,7 @@ export async function getBackupSummary(userId: string): Promise<BackupSummary> {
       .select("*", { count: "exact", head: true })
       .eq("user_id", userId),
     admin.from("expenses").select("*", { count: "exact", head: true }).eq("user_id", userId),
+    admin.from("bank_movements").select("*", { count: "exact", head: true }).eq("user_id", userId),
     admin.from("ai_usage").select("*", { count: "exact", head: true }).eq("user_id", userId),
     admin
       .from("message_connections")
@@ -149,6 +156,7 @@ export async function getBackupSummary(userId: string): Promise<BackupSummary> {
     commercialDocuments: commercialDocuments.count ?? 0,
     documentSignatureRequests: documentSignatureRequests.count ?? 0,
     expenses: expenses.count ?? 0,
+    bankMovements: bankMovements.count ?? 0,
     aiUsageRows: aiUsage.count ?? 0,
     messageConnections: connections.count ?? 0,
     messageThreads: threads.count ?? 0,
@@ -175,6 +183,7 @@ export async function exportBackupForUser(
       commercialDocuments: demoCommercialDocuments,
       documentSignatureRequests: demoDocumentSignatureRequests,
       expenses: demoExpenses,
+      bankMovements: demoBankMovements,
       aiUsage: [
         {
           user_id: userId,
@@ -203,6 +212,7 @@ export async function exportBackupForUser(
     commercialDocuments,
     documentSignatureRequests,
     expenses,
+    bankMovements,
     aiUsage,
     connections,
     threads,
@@ -225,6 +235,11 @@ export async function exportBackupForUser(
       .eq("user_id", userId)
       .order("requested_at", { ascending: false }),
     admin.from("expenses").select("*").eq("user_id", userId).order("expense_date", { ascending: true }),
+    admin
+      .from("bank_movements")
+      .select("*")
+      .eq("user_id", userId)
+      .order("booking_date", { ascending: true }),
     admin.from("ai_usage").select("*").eq("user_id", userId).order("date", { ascending: true }),
     admin
       .from("message_connections")
@@ -256,6 +271,7 @@ export async function exportBackupForUser(
     commercialDocuments.error ||
     documentSignatureRequests.error ||
     expenses.error ||
+    bankMovements.error ||
     aiUsage.error ||
     connections.error ||
     threads.error ||
@@ -281,6 +297,7 @@ export async function exportBackupForUser(
     documentSignatureRequests:
       (documentSignatureRequests.data as DocumentSignatureRequestRecord[] | null) ?? [],
     expenses: (expenses.data as ExpenseRecord[] | null) ?? [],
+    bankMovements: (bankMovements.data as BankMovementRecord[] | null) ?? [],
     aiUsage: (aiUsage.data as BackupAiUsageRow[] | null) ?? [],
     messages: {
       connections: (connections.data as MessageConnection[] | null) ?? [],
@@ -328,6 +345,7 @@ export async function restoreBackupForUser(
     admin.from("message_threads").delete().eq("user_id", userId),
     admin.from("message_connections").delete().eq("user_id", userId),
     admin.from("ai_usage").delete().eq("user_id", userId),
+    admin.from("bank_movements").delete().eq("user_id", userId),
     admin.from("expenses").delete().eq("user_id", userId),
     admin.from("commercial_documents").delete().eq("user_id", userId),
     admin.from("invoices").delete().eq("user_id", userId),
@@ -521,6 +539,19 @@ export async function restoreBackupForUser(
     }
   }
 
+  if (backup.bankMovements.length > 0) {
+    const bankMovementsInsert = await admin.from("bank_movements").insert(
+      backup.bankMovements.map((row) => ({
+        ...row,
+        user_id: userId,
+      })),
+    );
+
+    if (bankMovementsInsert.error) {
+      throw new Error("No se han podido restaurar los movimientos bancarios.");
+    }
+  }
+
   const syncSequence = await admin.rpc("sync_invoice_number_sequence");
 
   if (syncSequence.error) {
@@ -533,6 +564,7 @@ export async function restoreBackupForUser(
     commercialDocuments: backup.commercialDocuments.length,
     documentSignatureRequests: backup.documentSignatureRequests.length,
     expenses: backup.expenses.length,
+    bankMovements: backup.bankMovements.length,
     aiUsageRows: backup.aiUsage.length,
     messageConnections: backup.messages.connections.length,
     messageThreads: backup.messages.threads.length,

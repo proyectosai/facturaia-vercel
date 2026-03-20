@@ -28,6 +28,9 @@ El formato está inspirado en Keep a Changelog y el versionado irá madurando co
 - Primera entrega del módulo de firma documental con enlaces públicos para presupuestos y albaranes.
 - Nuevas rutas `/firmas` y `/firma/[token]`.
 - Migración `202603201640_add_document_signature_module.sql`.
+- Primera entrega del módulo de conciliación bancaria con extractos CSV y conciliación manual.
+- Nueva ruta `/banca`.
+- Migración `202603201730_add_bank_reconciliation_module.sql`.
 
 ### Mejorado
 
@@ -40,8 +43,9 @@ El formato está inspirado en Keep a Changelog y el versionado irá madurando co
 - Los backups incluyen ahora también los gastos importados.
 - Los backups incluyen también las fichas guardadas del CRM ligero.
 - Los backups incluyen también las solicitudes de firma documental.
+- Los backups incluyen también el histórico de movimientos bancarios.
 - El módulo de presupuestos incorpora filtros y seguimiento más claro por estado y tipo.
-- El catálogo `/modules` adelanta ahora la conciliación bancaria como siguiente módulo del roadmap.
+- El catálogo `/modules` deja Facturae / VeriFactu como siguiente bloque del roadmap.
 
 ## [0.1.0] - 2026-03-19
 

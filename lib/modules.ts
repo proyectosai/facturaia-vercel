@@ -264,18 +264,23 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
     order: 8,
     title: "Conciliación bancaria",
     summary:
-      "Importación de extractos para marcar facturas cobradas y ordenar movimientos.",
-    status: "next",
+      "Importación de extractos CSV para cruzar ingresos y cargos con facturas emitidas o gastos ya revisados.",
+    status: "partial",
     category: "finanzas",
+    routeHref: "/banca",
+    docsPath: "docs/modulos/CONCILIACION_BANCARIA.md",
     requirements: [
-      "Importador CSV/OFX",
-      "Modelo de cobros",
-      "Reglas de conciliación",
+      "Migración bank_movements aplicada",
+      "Facturas y/o gastos ya importados",
+      "Extracto CSV exportado por tu banco",
     ],
     installSteps: [
-      "Importar extracto.",
-      "Cruzar por importe y fecha.",
-      "Confirmar cobros detectados.",
+      "Exporta un CSV desde tu banco con fecha, concepto e importe.",
+      "Abre /banca y sube primero un extracto corto para validar la cabecera.",
+      "Confirma manualmente los enlaces con facturas o gastos sugeridos por la app.",
+    ],
+    notes: [
+      "Primera entrega con CSV manual. OFX, reglas automáticas y caja prevista llegarán después.",
     ],
   },
   {
@@ -383,6 +388,11 @@ export function getModuleCatalog(): ModuleRuntimeState[] {
       configuredLabel = configured
         ? "Listo para generar enlaces públicos"
         : "Falta URL pública o Supabase";
+    } else if (module.id === "bank-reconciliation") {
+      configured = hasSupabase();
+      configuredLabel = configured
+        ? "Listo para importar extractos CSV"
+        : "Falta Supabase";
     } else {
       configured = false;
       configuredLabel = "Pendiente de implementación";

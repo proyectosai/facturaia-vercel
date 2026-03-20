@@ -183,6 +183,12 @@ export default function InstalacionPage() {
                   "Importa justificantes y revísalos dentro de la app sin depender de servicios externos.",
                 icon: HardDrive,
               },
+              {
+                title: "Conciliación bancaria",
+                description:
+                  "Carga extractos CSV y cruza cada movimiento con facturas emitidas o gastos ya revisados.",
+                icon: Database,
+              },
             ].map((item) => {
               const Icon = item.icon;
 
@@ -252,21 +258,28 @@ export default function InstalacionPage() {
                 label: "Abrir gastos",
               },
               {
-                title: "6. Crea tus primeras fichas de cliente",
+                title: "6. Importa un extracto bancario",
+                description:
+                  "Carga un CSV corto desde tu banco y valida las primeras sugerencias de conciliación manual.",
+                href: "/banca",
+                label: "Abrir banca",
+              },
+              {
+                title: "7. Crea tus primeras fichas de cliente",
                 description:
                   "Centraliza datos de contacto y deja notas internas antes de trabajar a diario con documentos y mensajes.",
                 href: "/clientes",
                 label: "Abrir CRM",
               },
               {
-                title: "7. Valida una firma documental",
+                title: "8. Valida una firma documental",
                 description:
                   "Genera un enlace de aceptación desde un presupuesto o albarán y comprueba la respuesta en tu entorno.",
                 href: "/firmas",
                 label: "Abrir firmas",
               },
               {
-                title: "8. Activa documentos o mensajería",
+                title: "9. Activa documentos o mensajería",
                 description:
                   "Añade IA local y bandeja de mensajes solo si de verdad te aportan valor.",
                 href: "/documents-ai",

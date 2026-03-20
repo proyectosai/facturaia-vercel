@@ -12,6 +12,7 @@ Documentos actuales:
 - `GASTOS_OCR.md` (primera entrega de importación y revisión ya operativa)
 - `CRM_LIGERO.md` (primera entrega de fichas unificadas ya operativa)
 - `FIRMA_DOCUMENTAL.md` (primera entrega de aceptación y firma básica ya operativa)
+- `CONCILIACION_BANCARIA.md` (primera entrega con extractos CSV y conciliación manual ya operativa)
 
 Documento general:
 

@@ -25,6 +25,7 @@ FacturaIA está diseñada como una aplicación Next.js 15 con App Router, priori
 - `app/(protected)/presupuestos/page.tsx`
 - `app/(protected)/firmas/page.tsx`
 - `app/(protected)/gastos/page.tsx`
+- `app/(protected)/banca/page.tsx`
 - `app/(protected)/clientes/page.tsx`
 - `app/(protected)/invoices/page.tsx`
 - `app/(protected)/messages/page.tsx`
@@ -220,7 +221,24 @@ Funciones:
 - bandeja interna por remitente
 - historial de sincronizaciones entrantes
 
-## 11. Copias de seguridad
+## 11. Conciliación bancaria
+
+Archivos clave:
+
+- `app/(protected)/banca/page.tsx`
+- `lib/banking.ts`
+- `lib/actions/banking.ts`
+- `supabase/migrations/202603201730_add_bank_reconciliation_module.sql`
+
+Funciones:
+
+- importación manual de extractos CSV
+- normalización de fechas, importes y direcciones
+- sugerencias de conciliación contra facturas y gastos
+- conciliación manual o descarte de movimientos
+- inclusión del histórico bancario en backups y restauración
+
+## 12. Copias de seguridad
 
 Archivos clave:
 
@@ -239,11 +257,12 @@ Funciones:
 - resincronización de la secuencia de facturas
 - inclusión de presupuestos y albaranes en la copia
 - inclusión de gastos y justificantes asociados
+- inclusión de movimientos bancarios y su estado de conciliación
 - inclusión de solicitudes de firma y respuestas
 - sincronización manual a WebDAV / Nextcloud
 - historial de últimas ejecuciones remotas
 
-## 12. Mensajería opcional
+## 13. Mensajería opcional
 
 Archivos clave:
 
@@ -271,6 +290,7 @@ Tablas principales:
 - `commercial_documents`
 - `document_signature_requests`
 - `expenses`
+- `bank_movements`
 - `clients`
 - `ai_usage`
 - `message_connections`
@@ -338,6 +358,16 @@ Tablas principales:
 - ruta al archivo original
 - método de extracción de texto
 - texto bruto y payload extraído
+
+## `bank_movements`
+
+- alias de cuenta por importación
+- fecha contable y fecha valor
+- concepto, contraparte e importe
+- dirección `credit` o `debit`
+- estado `pending`, `reconciled` o `ignored`
+- referencia opcional a factura o gasto enlazado
+- hash de origen para evitar duplicados
 
 ## `ai_usage`
 

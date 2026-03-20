@@ -34,6 +34,7 @@ type BackupSummary = {
   commercialDocuments: number;
   documentSignatureRequests: number;
   expenses: number;
+  bankMovements: number;
   aiUsageRows: number;
   messageConnections: number;
   messageThreads: number;
@@ -211,6 +212,7 @@ export function BackupCenter({
     { label: "Pre-facturación", value: summary.commercialDocuments },
     { label: "Solicitudes firma", value: summary.documentSignatureRequests },
     { label: "Gastos", value: summary.expenses },
+    { label: "Mov. banca", value: summary.bankMovements },
     { label: "Registros IA", value: summary.aiUsageRows },
     { label: "Conexiones", value: summary.messageConnections },
     { label: "Conversaciones", value: summary.messageThreads },
@@ -228,7 +230,7 @@ export function BackupCenter({
         </div>
       ) : null}
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-11">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-12">
         {stats.map((item) => (
           <Card key={item.label}>
             <CardContent className="space-y-2">

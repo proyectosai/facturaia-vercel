@@ -45,7 +45,8 @@ Este documento resume la dirección prevista para FacturaIA como producto y como
 
 - OCR automático de imágenes
 - categorías y revisión más guiada
-- conciliación con movimientos bancarios
+- reglas automáticas sobre movimientos bancarios ya importados
+- soporte OFX y más formatos de extracto
 - exportes para asesoría o reporting interno
 
 ### CRM y seguimiento
