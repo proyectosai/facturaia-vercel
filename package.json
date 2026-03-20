@@ -13,7 +13,7 @@
     "lint": "eslint .",
     "typecheck": "node -e \"const fs=require('fs'); fs.rmSync('.next/types',{recursive:true,force:true,maxRetries:5,retryDelay:100});\" && next typegen && tsc --noEmit --incremental false",
     "test:local-core": "vitest run tests/local-core.test.ts",
-    "test:quality": "npm run lint && npm run typecheck && npm test && npm run test:smoke",
+    "test:quality": "npm run lint && npm run typecheck && npm test && npm run demo:build && npm run test:smoke",
     "test": "vitest run",
     "test:smoke": "node scripts/facturaia-smoke.mjs"
   },
