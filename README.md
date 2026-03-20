@@ -24,6 +24,7 @@ FacturaIA es una aplicación Next.js 15 pensada para autónomos y pequeños nego
 - Historial de facturas con descarga de PDF y envío por email con SMTP o Resend.
 - Página pública de factura con QR.
 - Estudio documental con IA local vía LM Studio para propuestas, presupuestos, contratos y mensajes.
+- Módulo de apoyo IRPF / Renta para preparar expedientes con checklist, fuentes oficiales y asistencia local.
 - Exportación de documentos a PDF y Word.
 - Módulo de correo saliente con pantalla de prueba y soporte SMTP / Resend.
 - Módulo de correo entrante con importación IMAP manual y bandeja interna.
@@ -31,6 +32,7 @@ FacturaIA es una aplicación Next.js 15 pensada para autónomos y pequeños nego
 - Centro de backups para exportar, restaurar y sincronizar copias remotas por WebDAV / Nextcloud.
 - Catálogo de módulos opcionales con estado e instalación en `/modules`.
 - Guía de instalación privada dentro de la propia app.
+- Asistente de primeros pasos dentro del panel para instalaciones no técnicas.
 - Script `npm run doctor` para validar la instalación local.
 - Cabeceras de seguridad y validación estricta de uploads en puntos sensibles.
 - Suite de tests unitarios para cobros, seguridad, Facturae y firma.
@@ -106,6 +108,7 @@ Si buscas una guía clara antes de instalar nada:
 - `/instalacion`
 - `/login`
 - `/dashboard`
+- `/primeros-pasos`
 - `/new-invoice`
 - `/presupuestos`
 - `/firmas`
@@ -115,6 +118,7 @@ Si buscas una guía clara antes de instalar nada:
 - `/clientes`
 - `/invoices`
 - `/facturae`
+- `/renta`
 - `/documents-ai`
 - `/mail`
 - `/feedback`
@@ -265,6 +269,7 @@ Tablas principales activas:
 - [Conciliación bancaria](./docs/modulos/CONCILIACION_BANCARIA.md)
 - [Cobros y vencimientos](./docs/modulos/COBROS_Y_VENCIMIENTOS.md)
 - [Facturae / VeriFactu](./docs/modulos/FACTURAE_VERIFACTU.md)
+- [Asistente IRPF / Renta](./docs/modulos/ASISTENTE_RENTA.md)
 - [Hoja de ruta](./docs/ROADMAP.md)
 - [Guía de contribución](./CONTRIBUTING.md)
 - [Código de conducta](./CODE_OF_CONDUCT.md)

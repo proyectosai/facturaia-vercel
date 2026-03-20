@@ -56,7 +56,7 @@ export default function InstalacionPage() {
 
           <div className="flex flex-wrap gap-3">
             <Button asChild>
-              <Link href="/dashboard">Abrir panel</Link>
+              <Link href="/primeros-pasos">Abrir asistente</Link>
             </Button>
             <Button variant="outline" asChild>
               <Link href="/modules">Ver módulos</Link>

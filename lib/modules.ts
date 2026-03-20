@@ -51,6 +51,13 @@ function hasRemoteBackups() {
   );
 }
 
+function hasLocalAi() {
+  return (
+    Boolean(process.env.LM_STUDIO_BASE_URL) &&
+    Boolean(process.env.LM_STUDIO_MODEL)
+  );
+}
+
 export const MODULE_DEFINITIONS: ModuleDefinition[] = [
   {
     id: "messaging-inbox",
@@ -343,6 +350,33 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
     readinessNote:
       "Debe considerarse preparatorio. No es una base suficiente para delegar cumplimiento fiscal real.",
   },
+  {
+    id: "tax-assistant",
+    order: 10,
+    title: "Asistente IRPF / Renta",
+    summary:
+      "Chat de apoyo para preparar expedientes de renta en Espana con checklist, riesgos y referencias oficiales de AEAT.",
+    status: "partial",
+    maturity: "pilot",
+    category: "cumplimiento",
+    routeHref: "/renta",
+    docsPath: "docs/modulos/ASISTENTE_RENTA.md",
+    requirements: [
+      "Usuario autenticado",
+      "LM Studio local recomendado para respuestas más útiles",
+      "Revisión final siempre en AEAT y Renta WEB",
+    ],
+    installSteps: [
+      "Abre /renta y describe el caso del cliente.",
+      "Añade contexto, documentación aportada y ejercicio fiscal.",
+      "Usa la respuesta como apoyo de trabajo, no como cierre automático de la declaración.",
+    ],
+    notes: [
+      "Aunque no haya IA local conectada, el módulo puede funcionar en modo guiado con checklist internos.",
+    ],
+    readinessNote:
+      "Útil para ordenar expedientes y dudas, pero no debe sustituir el criterio fiscal ni la validación final en AEAT.",
+  },
 ];
 
 export function getModuleStatusMeta(status: ModuleStatus) {
@@ -459,6 +493,11 @@ export function getModuleCatalog(): ModuleRuntimeState[] {
       configuredLabel = configured
         ? "Listo para exportar borradores XML"
         : "Falta Supabase";
+    } else if (module.id === "tax-assistant") {
+      configured = true;
+      configuredLabel = hasLocalAi()
+        ? "LM Studio listo"
+        : "Modo guiado sin IA local";
     } else {
       configured = false;
       configuredLabel = "Pendiente de implementación";

@@ -132,16 +132,16 @@ export default async function DashboardPage() {
           title: "Completa tus datos fiscales",
           description:
             "Antes de emitir más facturas, deja tu perfil fiscal redondo para reutilizarlo en todos los PDFs.",
-          href: "/profile",
-            label: "Ir a Mi Perfil",
+          href: "/primeros-pasos",
+          label: "Abrir asistente",
           }
       : invoiceCount === 0
         ? {
             title: "Emite tu primera factura",
             description:
               "Ya tienes la base lista. El siguiente paso natural es generar tu primera factura profesional.",
-            href: "/new-invoice",
-            label: "Crear factura",
+            href: "/primeros-pasos",
+            label: "Seguir primeros pasos",
           }
         : {
             title: "Mantén el ritmo de este mes",

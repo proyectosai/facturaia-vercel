@@ -7,6 +7,7 @@ import {
   Blocks,
   ContactRound,
   CircleDollarSign,
+  ClipboardList,
   FileCode2,
   FilePlus2,
   FileSignature,
@@ -22,6 +23,7 @@ import {
   Settings2,
   ShieldCheck,
   Sparkles,
+  Scale,
   Wallet,
   Wrench,
 } from "lucide-react";
@@ -36,6 +38,7 @@ import { Card } from "@/components/ui/card";
 
 const navigation = [
   { href: "/dashboard", label: "Inicio", icon: Home },
+  { href: "/primeros-pasos", label: "Primeros pasos", icon: ClipboardList },
   { href: "/new-invoice", label: "Nueva Factura", icon: FilePlus2 },
   { href: "/presupuestos", label: "Presupuestos", icon: ReceiptText },
   { href: "/firmas", label: "Firmas", icon: FileSignature },
@@ -45,6 +48,7 @@ const navigation = [
   { href: "/clientes", label: "Clientes", icon: ContactRound },
   { href: "/invoices", label: "Mis Facturas", icon: Files },
   { href: "/facturae", label: "Facturae", icon: FileCode2 },
+  { href: "/renta", label: "IRPF / Renta", icon: Scale },
   { href: "/messages", label: "Mensajes", icon: MessageSquareText },
   { href: "/documents-ai", label: "Documentos", icon: FileText },
   { href: "/mail", label: "Correo", icon: Mail },

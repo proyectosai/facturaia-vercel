@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-import { getLocalAiEnv } from "@/lib/env";
+import { getLocalAiEnv, hasLocalAiEnv } from "@/lib/env";
+import { TAX_ASSISTANT_OFFICIAL_LINKS } from "@/lib/tax-assistant";
 
 export const AI_DOCUMENT_TYPES = [
   "proposal",
@@ -203,6 +204,132 @@ export async function improveInvoiceDescription({
     temperature: 0.2,
     maxTokens: 220,
   });
+}
+
+function buildTaxAssistantFallbackReply({
+  message,
+  clientName,
+  taxYear,
+  clientSummary,
+  providedDocuments,
+}: {
+  message: string;
+  clientName?: string;
+  taxYear?: string;
+  clientSummary?: string;
+  providedDocuments?: string;
+}) {
+  const normalized = message.toLowerCase();
+  const checklist = [
+    "- Identificación del contribuyente y, si aplica, del cónyuge.",
+    "- Datos fiscales AEAT y contraste con documentación propia.",
+    "- Certificados de rendimientos del trabajo, capital mobiliario y bancarios.",
+    "- Información de actividades económicas si el cliente es autónomo.",
+    "- Inmuebles, alquileres, referencias catastrales y gastos deducibles.",
+    "- Ganancias o pérdidas patrimoniales: ventas, fondos, acciones o criptoactivos.",
+    "- Situación familiar, mínimos, discapacidad, maternidad y deducciones autonómicas.",
+  ];
+
+  const focusNotes = [
+    normalized.includes("autonom")
+      ? "- Si el cliente es autónomo, revisa libros, modelos presentados, amortizaciones y gastos con soporte documental."
+      : null,
+    normalized.includes("alquiler")
+      ? "- Si hay alquileres, revisa ingresos íntegros, gastos, periodos vacíos y reducción aplicable."
+      : null,
+    normalized.includes("cripto") || normalized.includes("acciones") || normalized.includes("ganancia")
+      ? "- Si hay transmisiones o criptoactivos, no cierres nada sin cuadre de fechas, valores de adquisición/transmisión y comisiones."
+      : null,
+    normalized.includes("famil")
+      ? "- Si hay unidad familiar o hijos, contrasta convivencia, guardia y custodia, anualidades y deducciones familiares."
+      : null,
+  ].filter(Boolean);
+
+  return [
+    `Modo guiado sin IA local para ${clientName?.trim() || "este expediente"}${taxYear ? ` (${taxYear})` : ""}.`,
+    clientSummary?.trim()
+      ? `Contexto recibido:\n${clientSummary.trim()}`
+      : "Contexto recibido: sin resumen estructurado del cliente.",
+    providedDocuments?.trim()
+      ? `Documentación aportada:\n${providedDocuments.trim()}`
+      : "Documentación aportada: pendiente de concretar.",
+    `Consulta de trabajo:\n${message.trim()}`,
+    "Checklist base para abrir o revisar el expediente:",
+    checklist.join("\n"),
+    focusNotes.length > 0
+      ? `Puntos delicados a revisar:\n${focusNotes.join("\n")}`
+      : "Puntos delicados a revisar:\n- Contrasta datos fiscales AEAT con la realidad del cliente.\n- No cierres deducciones, reducciones o imputaciones sin soporte documental.\n- Revisa siempre el resultado final dentro de Renta WEB o del manual oficial.",
+    `Siguiente paso recomendado:\n1. Contrastar datos fiscales en AEAT.\n2. Abrir simulación en Renta WEB Open o Renta WEB.\n3. Revisar el manual práctico del ejercicio y dejar por escrito los supuestos usados.\n4. Validar con el cliente cualquier dato dudoso antes de presentar.`,
+    `Referencias oficiales:\n${TAX_ASSISTANT_OFFICIAL_LINKS.map((link) => `- ${link.title}: ${link.href}`).join("\n")}`,
+    "Aviso: este asistente ayuda a preparar y revisar expedientes, pero no sustituye la revisión fiscal profesional ni la validación final en AEAT.",
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+export async function generateSpanishTaxAssistantReply({
+  message,
+  clientName,
+  taxYear,
+  clientSummary,
+  providedDocuments,
+}: {
+  message: string;
+  clientName?: string;
+  taxYear?: string;
+  clientSummary?: string;
+  providedDocuments?: string;
+}) {
+  if (!hasLocalAiEnv()) {
+    return {
+      text: buildTaxAssistantFallbackReply({
+        message,
+        clientName,
+        taxYear,
+        clientSummary,
+        providedDocuments,
+      }),
+      model: "Plantillas internas",
+      provider: "FacturaIA",
+    };
+  }
+
+  const systemPrompt =
+    "Eres un asistente de apoyo para un profesional fiscal en Espana que prepara declaraciones de IRPF / Renta para sus clientes. Ayudas a ordenar expedientes, pedir documentacion, detectar huecos, listar riesgos y proponer el siguiente paso de trabajo. No prometas que una declaracion es correcta ni des asesoramiento fiscal o legal definitivo. No inventes importes, articulos, deducciones, plazos ni resultados. Si falta informacion, dilo claramente. Responde en espanol de Espana, en texto plano, con estos apartados cuando proceda: 1) lectura del caso, 2) datos pendientes, 3) riesgos o incidencias, 4) siguiente paso practico. Recuerda que el cierre final debe revisarse siempre contra AEAT, Renta WEB y el manual oficial.";
+
+  const userPrompt = [
+    clientName?.trim() ? `Cliente: ${clientName.trim()}` : null,
+    taxYear?.trim() ? `Ejercicio fiscal: ${taxYear.trim()}` : null,
+    clientSummary?.trim() ? `Resumen del cliente:\n${clientSummary.trim()}` : null,
+    providedDocuments?.trim()
+      ? `Documentacion aportada:\n${providedDocuments.trim()}`
+      : null,
+    `Consulta del profesional:\n${message.trim()}`,
+    `Al final, incluye una lista breve titulada "Fuentes oficiales a revisar" citando solo estas referencias:\n${TAX_ASSISTANT_OFFICIAL_LINKS.map((link) => `- ${link.title}: ${link.href}`).join("\n")}`,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+
+  try {
+    return await callLocalChatModel({
+      systemPrompt,
+      userPrompt,
+      temperature: 0.15,
+      maxTokens: 1400,
+    });
+  } catch {
+    return {
+      text: buildTaxAssistantFallbackReply({
+        message,
+        clientName,
+        taxYear,
+        clientSummary,
+        providedDocuments,
+      }),
+      model: "Plantillas internas",
+      provider: "FacturaIA",
+    };
+  }
 }
 
 export async function generateBusinessDocument({
