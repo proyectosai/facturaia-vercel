@@ -6,6 +6,8 @@ import { promises as fs } from "node:fs";
 
 import type {
   AppUserRecord,
+  BankMovementDirection,
+  BankMovementRecord,
   ClientRecord,
   ClientPriority,
   ClientRelationKind,
@@ -48,6 +50,7 @@ type LocalCoreData = {
   feedbackEntries: FeedbackEntryRecord[];
   invoices: InvoiceRecord[];
   invoiceReminders: InvoiceReminderRecord[];
+  bankMovements: BankMovementRecord[];
   commercialDocuments: CommercialDocumentRecord[];
   documentSignatureRequests: DocumentSignatureRequestRecord[];
   expenses: ExpenseRecord[];
@@ -71,6 +74,7 @@ function getDefaultLocalData(): LocalCoreData {
     feedbackEntries: [],
     invoices: [],
     invoiceReminders: [],
+    bankMovements: [],
     commercialDocuments: [],
     documentSignatureRequests: [],
     expenses: [],
@@ -1075,6 +1079,220 @@ export async function updateLocalInvoicePaymentState(
   });
 }
 
+function resolveLocalSyncedPaymentStatus(amountPaid: number, grandTotal: number) {
+  if (amountPaid <= 0) {
+    return "pending" as const;
+  }
+
+  if (amountPaid + 0.01 >= grandTotal) {
+    return "paid" as const;
+  }
+
+  return "partial" as const;
+}
+
+function toPaidAtIso(dateValue: string | null) {
+  if (!dateValue) {
+    return null;
+  }
+
+  return new Date(`${dateValue}T12:00:00.000Z`).toISOString();
+}
+
+export async function listLocalBankMovementsForUser(userId: string) {
+  const data = await readLocalCoreData();
+  return [...data.bankMovements]
+    .filter((movement) => movement.user_id === userId)
+    .sort((left, right) => {
+      const bookingSort = right.booking_date.localeCompare(left.booking_date);
+
+      if (bookingSort !== 0) {
+        return bookingSort;
+      }
+
+      return right.created_at.localeCompare(left.created_at);
+    });
+}
+
+export async function getLocalBankMovementById(userId: string, movementId: string) {
+  const movements = await listLocalBankMovementsForUser(userId);
+  return movements.find((movement) => movement.id === movementId) ?? null;
+}
+
+export async function createLocalBankMovementRecords({
+  userId,
+  rows,
+}: {
+  userId: string;
+  rows: Array<{
+    accountLabel: string;
+    bookingDate: string;
+    valueDate: string | null;
+    description: string;
+    counterpartyName: string | null;
+    amount: number;
+    currency: string;
+    direction: BankMovementDirection;
+    balance: number | null;
+    sourceFileName: string | null;
+    sourceHash: string;
+    rawRow: Record<string, unknown>;
+  }>;
+}) {
+  return updateLocalCoreData(async (data) => {
+    const existingHashes = new Set(
+      data.bankMovements
+        .filter((movement) => movement.user_id === userId)
+        .map((movement) => movement.source_hash),
+    );
+    const timestamp = nowIso();
+    const inserted: BankMovementRecord[] = [];
+
+    for (const row of rows) {
+      if (existingHashes.has(row.sourceHash)) {
+        continue;
+      }
+
+      const movement: BankMovementRecord = {
+        id: randomUUID(),
+        user_id: userId,
+        account_label: row.accountLabel,
+        booking_date: row.bookingDate,
+        value_date: row.valueDate,
+        description: row.description,
+        counterparty_name: row.counterpartyName,
+        amount: row.amount,
+        currency: row.currency,
+        direction: row.direction,
+        balance: row.balance,
+        status: "pending",
+        matched_invoice_id: null,
+        matched_expense_id: null,
+        notes: null,
+        source_file_name: row.sourceFileName,
+        source_hash: row.sourceHash,
+        raw_row: row.rawRow,
+        imported_at: timestamp,
+        created_at: timestamp,
+        updated_at: timestamp,
+      };
+
+      data.bankMovements.push(movement);
+      inserted.push(movement);
+      existingHashes.add(row.sourceHash);
+    }
+
+    return inserted;
+  });
+}
+
+export async function reconcileLocalBankMovement({
+  userId,
+  movementId,
+  actionKind,
+  targetId,
+  notes,
+}: {
+  userId: string;
+  movementId: string;
+  actionKind: "match_invoice" | "match_expense" | "ignore" | "clear";
+  targetId?: string;
+  notes?: string | null;
+}) {
+  return updateLocalCoreData(async (data) => {
+    const movement = data.bankMovements.find(
+      (candidate) => candidate.user_id === userId && candidate.id === movementId,
+    );
+
+    if (!movement) {
+      return null;
+    }
+
+    const timestamp = nowIso();
+
+    if (actionKind === "match_invoice") {
+      movement.status = "reconciled";
+      movement.matched_invoice_id = targetId ?? null;
+      movement.matched_expense_id = null;
+      movement.notes = notes ?? movement.notes ?? "Conciliado manualmente con una factura.";
+    } else if (actionKind === "match_expense") {
+      movement.status = "reconciled";
+      movement.matched_invoice_id = null;
+      movement.matched_expense_id = targetId ?? null;
+      movement.notes = notes ?? movement.notes ?? "Conciliado manualmente con un gasto.";
+    } else if (actionKind === "ignore") {
+      movement.status = "ignored";
+      movement.matched_invoice_id = null;
+      movement.matched_expense_id = null;
+      movement.notes = notes ?? movement.notes ?? "Marcado como ignorado manualmente.";
+    } else {
+      movement.status = "pending";
+      movement.matched_invoice_id = null;
+      movement.matched_expense_id = null;
+      movement.notes = notes ?? null;
+    }
+
+    movement.updated_at = timestamp;
+    return movement;
+  });
+}
+
+export async function syncLocalInvoicePaymentStatusFromBankMatches(
+  userId: string,
+  invoiceIds: string[],
+) {
+  return updateLocalCoreData(async (data) => {
+    const uniqueInvoiceIds = Array.from(
+      new Set(invoiceIds.map((invoiceId) => invoiceId.trim()).filter(Boolean)),
+    );
+
+    if (uniqueInvoiceIds.length === 0) {
+      return [];
+    }
+
+    const synced: InvoiceRecord[] = [];
+
+    for (const invoiceId of uniqueInvoiceIds) {
+      const invoice = data.invoices.find(
+        (candidate) => candidate.user_id === userId && candidate.id === invoiceId,
+      );
+
+      if (!invoice) {
+        continue;
+      }
+
+      const matchedMovements = data.bankMovements.filter(
+        (movement) =>
+          movement.user_id === userId &&
+          movement.status === "reconciled" &&
+          movement.direction === "credit" &&
+          movement.matched_invoice_id === invoiceId,
+      );
+
+      const amountPaid = roundCurrency(
+        matchedMovements.reduce((sum, movement) => sum + Math.abs(toNumber(movement.amount)), 0),
+      );
+      const latestBookingDate =
+        matchedMovements
+          .map((movement) => movement.booking_date)
+          .filter(Boolean)
+          .sort()
+          .at(-1) ?? null;
+
+      invoice.amount_paid = amountPaid;
+      invoice.payment_status = resolveLocalSyncedPaymentStatus(
+        amountPaid,
+        roundCurrency(toNumber(invoice.grand_total)),
+      );
+      invoice.paid_at = invoice.payment_status === "paid" ? toPaidAtIso(latestBookingDate) : null;
+      invoice.updated_at = nowIso();
+      synced.push(invoice);
+    }
+
+    return synced;
+  });
+}
+
 export async function listLocalInvoiceRemindersForUser(userId: string) {
   const data = await readLocalCoreData();
   return data.invoiceReminders
@@ -1175,6 +1393,7 @@ export async function replaceLocalUserData({
   feedbackEntries,
   invoices,
   invoiceReminders,
+  bankMovements,
   commercialDocuments,
   documentSignatureRequests,
   expenses,
@@ -1187,6 +1406,7 @@ export async function replaceLocalUserData({
   feedbackEntries: FeedbackEntryRecord[];
   invoices: InvoiceRecord[];
   invoiceReminders: InvoiceReminderRecord[];
+  bankMovements: BankMovementRecord[];
   commercialDocuments: CommercialDocumentRecord[];
   documentSignatureRequests: DocumentSignatureRequestRecord[];
   expenses: ExpenseRecord[];
@@ -1246,6 +1466,14 @@ export async function replaceLocalUserData({
       ...data.invoiceReminders.filter((candidate) => candidate.user_id !== userId),
       ...invoiceReminders.map((reminder) => ({
         ...reminder,
+        user_id: userId,
+      })),
+    ];
+
+    data.bankMovements = [
+      ...data.bankMovements.filter((candidate) => candidate.user_id !== userId),
+      ...bankMovements.map((movement) => ({
+        ...movement,
         user_id: userId,
       })),
     ];

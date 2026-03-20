@@ -9,6 +9,10 @@ import { rethrowIfRedirectError } from "@/lib/actions/redirect-error";
 import { getBankMovementByIdForUser, parseBankCsvFile } from "@/lib/banking";
 import { syncInvoicePaymentStatusFromBankMatches } from "@/lib/collections-server";
 import { isDemoMode, isLocalFileMode } from "@/lib/demo";
+import {
+  createLocalBankMovementRecords,
+  reconcileLocalBankMovement,
+} from "@/lib/local-core";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 const importBankMovementsSchema = z.object({
@@ -35,12 +39,6 @@ export async function importBankMovementsAction(formData: FormData) {
       );
     }
 
-    if (isLocalFileMode()) {
-      redirect(
-        "/banca?error=Modo%20local:%20la%20conciliaci%C3%B3n%20bancaria%20todav%C3%ADa%20no%20guarda%20movimientos%20persistentes.",
-      );
-    }
-
     const user = await requireUser();
     const payload = importBankMovementsSchema.parse({
       accountLabel: String(formData.get("accountLabel") ?? ""),
@@ -56,6 +54,26 @@ export async function importBankMovementsAction(formData: FormData) {
       fileName: file.name || "extracto.csv",
       accountLabel: payload.accountLabel,
     });
+
+    if (isLocalFileMode()) {
+      const createdRows = await createLocalBankMovementRecords({
+        userId: user.id,
+        rows: parsedRows,
+      });
+
+      if (createdRows.length === 0) {
+        throw new Error(
+          "Todos los movimientos de este fichero ya estaban importados anteriormente.",
+        );
+      }
+
+      revalidatePath("/banca");
+      revalidatePath("/backups");
+      revalidatePath("/modules");
+      revalidatePath("/system");
+      redirect(`/banca?created=${createdRows.length}`);
+    }
+
     const supabase = await createServerSupabaseClient();
     const sourceHashes = parsedRows.map((row) => row.sourceHash);
     const { data: existingRows, error: existingError } = await supabase
@@ -128,12 +146,6 @@ export async function reconcileBankMovementAction(formData: FormData) {
       );
     }
 
-    if (isLocalFileMode()) {
-      redirect(
-        "/banca?error=Modo%20local:%20todav%C3%ADa%20no%20puedes%20conciliar%20movimientos%20bancarios.",
-      );
-    }
-
     const user = await requireUser();
     const payload = reconcileBankMovementSchema.parse({
       movementId: String(formData.get("movementId") ?? ""),
@@ -145,6 +157,54 @@ export async function reconcileBankMovementAction(formData: FormData) {
 
     if (!movement) {
       throw new Error("No se ha podido cargar el movimiento bancario.");
+    }
+
+    if (isLocalFileMode()) {
+      if (
+        (payload.actionKind === "match_invoice" || payload.actionKind === "match_expense") &&
+        !payload.targetId
+      ) {
+        throw new Error(
+          payload.actionKind === "match_invoice"
+            ? "Selecciona una factura para conciliar el movimiento."
+            : "Selecciona un gasto para conciliar el movimiento.",
+        );
+      }
+
+      const updatedMovement = await reconcileLocalBankMovement({
+        userId: user.id,
+        movementId: payload.movementId,
+        actionKind: payload.actionKind,
+        targetId: payload.targetId,
+        notes: payload.notes ?? null,
+      });
+
+      if (!updatedMovement) {
+        throw new Error("No se ha podido actualizar el estado del movimiento.");
+      }
+
+      const affectedInvoiceIds = new Set<string>();
+
+      if (movement.matched_invoice_id) {
+        affectedInvoiceIds.add(movement.matched_invoice_id);
+      }
+
+      if (payload.actionKind === "match_invoice" && payload.targetId) {
+        affectedInvoiceIds.add(payload.targetId);
+      }
+
+      await syncInvoicePaymentStatusFromBankMatches(
+        user.id,
+        Array.from(affectedInvoiceIds),
+      );
+
+      revalidatePath("/banca");
+      revalidatePath("/dashboard");
+      revalidatePath("/invoices");
+      revalidatePath("/cobros");
+      revalidatePath("/clientes");
+      revalidatePath("/backups");
+      redirect("/banca?updated=1");
     }
 
     const supabase = await createServerSupabaseClient();

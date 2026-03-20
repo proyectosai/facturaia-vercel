@@ -135,13 +135,14 @@ export async function getBackupSummary(userId: string): Promise<BackupSummary> {
       invoices: snapshot.invoices.filter((invoice) => invoice.user_id === userId).length,
       invoiceReminders: snapshot.invoiceReminders.filter((reminder) => reminder.user_id === userId)
         .length,
+      bankMovements: snapshot.bankMovements.filter((movement) => movement.user_id === userId)
+        .length,
       commercialDocuments: snapshot.commercialDocuments.filter((document) => document.user_id === userId)
         .length,
       documentSignatureRequests: snapshot.documentSignatureRequests.filter(
         (request) => request.user_id === userId,
       ).length,
       expenses: snapshot.expenses.filter((expense) => expense.user_id === userId).length,
-      bankMovements: 0,
       aiUsageRows: snapshot.aiUsage.filter((entry) => entry.user_id === userId).length,
       messageConnections: 0,
       messageThreads: 0,
@@ -283,12 +284,12 @@ export async function exportBackupForUser(
       feedbackEntries: snapshot.feedbackEntries.filter((entry) => entry.user_id === userId),
       invoices,
       invoiceReminders,
+      bankMovements: snapshot.bankMovements.filter((movement) => movement.user_id === userId),
       commercialDocuments: snapshot.commercialDocuments.filter((document) => document.user_id === userId),
       documentSignatureRequests: snapshot.documentSignatureRequests.filter(
         (request) => request.user_id === userId,
       ),
       expenses: snapshot.expenses.filter((expense) => expense.user_id === userId),
-      bankMovements: [],
       aiUsage,
       messages: {
         connections: [],
@@ -461,6 +462,10 @@ export async function restoreBackupForUser(
       })),
       invoiceReminders: backup.invoiceReminders.map((reminder) => ({
         ...reminder,
+        user_id: userId,
+      })),
+      bankMovements: backup.bankMovements.map((movement) => ({
+        ...movement,
         user_id: userId,
       })),
       commercialDocuments: backup.commercialDocuments.map((document) => ({

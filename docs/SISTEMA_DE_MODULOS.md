@@ -91,7 +91,7 @@ La regla práctica es esta:
 | OCR de gastos | `/gastos` | Experimental | Local nativo | No | Cuando aceptes revisar cada gasto manualmente |
 | CRM ligero | `/clientes` | Piloto | Local nativo | No | Cuando ya tengas clientes y quieras centralizar contexto |
 | Firma documental | `/firmas` | Piloto | Local asistido | URL pública para compartir el enlace | Cuando uses presupuestos o albaranes con aceptación externa |
-| Conciliación bancaria | `/banca` | Piloto | Local pendiente | CSV del banco | No como primera instalación local |
+| Conciliación bancaria | `/banca` | Piloto | Local nativo | CSV del banco | Actívalo cuando ya tengas facturas y gastos revisados |
 | Facturae / VeriFactu | `/facturae` | Experimental | Local nativo | No para el borrador XML; sí para cumplimiento real posterior | Solo si necesitas preparar borradores XML y revisar normativa |
 | Asistente IRPF / Renta | `/renta` | Piloto | Local nativo | LM Studio recomendado, aunque tiene modo guiado | Cuando el despacho quiera apoyo documental y fiscal |
 
@@ -110,7 +110,6 @@ En modo local privado, el backup JSON cubre bien estas piezas:
 
 En cambio, estas piezas todavía requieren más consolidación o dependen de servicios o canales externos:
 
-- conciliación bancaria persistente en local
 - correo entrante completo
 - mensajería con conversaciones reales
 - historial operativo completo de integraciones externas

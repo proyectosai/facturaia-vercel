@@ -377,6 +377,7 @@ describe("local core persistence", () => {
       feedbackEntries: [],
       invoices: [buildRestoredInvoice(7)],
       invoiceReminders: [],
+      bankMovements: [],
       commercialDocuments: [
         {
           ...buildCommercialDocumentInput("quote"),

@@ -30,8 +30,7 @@ Esta primera entrega prioriza control manual y claridad operativa. No cambia est
 
 ## Requisitos
 
-- migración `202603201730_add_bank_reconciliation_module.sql` aplicada
-- Supabase configurado
+- modo local privado o migración `202603201730_add_bank_reconciliation_module.sql` aplicada
 - al menos una factura o un gasto ya creado si quieres validar sugerencias
 - extracto CSV exportado desde tu banco
 
@@ -59,7 +58,7 @@ No hace falta que tu fichero use exactamente esos nombres, pero conviene que se 
 
 ## Instalación mínima
 
-1. Aplica la migración:
+1. Si usas Supabase, aplica la migración:
 
 ```bash
 supabase db push
@@ -74,6 +73,12 @@ o ejecuta directamente el SQL de:
 4. Exporta desde tu banco un CSV corto, por ejemplo de una o dos semanas.
 5. Sube el fichero indicando un alias de cuenta.
 6. Revisa las sugerencias y enlaza primero unos pocos movimientos manualmente.
+
+En modo local privado:
+
+- los movimientos se guardan en el fichero local de FacturaIA
+- la conciliación manual actualiza el estado de cobro de las facturas enlazadas
+- los movimientos viajan en el backup JSON y sobreviven a un restore
 
 ## Recomendaciones de uso
 

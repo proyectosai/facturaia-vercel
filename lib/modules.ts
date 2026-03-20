@@ -320,14 +320,14 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
       "Importación de extractos CSV para cruzar ingresos y cargos con facturas emitidas o gastos ya revisados.",
     status: "partial",
     maturity: "pilot",
-    localSupport: "blocked",
+    localSupport: "native",
     category: "finanzas",
     routeHref: "/banca",
     docsPath: "docs/modulos/CONCILIACION_BANCARIA.md",
     requirements: [
-      "Migración bank_movements aplicada",
       "Facturas y/o gastos ya importados",
       "Extracto CSV exportado por tu banco",
+      "Revisión manual antes de confirmar la conciliación",
     ],
     installSteps: [
       "Exporta un CSV desde tu banco con fecha, concepto e importe.",
@@ -540,12 +540,12 @@ export function getModuleCatalog(): ModuleRuntimeState[] {
           : "Listo para generar enlaces públicos"
         : "Falta URL pública";
     } else if (module.id === "bank-reconciliation") {
-      configured = !localFileMode && hasSupabase();
+      configured = localFileMode || hasSupabase();
       configuredLabel = configured
-        ? "Listo para importar extractos CSV"
-        : localFileMode
-          ? "Modo local: persistencia bancaria pendiente"
-          : "Falta Supabase";
+        ? localFileMode
+          ? "Listo para importar y conciliar en local"
+          : "Listo para importar extractos CSV"
+        : "Falta modo local o Supabase";
     } else if (module.id === "facturae-verifactu") {
       configured = localFileMode || hasSupabase();
       configuredLabel = configured

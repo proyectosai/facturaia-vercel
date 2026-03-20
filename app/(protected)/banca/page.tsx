@@ -25,7 +25,7 @@ import {
   reconcileBankMovementAction,
 } from "@/lib/actions/banking";
 import { requireUser } from "@/lib/auth";
-import { isDemoMode } from "@/lib/demo";
+import { isDemoMode, isLocalFileMode } from "@/lib/demo";
 import type {
   BankMovementDirection,
   BankMovementRecord,
@@ -426,6 +426,7 @@ export default async function BancaPage({
 }) {
   const user = await requireUser();
   const demoMode = isDemoMode();
+  const localFileMode = isLocalFileMode();
   const params = await searchParams;
   const q = getSingleSearchParam(params.q);
   const status = getSingleSearchParam(params.status, "all");
@@ -537,6 +538,11 @@ export default async function BancaPage({
           Estás en modo demo. Puedes revisar el flujo y las sugerencias, pero la importación y la
           conciliación real quedan desactivadas.
         </div>
+      ) : localFileMode ? (
+        <div className="status-banner">
+          Estás en modo local privado. Los extractos CSV y las conciliaciones se guardan dentro de
+          tu instalación local y viajan en el backup JSON.
+        </div>
       ) : null}
 
       <section className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
@@ -550,7 +556,8 @@ export default async function BancaPage({
                 <CardTitle>Importar extracto bancario</CardTitle>
                 <CardDescription>
                   Primera fase con CSV compatible. Busca cabeceras como fecha, concepto, importe,
-                  abono, cargo o saldo.
+                  abono, cargo o saldo. En modo local, los movimientos quedan guardados dentro del
+                  fichero privado de FacturaIA.
                 </CardDescription>
               </div>
             </div>

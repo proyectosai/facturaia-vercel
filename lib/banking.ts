@@ -11,7 +11,12 @@ import {
   isDemoMode,
   isLocalFileMode,
 } from "@/lib/demo";
-import { listLocalInvoicesForUser } from "@/lib/local-core";
+import {
+  getLocalBankMovementById,
+  listLocalBankMovementsForUser,
+  listLocalExpensesForUser,
+  listLocalInvoicesForUser,
+} from "@/lib/local-core";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type {
   BankMovementDirection,
@@ -516,7 +521,7 @@ const getBankMatchingCollections = cache(
     if (isLocalFileMode()) {
       return {
         invoices: await listLocalInvoicesForUser(userId),
-        expenses: [],
+        expenses: await listLocalExpensesForUser(userId),
       };
     }
 
@@ -566,7 +571,7 @@ export async function getBankMovementsForUser(
   }
 
   if (isLocalFileMode()) {
-    return applyBankFilters([], filters);
+    return applyBankFilters(await listLocalBankMovementsForUser(userId), filters);
   }
 
   const supabase = await createServerSupabaseClient();
@@ -589,7 +594,7 @@ export async function getBankMovementByIdForUser(userId: string, movementId: str
   }
 
   if (isLocalFileMode()) {
-    return null;
+    return getLocalBankMovementById(userId, movementId);
   }
 
   const supabase = await createServerSupabaseClient();

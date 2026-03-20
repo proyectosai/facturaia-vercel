@@ -63,12 +63,12 @@ describe("module catalog", () => {
     expect(getModuleById("email-outbound").configured).toBe(true);
     expect(getModuleById("tax-assistant").configuredLabel).toBe("LM Studio listo");
 
-    expect(getModuleById("bank-reconciliation").configured).toBe(false);
-    expect(getModuleById("bank-reconciliation").configuredLabel).toContain("persistencia bancaria pendiente");
+    expect(getModuleById("bank-reconciliation").configured).toBe(true);
+    expect(getModuleById("bank-reconciliation").configuredLabel).toContain("en local");
 
     expect(getModuleById("local-backups").localSupport).toBe("native");
     expect(getModuleById("email-outbound").localSupport).toBe("assisted");
-    expect(getModuleById("bank-reconciliation").localSupport).toBe("blocked");
+    expect(getModuleById("bank-reconciliation").localSupport).toBe("native");
   });
 
   test("describes hosted mode modules when Supabase and public URL exist", () => {
