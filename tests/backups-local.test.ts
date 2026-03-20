@@ -8,6 +8,7 @@ import {
   createLocalCommercialDocumentRecord,
   createLocalDocumentSignatureRequest,
   createLocalExpenseRecord,
+  createLocalFeedbackEntry,
   createLocalInvoiceRecord,
   getLocalCoreSnapshot,
   respondToLocalDocumentSignatureRequest,
@@ -113,6 +114,17 @@ describe("local backup export and restore", () => {
       },
     });
 
+    await createLocalFeedbackEntry({
+      userId,
+      sourceType: "pilot",
+      moduleKey: "backup",
+      severity: "medium",
+      title: "Feedback exportado",
+      message: "La bandeja de feedback también debe viajar en la copia local.",
+      reporterName: "Asesoria Martin Fiscal",
+      contactEmail: email,
+    });
+
     const document = await createLocalCommercialDocumentRecord({
       userId,
       input: {
@@ -190,6 +202,7 @@ describe("local backup export and restore", () => {
 
     expect(backup.appUrl).toBe("http://127.0.0.1:3999");
     expect(backup.clients).toHaveLength(1);
+    expect(backup.feedbackEntries).toHaveLength(1);
     expect(backup.expenses).toHaveLength(1);
     expect(backup.commercialDocuments).toHaveLength(1);
     expect(backup.documentSignatureRequests).toHaveLength(1);
@@ -205,10 +218,12 @@ describe("local backup export and restore", () => {
 
       expect(restored.profiles).toHaveLength(1);
       expect(restored.clients).toHaveLength(1);
+      expect(restored.feedbackEntries).toHaveLength(1);
       expect(restored.expenses).toHaveLength(1);
       expect(restored.commercialDocuments).toHaveLength(1);
       expect(restored.documentSignatureRequests).toHaveLength(1);
       expect(restored.invoices).toHaveLength(1);
+      expect(restored.feedbackEntries[0]?.title).toBe("Feedback exportado");
       expect(restored.commercialDocuments[0]?.status).toBe("accepted");
       expect(restored.documentSignatureRequests[0]?.status).toBe("signed");
       expect(restored.invoices[0]?.invoice_number).toBe(1);

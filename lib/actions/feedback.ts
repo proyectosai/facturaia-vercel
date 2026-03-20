@@ -6,7 +6,11 @@ import { z } from "zod";
 
 import { requireUser } from "@/lib/auth";
 import { rethrowIfRedirectError } from "@/lib/actions/redirect-error";
-import { isDemoMode } from "@/lib/demo";
+import { isDemoMode, isLocalFileMode } from "@/lib/demo";
+import {
+  createLocalFeedbackEntry,
+  updateLocalFeedbackStatus,
+} from "@/lib/local-core";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 const createFeedbackSchema = z.object({
@@ -61,6 +65,25 @@ export async function createFeedbackEntryAction(formData: FormData) {
       reporterName: String(formData.get("reporterName") ?? ""),
       contactEmail: String(formData.get("contactEmail") ?? ""),
     });
+
+    if (isLocalFileMode()) {
+      await createLocalFeedbackEntry({
+        userId: user.id,
+        sourceType: payload.sourceType,
+        moduleKey: payload.moduleKey,
+        severity: payload.severity,
+        title: payload.title,
+        message: payload.message,
+        reporterName: payload.reporterName?.trim() || null,
+        contactEmail: payload.contactEmail || null,
+      });
+
+      revalidatePath("/feedback");
+      revalidatePath("/dashboard");
+      revalidatePath("/backups");
+      redirect("/feedback?created=1");
+    }
+
     const supabase = await createServerSupabaseClient();
 
     const { error } = await supabase.from("feedback_entries").insert({
@@ -102,6 +125,19 @@ export async function updateFeedbackStatusAction(formData: FormData) {
       entryId: String(formData.get("entryId") ?? ""),
       status: String(formData.get("status") ?? ""),
     });
+
+    if (isLocalFileMode()) {
+      const updated = await updateLocalFeedbackStatus(user.id, payload.entryId, payload.status);
+
+      if (!updated) {
+        throw new Error("No se ha podido actualizar el estado del feedback.");
+      }
+
+      revalidatePath("/feedback");
+      revalidatePath("/backups");
+      redirect("/feedback?updated=1");
+    }
+
     const supabase = await createServerSupabaseClient();
 
     const { error } = await supabase

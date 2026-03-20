@@ -17,6 +17,10 @@ import type {
   DocumentSignatureStatus,
   ExpenseExtractionMethod,
   ExpenseKind,
+  FeedbackEntryRecord,
+  FeedbackSeverity,
+  FeedbackSourceType,
+  FeedbackStatus,
   InvoiceLineItemStored,
   InvoiceRecord,
   InvoiceReminderRecord,
@@ -41,6 +45,7 @@ type LocalCoreData = {
   users: LocalCoreAuthUser[];
   profiles: Profile[];
   clients: ClientRecord[];
+  feedbackEntries: FeedbackEntryRecord[];
   invoices: InvoiceRecord[];
   invoiceReminders: InvoiceReminderRecord[];
   commercialDocuments: CommercialDocumentRecord[];
@@ -63,6 +68,7 @@ function getDefaultLocalData(): LocalCoreData {
     users: [],
     profiles: [],
     clients: [],
+    feedbackEntries: [],
     invoices: [],
     invoiceReminders: [],
     commercialDocuments: [],
@@ -409,6 +415,75 @@ export async function listLocalClientsForUser(userId: string) {
 export async function getLocalClientById(userId: string, clientId: string) {
   const clients = await listLocalClientsForUser(userId);
   return clients.find((client) => client.id === clientId) ?? null;
+}
+
+export async function listLocalFeedbackEntriesForUser(userId: string) {
+  const data = await readLocalCoreData();
+  return sortByPrimaryDateDescending(
+    data.feedbackEntries.filter((entry) => entry.user_id === userId),
+    (entry) => entry.created_at,
+  );
+}
+
+export async function createLocalFeedbackEntry({
+  userId,
+  sourceType,
+  moduleKey,
+  severity,
+  title,
+  message,
+  reporterName,
+  contactEmail,
+}: {
+  userId: string;
+  sourceType: FeedbackSourceType;
+  moduleKey: string;
+  severity: FeedbackSeverity;
+  title: string;
+  message: string;
+  reporterName: string | null;
+  contactEmail: string | null;
+}) {
+  return updateLocalCoreData(async (data) => {
+    const timestamp = nowIso();
+    const entry: FeedbackEntryRecord = {
+      id: randomUUID(),
+      user_id: userId,
+      source_type: sourceType,
+      module_key: moduleKey,
+      severity,
+      status: "open",
+      title,
+      message,
+      reporter_name: reporterName,
+      contact_email: contactEmail,
+      created_at: timestamp,
+      updated_at: timestamp,
+    };
+
+    data.feedbackEntries.push(entry);
+    return entry;
+  });
+}
+
+export async function updateLocalFeedbackStatus(
+  userId: string,
+  entryId: string,
+  status: FeedbackStatus,
+) {
+  return updateLocalCoreData(async (data) => {
+    const entry = data.feedbackEntries.find(
+      (candidate) => candidate.user_id === userId && candidate.id === entryId,
+    );
+
+    if (!entry) {
+      return null;
+    }
+
+    entry.status = status;
+    entry.updated_at = nowIso();
+    return entry;
+  });
 }
 
 export async function saveLocalClientRecord({
@@ -1097,6 +1172,7 @@ export async function replaceLocalUserData({
   email,
   profile,
   clients,
+  feedbackEntries,
   invoices,
   invoiceReminders,
   commercialDocuments,
@@ -1108,6 +1184,7 @@ export async function replaceLocalUserData({
   email: string;
   profile: Profile | null;
   clients: ClientRecord[];
+  feedbackEntries: FeedbackEntryRecord[];
   invoices: InvoiceRecord[];
   invoiceReminders: InvoiceReminderRecord[];
   commercialDocuments: CommercialDocumentRecord[];
@@ -1145,6 +1222,14 @@ export async function replaceLocalUserData({
       ...data.clients.filter((candidate) => candidate.user_id !== userId),
       ...clients.map((client) => ({
         ...client,
+        user_id: userId,
+      })),
+    ];
+
+    data.feedbackEntries = [
+      ...data.feedbackEntries.filter((candidate) => candidate.user_id !== userId),
+      ...feedbackEntries.map((entry) => ({
+        ...entry,
         user_id: userId,
       })),
     ];

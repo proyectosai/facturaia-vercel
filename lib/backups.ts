@@ -131,7 +131,7 @@ export async function getBackupSummary(userId: string): Promise<BackupSummary> {
     const snapshot = await getLocalCoreSnapshot();
     return {
       clients: snapshot.clients.filter((client) => client.user_id === userId).length,
-      feedbackEntries: 0,
+      feedbackEntries: snapshot.feedbackEntries.filter((entry) => entry.user_id === userId).length,
       invoices: snapshot.invoices.filter((invoice) => invoice.user_id === userId).length,
       invoiceReminders: snapshot.invoiceReminders.filter((reminder) => reminder.user_id === userId)
         .length,
@@ -280,7 +280,7 @@ export async function exportBackupForUser(
       user: { id: userId, email },
       profile,
       clients: snapshot.clients.filter((client) => client.user_id === userId),
-      feedbackEntries: [],
+      feedbackEntries: snapshot.feedbackEntries.filter((entry) => entry.user_id === userId),
       invoices,
       invoiceReminders,
       commercialDocuments: snapshot.commercialDocuments.filter((document) => document.user_id === userId),
@@ -449,6 +449,10 @@ export async function restoreBackupForUser(
         : null,
       clients: backup.clients.map((client) => ({
         ...client,
+        user_id: userId,
+      })),
+      feedbackEntries: backup.feedbackEntries.map((entry) => ({
+        ...entry,
         user_id: userId,
       })),
       invoices: backup.invoices.map((invoice) => ({

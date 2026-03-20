@@ -4,11 +4,13 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
 import {
+  createLocalFeedbackEntry,
   createLocalCommercialDocumentRecord,
   createLocalDocumentSignatureRequest,
   createLocalExpenseRecord,
   createLocalInvoiceRecord,
   getLocalCoreSnapshot,
+  listLocalFeedbackEntriesForUser,
   getLocalPublicSignatureRequestByToken,
   linkLocalCommercialDocumentToInvoice,
   markLocalSignatureRequestViewed,
@@ -17,6 +19,7 @@ import {
   respondToLocalDocumentSignatureRequest,
   saveLocalClientRecord,
   toggleLocalExpenseReview,
+  updateLocalFeedbackStatus,
   updateLocalInvoicePaymentState,
 } from "@/lib/local-core";
 import type {
@@ -212,6 +215,28 @@ describe("local core persistence", () => {
     expect(snapshot.expenses[0]?.vendor_name).toBe("Gestoria Externa SL");
   });
 
+  test("stores feedback entries locally and updates their status", async () => {
+    const created = await createLocalFeedbackEntry({
+      userId,
+      sourceType: "pilot",
+      moduleKey: "feedback",
+      severity: "high",
+      title: "Error en bandeja local",
+      message: "La pestaña feedback no debe depender de Supabase en modo local.",
+      reporterName: "Asesoria Martin Fiscal",
+      contactEmail: "asesor@despacho.local",
+    });
+
+    const updated = await updateLocalFeedbackStatus(userId, created.id, "planned");
+    const entries = await listLocalFeedbackEntriesForUser(userId);
+    const snapshot = await getLocalCoreSnapshot();
+
+    expect(updated?.status).toBe("planned");
+    expect(entries).toHaveLength(1);
+    expect(entries[0]?.title).toBe("Error en bandeja local");
+    expect(snapshot.feedbackEntries[0]?.contact_email).toBe("asesor@despacho.local");
+  });
+
   test("uses separate counters for quotes and delivery notes", async () => {
     const quoteA = await createLocalCommercialDocumentRecord({
       userId,
@@ -349,6 +374,7 @@ describe("local core persistence", () => {
       email: userEmail,
       profile,
       clients: [],
+      feedbackEntries: [],
       invoices: [buildRestoredInvoice(7)],
       invoiceReminders: [],
       commercialDocuments: [

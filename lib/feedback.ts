@@ -1,6 +1,7 @@
 import "server-only";
 
-import { demoFeedbackEntries, isDemoMode } from "@/lib/demo";
+import { demoFeedbackEntries, isDemoMode, isLocalFileMode } from "@/lib/demo";
+import { listLocalFeedbackEntriesForUser } from "@/lib/local-core";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type {
   FeedbackEntryRecord,
@@ -41,6 +42,10 @@ export async function getFeedbackEntriesForUser(userId: string) {
     return [...demoFeedbackEntries].sort((left, right) =>
       right.created_at.localeCompare(left.created_at),
     );
+  }
+
+  if (isLocalFileMode()) {
+    return listLocalFeedbackEntriesForUser(userId);
   }
 
   const supabase = await createServerSupabaseClient();
