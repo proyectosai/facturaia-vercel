@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
@@ -22,6 +22,7 @@ import {
   updateLocalFeedbackStatus,
   updateLocalInvoicePaymentState,
 } from "@/lib/local-core";
+import { getLegacyLocalJsonFilePath, getLocalDatabaseFilePath } from "@/lib/local-db";
 import type {
   CommercialDocumentRecord,
   InvoiceRecord,
@@ -438,5 +439,67 @@ describe("local core persistence", () => {
     expect(nextInvoice.invoice_number).toBe(8);
     expect(nextQuote.document_number).toBe(5);
     expect(nextDelivery.document_number).toBe(3);
+  });
+
+  test("migrates legacy core.json into SQLite automatically", async () => {
+    const legacyPayload = {
+      version: 1,
+      users: [],
+      profiles: [],
+      clients: [
+        {
+          id: "legacy-client",
+          user_id: userId,
+          relation_kind: "client",
+          status: "active",
+          priority: "medium",
+          display_name: "Cliente legado S.L.",
+          first_name: null,
+          last_name: null,
+          company_name: "Cliente legado S.L.",
+          email: "hola@legado.es",
+          phone: null,
+          nif: "B76543210",
+          address: null,
+          notes: null,
+          tags: [],
+          created_at: "2026-03-20T08:00:00.000Z",
+          updated_at: "2026-03-20T08:00:00.000Z",
+        },
+      ],
+      feedbackEntries: [],
+      invoices: [],
+      invoiceReminders: [],
+      bankMovements: [],
+      messageConnections: [],
+      messageThreads: [],
+      messageRecords: [],
+      mailThreads: [],
+      mailMessages: [],
+      mailSyncRuns: [],
+      commercialDocuments: [],
+      documentSignatureRequests: [],
+      expenses: [],
+      aiUsage: [],
+      counters: {
+        invoice_number: 0,
+        quote_number: 0,
+        delivery_note_number: 0,
+      },
+    };
+
+    await writeFile(
+      getLegacyLocalJsonFilePath(),
+      JSON.stringify(legacyPayload, null, 2),
+      "utf8",
+    );
+
+    const snapshot = await getLocalCoreSnapshot();
+
+    expect(snapshot.clients).toHaveLength(1);
+    expect(snapshot.clients[0]?.display_name).toBe("Cliente legado S.L.");
+
+    const sqliteBuffer = await readFile(getLocalDatabaseFilePath());
+    expect(sqliteBuffer.toString("utf8")).toContain("SQLite format 3");
   });
 });

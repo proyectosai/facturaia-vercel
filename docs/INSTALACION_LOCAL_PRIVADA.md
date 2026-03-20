@@ -24,7 +24,7 @@ Todavía no sustituye por completo todos los módulos avanzados.
 Hoy el modo local privado:
 
 - elimina la dependencia del correo para entrar
-- guarda el núcleo en un fichero local JSON dentro del equipo
+- guarda el núcleo en una base SQLite local dentro del equipo
 - cubre perfil, facturas, PDF, factura pública, cobros y recordatorios
 - deja todavía fuera de ese núcleo local completo a piezas como IMAP, banca, CRM, firma, OCR o mensajería
 - permite cifrado opcional del fichero local y de los backups, si decides activarlo
@@ -58,9 +58,11 @@ FACTURAIA_LOCAL_BOOTSTRAP=0
 
 8. Reinicia la aplicación.
 
+Si vienes de una instalación antigua basada en `core.json`, FacturaIA migra ese estado automáticamente a `core.sqlite` en el primer arranque local.
+
 ## Cifrado opcional
 
-Si quieres que el fichero local y los backups salgan cifrados, activa:
+Si quieres que la base local y los backups salgan cifrados, activa:
 
 ```env
 FACTURAIA_ENCRYPT_LOCAL_DATA=1

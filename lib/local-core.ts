@@ -1,8 +1,6 @@
 import "server-only";
 
-import path from "node:path";
 import { createHash, createHmac, randomBytes, randomUUID, scryptSync, timingSafeEqual } from "node:crypto";
-import { promises as fs } from "node:fs";
 
 import type {
   AppUserRecord,
@@ -45,6 +43,11 @@ import {
   isLocalDataEncryptionRequested,
   tryParseEncryptedEnvelope,
 } from "@/lib/local-encryption";
+import {
+  getLocalDataDir as getLocalDataDirFromDb,
+  readLocalStateText,
+  writeLocalStateText,
+} from "@/lib/local-db";
 import { roundCurrency, toNumber } from "@/lib/utils";
 
 type LocalCoreAuthUser = AppUserRecord & {
@@ -115,15 +118,7 @@ function getDefaultLocalData(): LocalCoreData {
 }
 
 export function getLocalDataDir() {
-  return process.env.FACTURAIA_DATA_DIR?.trim() || path.join(process.cwd(), ".facturaia-local");
-}
-
-function getLocalDataFilePath() {
-  return path.join(getLocalDataDir(), "core.json");
-}
-
-async function ensureLocalDataDir() {
-  await fs.mkdir(getLocalDataDir(), { recursive: true });
+  return getLocalDataDirFromDb();
 }
 
 function normalizeLocalCoreData(parsed: Partial<LocalCoreData> | null | undefined): LocalCoreData {
@@ -156,10 +151,13 @@ function tryParseLocalCoreData(raw: string) {
 }
 
 async function readLocalCoreData(): Promise<LocalCoreData> {
-  const filePath = getLocalDataFilePath();
-
   try {
-    const raw = await fs.readFile(filePath, "utf8");
+    const raw = await readLocalStateText();
+
+    if (!raw) {
+      return getDefaultLocalData();
+    }
+
     const encryptedEnvelope = tryParseEncryptedEnvelope(raw);
 
     if (encryptedEnvelope) {
@@ -179,15 +177,11 @@ async function readLocalCoreData(): Promise<LocalCoreData> {
 }
 
 async function writeLocalCoreData(data: LocalCoreData) {
-  await ensureLocalDataDir();
-  const filePath = getLocalDataFilePath();
-  const tempPath = `${filePath}.${process.pid}.${Date.now()}.${randomUUID()}.tmp`;
   const serialized = JSON.stringify(data, null, 2);
   const payload = isLocalDataEncryptionRequested()
     ? JSON.stringify(encryptTextForScope(serialized, "local-core"), null, 2)
     : serialized;
-  await fs.writeFile(tempPath, payload, "utf8");
-  await fs.rename(tempPath, filePath);
+  await writeLocalStateText(payload);
 }
 
 async function runLocalCoreMutation<T>(task: () => Promise<T>) {

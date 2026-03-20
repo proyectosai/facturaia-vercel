@@ -15,6 +15,7 @@ import {
   saveLocalClientRecord,
   saveLocalProfile,
 } from "@/lib/local-core";
+import { getLocalDatabaseFilePath } from "@/lib/local-db";
 
 const userId = "user-local-encryption";
 const email = "asesor@despacho.local";
@@ -91,12 +92,13 @@ describe("optional local encryption", () => {
       tags: ["privado"],
     });
 
-    const filePath = path.join(localDataDir, "core.json");
-    const raw = await readFile(filePath, "utf8");
+    const filePath = getLocalDatabaseFilePath();
+    const raw = await readFile(filePath);
+    const rawText = raw.toString("utf8");
     const snapshot = await getLocalCoreSnapshot();
 
-    expect(raw).toContain('"format": "facturaia-encrypted"');
-    expect(raw).not.toContain("Empresa Cifrada S.L.");
+    expect(rawText).toContain("SQLite format 3");
+    expect(rawText).not.toContain("Empresa Cifrada S.L.");
     expect(snapshot.clients).toHaveLength(1);
     expect(snapshot.clients[0]?.display_name).toBe("Empresa Cifrada S.L.");
   });

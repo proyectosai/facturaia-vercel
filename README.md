@@ -119,7 +119,7 @@ Comportamiento:
 
 - el login cambia a email + contraseña
 - si aún no existe ningún usuario, la primera sesión crea la cuenta local inicial
-- el perfil fiscal, las facturas, el PDF, la factura pública, los cobros y los recordatorios se guardan en un fichero local dentro del equipo
+- el perfil fiscal, las facturas, el PDF, la factura pública, los cobros y los recordatorios se guardan en una base SQLite local dentro del equipo
 - después conviene poner `FACTURAIA_LOCAL_BOOTSTRAP=0`
 
 Importante:
@@ -128,6 +128,7 @@ Importante:
 - los módulos más avanzados siguen necesitando más trabajo para vivir completamente en local
 - conviene guardar `FACTURAIA_DATA_DIR` en una carpeta incluida en tu estrategia de backup
 - el cifrado local y el cifrado de backups son **opcionales** y se activan solo si defines las variables anteriores
+- si vienes de una instalación antigua con `core.json`, la migración a `core.sqlite` es automática en el primer arranque local
 
 ## Estado real del producto
 

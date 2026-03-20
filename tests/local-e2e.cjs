@@ -5,7 +5,7 @@ const { chromium } = require("/tmp/facturaia-qa-pw/node_modules/playwright");
 
 async function main() {
   const baseUrl = process.env.FACTURAIA_E2E_BASE_URL || "http://127.0.0.1:3153";
-  const corePath = process.env.FACTURAIA_E2E_CORE_PATH || "/tmp/facturaia-qa-3153b/core.json";
+  const corePath = process.env.FACTURAIA_E2E_CORE_PATH || "/tmp/facturaia-qa-3153b/core.sqlite";
   const macChromePath = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
   const browser = await chromium.launch({
     headless: true,
@@ -161,7 +161,7 @@ async function main() {
 
   const backupResponse = await page.request.get(`${baseUrl}/api/backups/export`);
   const backup = JSON.parse(await backupResponse.text());
-  const core = JSON.parse(fs.readFileSync(corePath, "utf8"));
+  const coreStat = fs.existsSync(corePath) ? fs.statSync(corePath) : null;
   console.log(
     JSON.stringify(
       {
@@ -178,13 +178,15 @@ async function main() {
           documentSignatureRequests: backup.documentSignatureRequests.length,
           invoices: backup.invoices.length,
         },
-        coreCounts: {
-          clients: core.clients.length,
-          expenses: core.expenses.length,
-          commercialDocuments: core.commercialDocuments.length,
-          documentSignatureRequests: core.documentSignatureRequests.length,
-          invoices: core.invoices.length,
-        },
+        localStorage: coreStat
+          ? {
+              exists: true,
+              sizeBytes: coreStat.size,
+            }
+          : {
+              exists: false,
+              sizeBytes: 0,
+            },
       },
       null,
       2,
