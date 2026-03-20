@@ -144,11 +144,16 @@ export async function getBackupSummary(userId: string): Promise<BackupSummary> {
       ).length,
       expenses: snapshot.expenses.filter((expense) => expense.user_id === userId).length,
       aiUsageRows: snapshot.aiUsage.filter((entry) => entry.user_id === userId).length,
-      messageConnections: 0,
-      messageThreads: 0,
-      messageRecords: 0,
-      mailThreads: 0,
-      mailMessages: 0,
+      messageConnections: snapshot.messageConnections.filter(
+        (connection) => connection.user_id === userId,
+      ).length,
+      messageThreads: snapshot.messageThreads.filter((thread) => thread.user_id === userId)
+        .length,
+      messageRecords: snapshot.messageRecords.filter((record) => record.user_id === userId)
+        .length,
+      mailThreads: snapshot.mailThreads.filter((thread) => thread.user_id === userId).length,
+      mailMessages: snapshot.mailMessages.filter((message) => message.user_id === userId)
+        .length,
     };
   }
 
@@ -292,14 +297,16 @@ export async function exportBackupForUser(
       expenses: snapshot.expenses.filter((expense) => expense.user_id === userId),
       aiUsage,
       messages: {
-        connections: [],
-        threads: [],
-        records: [],
+        connections: snapshot.messageConnections.filter(
+          (connection) => connection.user_id === userId,
+        ),
+        threads: snapshot.messageThreads.filter((thread) => thread.user_id === userId),
+        records: snapshot.messageRecords.filter((record) => record.user_id === userId),
       },
       mail: {
-        threads: [],
-        messages: [],
-        syncRuns: [],
+        threads: snapshot.mailThreads.filter((thread) => thread.user_id === userId),
+        messages: snapshot.mailMessages.filter((message) => message.user_id === userId),
+        syncRuns: snapshot.mailSyncRuns.filter((run) => run.user_id === userId),
       },
     };
   }
@@ -466,6 +473,30 @@ export async function restoreBackupForUser(
       })),
       bankMovements: backup.bankMovements.map((movement) => ({
         ...movement,
+        user_id: userId,
+      })),
+      messageConnections: backup.messages.connections.map((connection) => ({
+        ...connection,
+        user_id: userId,
+      })),
+      messageThreads: backup.messages.threads.map((thread) => ({
+        ...thread,
+        user_id: userId,
+      })),
+      messageRecords: backup.messages.records.map((record) => ({
+        ...record,
+        user_id: userId,
+      })),
+      mailThreads: backup.mail.threads.map((thread) => ({
+        ...thread,
+        user_id: userId,
+      })),
+      mailMessages: backup.mail.messages.map((message) => ({
+        ...message,
+        user_id: userId,
+      })),
+      mailSyncRuns: backup.mail.syncRuns.map((run) => ({
+        ...run,
         user_id: userId,
       })),
       commercialDocuments: backup.commercialDocuments.map((document) => ({

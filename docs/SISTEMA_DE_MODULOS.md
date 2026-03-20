@@ -107,11 +107,14 @@ En modo local privado, el backup JSON cubre bien estas piezas:
 - presupuestos y albaranes
 - firmas documentales
 - gastos
+- conciliación bancaria
+- mensajería unificada
+- correo entrante IMAP ya importado
 
 En cambio, estas piezas todavía requieren más consolidación o dependen de servicios o canales externos:
 
-- correo entrante completo
-- mensajería con conversaciones reales
+- respuestas salientes desde mensajería
+- automatización programada de sincronizaciones IMAP
 - historial operativo completo de integraciones externas
 
 ## Regla de producto para instalar módulos

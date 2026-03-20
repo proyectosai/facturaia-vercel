@@ -21,6 +21,8 @@ import {
   listLocalCommercialDocumentsForUser,
   listLocalExpensesForUser,
   listLocalInvoicesForUser,
+  listLocalMailThreadsForUser,
+  listLocalMessageThreadsForUser,
 } from "@/lib/local-core";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type {
@@ -266,8 +268,8 @@ const getClientCollections = cache(async (userId: string): Promise<ClientCollect
     return {
       invoices: await listLocalInvoicesForUser(userId),
       documents: await listLocalCommercialDocumentsForUser(userId),
-      messages: [],
-      mailThreads: [],
+      messages: await listLocalMessageThreadsForUser(userId),
+      mailThreads: await listLocalMailThreadsForUser(userId),
       expenses: await listLocalExpensesForUser(userId),
     };
   }

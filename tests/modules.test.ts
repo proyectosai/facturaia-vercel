@@ -51,6 +51,13 @@ describe("module catalog", () => {
     process.env.SMTP_USERNAME = "asesor";
     process.env.SMTP_PASSWORD = "supersecreto";
     process.env.SMTP_FROM_EMAIL = "asesor@despacho.local";
+    process.env.INBOUND_MAIL_PROVIDER = "imap";
+    process.env.IMAP_HOST = "imap.local";
+    process.env.IMAP_PORT = "993";
+    process.env.IMAP_SECURE = "true";
+    process.env.IMAP_USERNAME = "asesor@despacho.local";
+    process.env.IMAP_PASSWORD = "supersecreto";
+    process.env.IMAP_MAILBOX = "INBOX";
     process.env.LM_STUDIO_BASE_URL = "http://127.0.0.1:1234/v1";
     process.env.LM_STUDIO_MODEL = "openai/gpt-oss-20b";
 
@@ -61,6 +68,7 @@ describe("module catalog", () => {
     expect(getModuleById("document-signature").configured).toBe(true);
     expect(getModuleById("facturae-verifactu").configured).toBe(true);
     expect(getModuleById("email-outbound").configured).toBe(true);
+    expect(getModuleById("email-inbound").configured).toBe(true);
     expect(getModuleById("tax-assistant").configuredLabel).toBe("LM Studio listo");
 
     expect(getModuleById("bank-reconciliation").configured).toBe(true);

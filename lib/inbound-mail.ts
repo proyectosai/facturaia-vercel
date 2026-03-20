@@ -12,6 +12,15 @@ import {
   isDemoMode,
   isLocalFileMode,
 } from "@/lib/demo";
+import {
+  getLocalMailThreadById,
+  listLocalMailMessagesForThread,
+  listLocalMailSyncRunsForUser,
+  listLocalMailThreadsForUser,
+  logLocalMailSyncRun,
+  markLocalMailThreadRead,
+  upsertLocalMailEntries,
+} from "@/lib/local-core";
 import { getUrgencyMeta } from "@/lib/messages";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import type {
@@ -293,7 +302,7 @@ export async function getMailThreadsForUser(
   }
 
   if (isLocalFileMode()) {
-    return applyMailFilters([], {
+    return applyMailFilters(await listLocalMailThreadsForUser(userId), {
       q: filters.q ?? "",
       urgency: filters.urgency ?? "all",
       sort: filters.sort ?? "recent",
@@ -327,7 +336,7 @@ export async function getMailThreadForUser(userId: string, threadId: string) {
   }
 
   if (isLocalFileMode()) {
-    return null;
+    return getLocalMailThreadById(userId, threadId);
   }
 
   const admin = createAdminSupabaseClient();
@@ -355,7 +364,7 @@ export async function getMailMessagesForUser(userId: string, threadId: string) {
   }
 
   if (isLocalFileMode()) {
-    return [];
+    return listLocalMailMessagesForThread(userId, threadId);
   }
 
   const admin = createAdminSupabaseClient();
@@ -383,7 +392,7 @@ export async function getMailSyncRunsForUser(userId: string, limit = 5) {
   }
 
   if (isLocalFileMode()) {
-    return [];
+    return listLocalMailSyncRunsForUser(userId, limit);
   }
 
   const admin = createAdminSupabaseClient();
@@ -410,6 +419,16 @@ async function logMailSyncRun(
   payload: Omit<MailSyncRun, "id" | "user_id" | "created_at">,
 ) {
   if (isDemoMode() || isLocalFileMode()) {
+    if (isLocalFileMode()) {
+      return logLocalMailSyncRun({
+        userId,
+        source: payload.source,
+        status: payload.status,
+        importedCount: payload.imported_count,
+        detail: payload.detail,
+      });
+    }
+
     return null;
   }
 
@@ -715,13 +734,6 @@ export async function syncInboundMailForUser(userId: string) {
     };
   }
 
-  if (isLocalFileMode()) {
-    return {
-      importedCount: 0,
-      detail: "Modo local: la bandeja IMAP queda visible, pero la importación persistente todavía no está activada.",
-    };
-  }
-
   const config = getInboundMailConfig();
 
   if (!config) {
@@ -734,14 +746,29 @@ export async function syncInboundMailForUser(userId: string) {
     const messages = await listMessagesFromImap(config);
     let importedCount = 0;
 
-    for (const message of messages) {
-      const inserted = await importSingleMailMessage({
+    if (isLocalFileMode()) {
+      importedCount = await upsertLocalMailEntries({
         userId,
-        ...message,
-      });
+        entries: messages.map((message) => {
+          const urgency = getUrgencyMeta(`${message.subject ?? ""}\n${message.bodyText}`);
 
-      if (inserted) {
-        importedCount += 1;
+          return {
+            ...message,
+            urgency: urgency.urgency,
+            urgencyScore: urgency.score,
+          };
+        }),
+      });
+    } else {
+      for (const message of messages) {
+        const inserted = await importSingleMailMessage({
+          userId,
+          ...message,
+        });
+
+        if (inserted) {
+          importedCount += 1;
+        }
       }
     }
 
@@ -777,6 +804,30 @@ export async function syncInboundMailForUser(userId: string) {
     throw error;
   }
 }
+
+export async function markMailThreadReadForUser(userId: string, threadId: string) {
+  if (isDemoMode()) {
+    return null;
+  }
+
+  if (isLocalFileMode()) {
+    return markLocalMailThreadRead(userId, threadId);
+  }
+
+  const supabase = await createAdminSupabaseClient();
+  const { error } = await supabase
+    .from("mail_threads")
+    .update({ unread_count: 0 })
+    .eq("id", threadId)
+    .eq("user_id", userId);
+
+  if (error) {
+    throw new Error("No se ha podido marcar el hilo de correo como leído.");
+  }
+
+  return true;
+}
+
 type ParsedAddressEntry = {
   address?: string;
   name?: string;

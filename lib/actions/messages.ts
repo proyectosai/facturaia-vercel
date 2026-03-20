@@ -4,6 +4,11 @@ import { revalidatePath } from "next/cache";
 
 import { requireUser } from "@/lib/auth";
 import { isDemoMode, isLocalFileMode } from "@/lib/demo";
+import {
+  markLocalMessageThreadRead,
+  setLocalMessageThreadUrgency,
+  unlockLocalMessageThreadUrgency,
+} from "@/lib/local-core";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 function getUrgencyScore(urgency: string) {
@@ -18,7 +23,13 @@ export async function markThreadReadAction(formData: FormData) {
   const user = await requireUser();
   const threadId = String(formData.get("threadId") ?? "");
 
-  if (!threadId || isDemoMode() || isLocalFileMode()) {
+  if (!threadId || isDemoMode()) {
+    revalidatePath("/messages");
+    return;
+  }
+
+  if (isLocalFileMode()) {
+    await markLocalMessageThreadRead(user.id, threadId);
     revalidatePath("/messages");
     return;
   }
@@ -42,7 +53,18 @@ export async function setThreadUrgencyAction(formData: FormData) {
   const threadId = String(formData.get("threadId") ?? "");
   const urgency = String(formData.get("urgency") ?? "");
 
-  if (!threadId || !["low", "medium", "high"].includes(urgency) || isDemoMode() || isLocalFileMode()) {
+  if (!threadId || !["low", "medium", "high"].includes(urgency) || isDemoMode()) {
+    revalidatePath("/messages");
+    return;
+  }
+
+  if (isLocalFileMode()) {
+    await setLocalMessageThreadUrgency(
+      user.id,
+      threadId,
+      urgency as "low" | "medium" | "high",
+      getUrgencyScore(urgency),
+    );
     revalidatePath("/messages");
     return;
   }
@@ -69,7 +91,13 @@ export async function unlockThreadUrgencyAction(formData: FormData) {
   const user = await requireUser();
   const threadId = String(formData.get("threadId") ?? "");
 
-  if (!threadId || isDemoMode() || isLocalFileMode()) {
+  if (!threadId || isDemoMode()) {
+    revalidatePath("/messages");
+    return;
+  }
+
+  if (isLocalFileMode()) {
+    await unlockLocalMessageThreadUrgency(user.id, threadId);
     revalidatePath("/messages");
     return;
   }

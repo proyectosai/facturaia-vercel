@@ -12,6 +12,8 @@ Qué incluye hoy:
 - agrupación por remitente
 - orden por fecha, urgencia, nombre o email
 - historial de sincronizaciones
+- persistencia también en modo local privado
+- inclusión en backup y restore del usuario
 
 Qué queda para iteraciones posteriores:
 
@@ -154,6 +156,8 @@ El flujo actual es deliberadamente prudente:
 5. Los parsea localmente.
 6. Los guarda en tablas internas.
 7. Los muestra en `/mail`.
+
+En modo local privado, esos correos importados quedan guardados dentro de `FACTURAIA_DATA_DIR` y viajan en el backup JSON del usuario.
 
 No intenta modificar tu buzón remoto ni mover mensajes entre carpetas.
 

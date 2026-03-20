@@ -6,10 +6,12 @@ import { z, ZodError } from "zod";
 
 import { requireUser } from "@/lib/auth";
 import { rethrowIfRedirectError } from "@/lib/actions/redirect-error";
-import { isDemoMode, isLocalFileMode } from "@/lib/demo";
-import { syncInboundMailForUser } from "@/lib/inbound-mail";
+import { isDemoMode } from "@/lib/demo";
+import {
+  markMailThreadReadForUser,
+  syncInboundMailForUser,
+} from "@/lib/inbound-mail";
 import { sendTransactionalEmail } from "@/lib/mail";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 const testMailSchema = z.object({
   recipientEmail: z.email("Indica un email válido para la prueba."),
@@ -80,12 +82,6 @@ export async function syncInboundMailAction() {
       );
     }
 
-    if (isLocalFileMode()) {
-      redirect(
-        "/mail?info=Modo%20local:%20la%20bandeja%20IMAP%20todav%C3%ADa%20no%20persiste%20mensajes%20importados.",
-      );
-    }
-
     const user = await requireUser();
     const result = await syncInboundMailForUser(user.id);
 
@@ -102,21 +98,12 @@ export async function markMailThreadReadAction(formData: FormData) {
   const user = await requireUser();
   const threadId = String(formData.get("threadId") ?? "");
 
-  if (!threadId || isDemoMode() || isLocalFileMode()) {
+  if (!threadId || isDemoMode()) {
     revalidatePath("/mail");
     return;
   }
 
-  const supabase = await createServerSupabaseClient();
-  const { error } = await supabase
-    .from("mail_threads")
-    .update({ unread_count: 0 })
-    .eq("id", threadId)
-    .eq("user_id", user.id);
-
-  if (error) {
-    throw new Error("No se ha podido marcar el hilo de correo como leído.");
-  }
+  await markMailThreadReadForUser(user.id, threadId);
 
   revalidatePath("/mail");
 }

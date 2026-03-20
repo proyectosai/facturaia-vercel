@@ -8,6 +8,14 @@ import {
   isDemoMode,
   isLocalFileMode,
 } from "@/lib/demo";
+import {
+  ensureLocalMessageConnection,
+  getLocalMessageConnectionByInboundKey,
+  getLocalMessageThreadById,
+  listLocalMessageRecordsForThread,
+  listLocalMessageThreadsForUser,
+  upsertLocalInboundMessage,
+} from "@/lib/local-core";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type {
@@ -314,7 +322,16 @@ async function ensureSingleConnection(
   }
 
   if (isLocalFileMode()) {
-    return buildLocalMessageConnection(userId, channel);
+    const localConnection = buildLocalMessageConnection(userId, channel);
+    return ensureLocalMessageConnection({
+      userId,
+      channel,
+      label: localConnection.label,
+      inboundKey: localConnection.inbound_key,
+      verifyToken: localConnection.verify_token,
+      status: localConnection.status,
+      metadata: localConnection.metadata,
+    });
   }
 
   const supabase = await createServerSupabaseClient();
@@ -368,10 +385,7 @@ export async function getCurrentMessageConnections(userId: string) {
   }
 
   if (isLocalFileMode()) {
-    return {
-      whatsapp: buildLocalMessageConnection(userId, "whatsapp"),
-      telegram: buildLocalMessageConnection(userId, "telegram"),
-    };
+    return ensureMessageConnections(userId);
   }
 
   return ensureMessageConnections(userId);
@@ -396,7 +410,7 @@ export async function getMessageThreadsForUser(
   }
 
   if (isLocalFileMode()) {
-    return applyInboxFilters([], safeFilters);
+    return applyInboxFilters(await listLocalMessageThreadsForUser(userId), safeFilters);
   }
 
   const supabase = await createServerSupabaseClient();
@@ -423,7 +437,7 @@ export async function getThreadMessagesForUser(userId: string, threadId: string)
   }
 
   if (isLocalFileMode()) {
-    return [];
+    return listLocalMessageRecordsForThread(userId, threadId);
   }
 
   const supabase = await createServerSupabaseClient();
@@ -447,7 +461,7 @@ export async function getThreadForUser(userId: string, threadId: string) {
   }
 
   if (isLocalFileMode()) {
-    return null;
+    return getLocalMessageThreadById(userId, threadId);
   }
 
   const supabase = await createServerSupabaseClient();
@@ -593,6 +607,10 @@ async function getConnectionByInboundKey(
   inboundKey: string,
   channel: MessageChannel,
 ) {
+  if (isLocalFileMode()) {
+    return getLocalMessageConnectionByInboundKey(inboundKey, channel);
+  }
+
   const supabase = createAdminSupabaseClient();
   const { data, error } = await supabase
     .from("message_connections")
@@ -612,6 +630,16 @@ async function upsertInboundMessage(
   connection: MessageConnection,
   parsedMessage: ParsedInboundMessage,
 ) {
+  if (isLocalFileMode()) {
+    const { urgency, score } = getUrgencyMeta(parsedMessage.body);
+    return upsertLocalInboundMessage({
+      connection,
+      parsedMessage,
+      urgency,
+      urgencyScore: score,
+    });
+  }
+
   const supabase = createAdminSupabaseClient();
   const { urgency, score } = getUrgencyMeta(parsedMessage.body);
   const preview = parsedMessage.body.slice(0, 180);
@@ -766,6 +794,10 @@ export async function verifyWhatsAppConnection(
   const matches = connection.verify_token === verifyToken;
 
   if (matches) {
+    if (isLocalFileMode()) {
+      return true;
+    }
+
     const supabase = createAdminSupabaseClient();
     await supabase
       .from("message_connections")

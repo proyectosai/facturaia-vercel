@@ -25,7 +25,7 @@ Permite:
 ## Requisitos
 
 - `NEXT_PUBLIC_APP_URL` pública y correcta
-- Supabase configurado
+- instalación local o desplegada accesible desde la URL pública
 - despliegue accesible por HTTPS si usarás webhooks reales
 
 ## Instalación de WhatsApp Business
@@ -53,6 +53,8 @@ Permite:
 - mensajes recibidos
 - urgencia detectada
 - alias, nombre, apellidos o teléfono cuando existan
+
+En modo local privado, estos datos también se guardan dentro de `FACTURAIA_DATA_DIR` y ya viajan en el backup / restore del usuario.
 
 ## Diagnóstico rápido
 

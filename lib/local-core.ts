@@ -27,6 +27,15 @@ import type {
   InvoiceRecord,
   InvoiceReminderRecord,
   InvoiceTotals,
+  MailMessage,
+  MailSyncRun,
+  MailThread,
+  MessageChannel,
+  MessageConnection,
+  MessageConnectionStatus,
+  MessageRecord,
+  MessageThread,
+  MessageUrgency,
   ExpenseRecord,
   Profile,
 } from "@/lib/types";
@@ -51,6 +60,12 @@ type LocalCoreData = {
   invoices: InvoiceRecord[];
   invoiceReminders: InvoiceReminderRecord[];
   bankMovements: BankMovementRecord[];
+  messageConnections: MessageConnection[];
+  messageThreads: MessageThread[];
+  messageRecords: MessageRecord[];
+  mailThreads: MailThread[];
+  mailMessages: MailMessage[];
+  mailSyncRuns: MailSyncRun[];
   commercialDocuments: CommercialDocumentRecord[];
   documentSignatureRequests: DocumentSignatureRequestRecord[];
   expenses: ExpenseRecord[];
@@ -75,6 +90,12 @@ function getDefaultLocalData(): LocalCoreData {
     invoices: [],
     invoiceReminders: [],
     bankMovements: [],
+    messageConnections: [],
+    messageThreads: [],
+    messageRecords: [],
+    mailThreads: [],
+    mailMessages: [],
+    mailSyncRuns: [],
     commercialDocuments: [],
     documentSignatureRequests: [],
     expenses: [],
@@ -1293,6 +1314,444 @@ export async function syncLocalInvoicePaymentStatusFromBankMatches(
   });
 }
 
+export async function listLocalMessageConnectionsForUser(userId: string) {
+  const data = await readLocalCoreData();
+  return sortByUpdatedAtDescending(
+    data.messageConnections.filter((connection) => connection.user_id === userId),
+  );
+}
+
+export async function ensureLocalMessageConnection({
+  userId,
+  channel,
+  label,
+  inboundKey,
+  verifyToken,
+  status = "draft",
+  metadata = {},
+}: {
+  userId: string;
+  channel: MessageChannel;
+  label: string;
+  inboundKey: string;
+  verifyToken: string;
+  status?: MessageConnectionStatus;
+  metadata?: Record<string, unknown>;
+}) {
+  return updateLocalCoreData(async (data) => {
+    const timestamp = nowIso();
+    const existing = data.messageConnections.find(
+      (candidate) => candidate.user_id === userId && candidate.channel === channel,
+    );
+
+    if (existing) {
+      existing.label = label;
+      existing.inbound_key = inboundKey;
+      existing.verify_token = verifyToken;
+      existing.status = status;
+      existing.metadata = {
+        ...existing.metadata,
+        ...metadata,
+      };
+      existing.updated_at = timestamp;
+      return existing;
+    }
+
+    const connection: MessageConnection = {
+      id: randomUUID(),
+      user_id: userId,
+      channel,
+      label,
+      status,
+      inbound_key: inboundKey,
+      verify_token: verifyToken,
+      metadata,
+      created_at: timestamp,
+      updated_at: timestamp,
+    };
+
+    data.messageConnections.push(connection);
+    return connection;
+  });
+}
+
+export async function getLocalMessageConnectionByInboundKey(
+  inboundKey: string,
+  channel: MessageChannel,
+) {
+  const data = await readLocalCoreData();
+  return (
+    data.messageConnections.find(
+      (connection) =>
+        connection.channel === channel && connection.inbound_key === inboundKey,
+    ) ?? null
+  );
+}
+
+export async function listLocalMessageThreadsForUser(userId: string) {
+  const data = await readLocalCoreData();
+  return sortByPrimaryDateDescending(
+    data.messageThreads.filter((thread) => thread.user_id === userId),
+    (thread) => thread.last_message_at,
+  );
+}
+
+export async function getLocalMessageThreadById(userId: string, threadId: string) {
+  const threads = await listLocalMessageThreadsForUser(userId);
+  return threads.find((thread) => thread.id === threadId) ?? null;
+}
+
+export async function listLocalMessageRecordsForThread(userId: string, threadId: string) {
+  const data = await readLocalCoreData();
+  return data.messageRecords
+    .filter((record) => record.user_id === userId && record.thread_id === threadId)
+    .sort((left, right) => left.received_at.localeCompare(right.received_at));
+}
+
+export async function upsertLocalInboundMessage({
+  connection,
+  parsedMessage,
+  urgency,
+  urgencyScore,
+}: {
+  connection: MessageConnection;
+  parsedMessage: {
+    channel: MessageChannel;
+    externalChatId: string;
+    externalContactId: string | null;
+    externalMessageId: string | null;
+    firstName: string | null;
+    lastName: string | null;
+    fullName: string;
+    phone: string | null;
+    telegramUsername: string | null;
+    body: string;
+    messageType: string;
+    senderName: string | null;
+    receivedAt: string;
+    rawPayload: Record<string, unknown>;
+  };
+  urgency: MessageUrgency;
+  urgencyScore: number;
+}) {
+  return updateLocalCoreData(async (data) => {
+    const preview = parsedMessage.body.slice(0, 180);
+    let thread = data.messageThreads.find(
+      (candidate) =>
+        candidate.user_id === connection.user_id &&
+        candidate.channel === parsedMessage.channel &&
+        candidate.external_chat_id === parsedMessage.externalChatId,
+    );
+
+    if (!thread) {
+      thread = {
+        id: randomUUID(),
+        user_id: connection.user_id,
+        connection_id: connection.id,
+        channel: parsedMessage.channel,
+        external_chat_id: parsedMessage.externalChatId,
+        external_contact_id: parsedMessage.externalContactId,
+        first_name: parsedMessage.firstName,
+        last_name: parsedMessage.lastName,
+        full_name: parsedMessage.fullName,
+        phone: parsedMessage.phone,
+        telegram_username: parsedMessage.telegramUsername,
+        urgency,
+        urgency_score: urgencyScore,
+        urgency_locked: false,
+        unread_count: 1,
+        last_message_preview: preview,
+        last_message_direction: "inbound",
+        last_message_at: parsedMessage.receivedAt,
+        metadata: {},
+        created_at: parsedMessage.receivedAt,
+        updated_at: parsedMessage.receivedAt,
+      };
+      data.messageThreads.push(thread);
+    } else {
+      thread.connection_id = connection.id;
+      thread.external_contact_id =
+        parsedMessage.externalContactId ?? thread.external_contact_id;
+      thread.first_name = parsedMessage.firstName ?? thread.first_name;
+      thread.last_name = parsedMessage.lastName ?? thread.last_name;
+      thread.full_name = parsedMessage.fullName || thread.full_name;
+      thread.phone = parsedMessage.phone ?? thread.phone;
+      thread.telegram_username = parsedMessage.telegramUsername ?? thread.telegram_username;
+      if (!thread.urgency_locked) {
+        thread.urgency = urgency;
+        thread.urgency_score = Math.max(thread.urgency_score, urgencyScore);
+      }
+      thread.unread_count += 1;
+      thread.last_message_preview = preview;
+      thread.last_message_direction = "inbound";
+      thread.last_message_at = parsedMessage.receivedAt;
+      thread.updated_at = parsedMessage.receivedAt;
+    }
+
+    if (parsedMessage.externalMessageId) {
+      const existingMessage = data.messageRecords.find(
+        (candidate) =>
+          candidate.user_id === connection.user_id &&
+          candidate.channel === parsedMessage.channel &&
+          candidate.external_message_id === parsedMessage.externalMessageId,
+      );
+
+      if (existingMessage) {
+        return thread;
+      }
+    }
+
+    data.messageRecords.push({
+      id: randomUUID(),
+      user_id: connection.user_id,
+      thread_id: thread.id,
+      channel: parsedMessage.channel,
+      external_message_id: parsedMessage.externalMessageId,
+      direction: "inbound",
+      sender_name: parsedMessage.senderName,
+      body: parsedMessage.body,
+      message_type: parsedMessage.messageType,
+      received_at: parsedMessage.receivedAt,
+      raw_payload: parsedMessage.rawPayload,
+      created_at: parsedMessage.receivedAt,
+    });
+
+    connection.status = "active";
+    connection.updated_at = nowIso();
+
+    return thread;
+  });
+}
+
+export async function markLocalMessageThreadRead(userId: string, threadId: string) {
+  return updateLocalCoreData(async (data) => {
+    const thread = data.messageThreads.find(
+      (candidate) => candidate.user_id === userId && candidate.id === threadId,
+    );
+
+    if (!thread) {
+      return null;
+    }
+
+    thread.unread_count = 0;
+    thread.updated_at = nowIso();
+    return thread;
+  });
+}
+
+export async function setLocalMessageThreadUrgency(
+  userId: string,
+  threadId: string,
+  urgency: MessageUrgency,
+  urgencyScore: number,
+) {
+  return updateLocalCoreData(async (data) => {
+    const thread = data.messageThreads.find(
+      (candidate) => candidate.user_id === userId && candidate.id === threadId,
+    );
+
+    if (!thread) {
+      return null;
+    }
+
+    thread.urgency = urgency;
+    thread.urgency_score = urgencyScore;
+    thread.urgency_locked = true;
+    thread.updated_at = nowIso();
+    return thread;
+  });
+}
+
+export async function unlockLocalMessageThreadUrgency(userId: string, threadId: string) {
+  return updateLocalCoreData(async (data) => {
+    const thread = data.messageThreads.find(
+      (candidate) => candidate.user_id === userId && candidate.id === threadId,
+    );
+
+    if (!thread) {
+      return null;
+    }
+
+    thread.urgency_locked = false;
+    thread.updated_at = nowIso();
+    return thread;
+  });
+}
+
+export async function listLocalMailThreadsForUser(userId: string) {
+  const data = await readLocalCoreData();
+  return sortByPrimaryDateDescending(
+    data.mailThreads.filter((thread) => thread.user_id === userId),
+    (thread) => thread.last_message_at,
+  );
+}
+
+export async function getLocalMailThreadById(userId: string, threadId: string) {
+  const threads = await listLocalMailThreadsForUser(userId);
+  return threads.find((thread) => thread.id === threadId) ?? null;
+}
+
+export async function listLocalMailMessagesForThread(userId: string, threadId: string) {
+  const data = await readLocalCoreData();
+  return data.mailMessages
+    .filter((message) => message.user_id === userId && message.thread_id === threadId)
+    .sort((left, right) => left.received_at.localeCompare(right.received_at));
+}
+
+export async function listLocalMailSyncRunsForUser(userId: string, limit = 5) {
+  const data = await readLocalCoreData();
+  return [...data.mailSyncRuns]
+    .filter((run) => run.user_id === userId)
+    .sort((left, right) => right.created_at.localeCompare(left.created_at))
+    .slice(0, limit);
+}
+
+export async function logLocalMailSyncRun({
+  userId,
+  source,
+  status,
+  importedCount,
+  detail,
+}: {
+  userId: string;
+  source: MailSyncRun["source"];
+  status: MailSyncRun["status"];
+  importedCount: number;
+  detail: string | null;
+}) {
+  return updateLocalCoreData(async (data) => {
+    const timestamp = nowIso();
+    const run: MailSyncRun = {
+      id: randomUUID(),
+      user_id: userId,
+      source,
+      status,
+      imported_count: importedCount,
+      detail,
+      created_at: timestamp,
+    };
+
+    data.mailSyncRuns.push(run);
+    return run;
+  });
+}
+
+export async function upsertLocalMailEntries({
+  userId,
+  entries,
+  source = "imap",
+}: {
+  userId: string;
+  entries: Array<{
+    messageId: string;
+    fromName: string | null;
+    fromEmail: string;
+    toEmails: string[];
+    subject: string | null;
+    bodyText: string;
+    bodyHtml: string | null;
+    receivedAt: string;
+    rawHeaders: Record<string, unknown>;
+    urgency: MessageUrgency;
+    urgencyScore: number;
+  }>;
+  source?: MailThread["source"];
+}) {
+  return updateLocalCoreData(async (data) => {
+    let importedCount = 0;
+
+    for (const entry of entries) {
+      const existingMessage = data.mailMessages.find(
+        (candidate) =>
+          candidate.user_id === userId &&
+          candidate.source === source &&
+          candidate.external_message_id === entry.messageId,
+      );
+
+      if (existingMessage) {
+        continue;
+      }
+
+      const preview = entry.bodyText.slice(0, 220);
+      let thread = data.mailThreads.find(
+        (candidate) =>
+          candidate.user_id === userId &&
+          candidate.source === source &&
+          candidate.external_thread_key === entry.fromEmail,
+      );
+
+      if (!thread) {
+        thread = {
+          id: randomUUID(),
+          user_id: userId,
+          source,
+          external_thread_key: entry.fromEmail,
+          from_name: entry.fromName,
+          from_email: entry.fromEmail,
+          subject: entry.subject,
+          urgency: entry.urgency,
+          urgency_score: entry.urgencyScore,
+          unread_count: 0,
+          last_message_preview: preview,
+          last_message_at: entry.receivedAt,
+          metadata: {},
+          created_at: entry.receivedAt,
+          updated_at: entry.receivedAt,
+        };
+        data.mailThreads.push(thread);
+      }
+
+      data.mailMessages.push({
+        id: randomUUID(),
+        user_id: userId,
+        thread_id: thread.id,
+        source,
+        external_message_id: entry.messageId,
+        from_name: entry.fromName,
+        from_email: entry.fromEmail,
+        to_emails: entry.toEmails,
+        subject: entry.subject,
+        body_text: entry.bodyText,
+        body_html: entry.bodyHtml,
+        received_at: entry.receivedAt,
+        raw_headers: entry.rawHeaders,
+        created_at: entry.receivedAt,
+      });
+
+      const isNewest =
+        new Date(entry.receivedAt).getTime() >= new Date(thread.last_message_at).getTime();
+      thread.from_name = entry.fromName ?? thread.from_name;
+      thread.subject = isNewest ? entry.subject : thread.subject;
+      thread.urgency =
+        entry.urgencyScore >= thread.urgency_score ? entry.urgency : thread.urgency;
+      thread.urgency_score = Math.max(thread.urgency_score, entry.urgencyScore);
+      thread.unread_count += 1;
+      thread.last_message_preview = isNewest ? preview : thread.last_message_preview;
+      thread.last_message_at = isNewest ? entry.receivedAt : thread.last_message_at;
+      thread.updated_at = entry.receivedAt;
+      importedCount += 1;
+    }
+
+    return importedCount;
+  });
+}
+
+export async function markLocalMailThreadRead(userId: string, threadId: string) {
+  return updateLocalCoreData(async (data) => {
+    const thread = data.mailThreads.find(
+      (candidate) => candidate.user_id === userId && candidate.id === threadId,
+    );
+
+    if (!thread) {
+      return null;
+    }
+
+    thread.unread_count = 0;
+    thread.updated_at = nowIso();
+    return thread;
+  });
+}
+
 export async function listLocalInvoiceRemindersForUser(userId: string) {
   const data = await readLocalCoreData();
   return data.invoiceReminders
@@ -1394,6 +1853,12 @@ export async function replaceLocalUserData({
   invoices,
   invoiceReminders,
   bankMovements,
+  messageConnections,
+  messageThreads,
+  messageRecords,
+  mailThreads,
+  mailMessages,
+  mailSyncRuns,
   commercialDocuments,
   documentSignatureRequests,
   expenses,
@@ -1407,6 +1872,12 @@ export async function replaceLocalUserData({
   invoices: InvoiceRecord[];
   invoiceReminders: InvoiceReminderRecord[];
   bankMovements: BankMovementRecord[];
+  messageConnections: MessageConnection[];
+  messageThreads: MessageThread[];
+  messageRecords: MessageRecord[];
+  mailThreads: MailThread[];
+  mailMessages: MailMessage[];
+  mailSyncRuns: MailSyncRun[];
   commercialDocuments: CommercialDocumentRecord[];
   documentSignatureRequests: DocumentSignatureRequestRecord[];
   expenses: ExpenseRecord[];
@@ -1474,6 +1945,54 @@ export async function replaceLocalUserData({
       ...data.bankMovements.filter((candidate) => candidate.user_id !== userId),
       ...bankMovements.map((movement) => ({
         ...movement,
+        user_id: userId,
+      })),
+    ];
+
+    data.messageConnections = [
+      ...data.messageConnections.filter((candidate) => candidate.user_id !== userId),
+      ...messageConnections.map((connection) => ({
+        ...connection,
+        user_id: userId,
+      })),
+    ];
+
+    data.messageThreads = [
+      ...data.messageThreads.filter((candidate) => candidate.user_id !== userId),
+      ...messageThreads.map((thread) => ({
+        ...thread,
+        user_id: userId,
+      })),
+    ];
+
+    data.messageRecords = [
+      ...data.messageRecords.filter((candidate) => candidate.user_id !== userId),
+      ...messageRecords.map((record) => ({
+        ...record,
+        user_id: userId,
+      })),
+    ];
+
+    data.mailThreads = [
+      ...data.mailThreads.filter((candidate) => candidate.user_id !== userId),
+      ...mailThreads.map((thread) => ({
+        ...thread,
+        user_id: userId,
+      })),
+    ];
+
+    data.mailMessages = [
+      ...data.mailMessages.filter((candidate) => candidate.user_id !== userId),
+      ...mailMessages.map((message) => ({
+        ...message,
+        user_id: userId,
+      })),
+    ];
+
+    data.mailSyncRuns = [
+      ...data.mailSyncRuns.filter((candidate) => candidate.user_id !== userId),
+      ...mailSyncRuns.map((run) => ({
+        ...run,
         user_id: userId,
       })),
     ];

@@ -378,6 +378,12 @@ describe("local core persistence", () => {
       invoices: [buildRestoredInvoice(7)],
       invoiceReminders: [],
       bankMovements: [],
+      messageConnections: [],
+      messageThreads: [],
+      messageRecords: [],
+      mailThreads: [],
+      mailMessages: [],
+      mailSyncRuns: [],
       commercialDocuments: [
         {
           ...buildCommercialDocumentInput("quote"),
