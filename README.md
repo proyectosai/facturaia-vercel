@@ -133,11 +133,28 @@ Si buscas una guía clara antes de instalar nada:
 - [Instalación en Windows](./docs/INSTALACION_WINDOWS.md)
 - [Instalación en macOS](./docs/INSTALACION_MACOS.md)
 - [Instalación en Linux](./docs/INSTALACION_LINUX.md)
+- [Sistema de módulos](./docs/SISTEMA_DE_MODULOS.md)
 - [Estado real, módulo por módulo](./docs/ESTADO_REAL.md)
 - [Estándar de calidad para el modo local](./docs/CALIDAD_LOCAL.md)
 - [QA / lectura ISO 25010](./docs/QA_ISO_25010.md)
 - [Plan de VeriFactu y firma digital](./docs/VERIFACTU_Y_FIRMA_DIGITAL.md)
 - [Memoria local para LLM y RAG](./docs/MEMORIA_LOCAL_LLM.md)
+
+## Sistema de módulos
+
+FacturaIA debe instalarse como un sistema modular, no como un “todo o nada”.
+
+La lectura correcta es esta:
+
+- **núcleo primero**: perfil, facturas, backups, correo saliente y cobros
+- **operativa después**: clientes, presupuestos, firma y gastos
+- **integraciones al final**: mensajería, IMAP, banca o Facturae
+
+Guías clave:
+
+- [Sistema de módulos](./docs/SISTEMA_DE_MODULOS.md)
+- [Índice de módulos](./docs/modulos/README.md)
+- [DFD y plan de módulos](./docs/MODULOS_DFD.md)
 
 ## Stack técnico
 
@@ -206,6 +223,7 @@ Chequeos de calidad recomendados antes de entregar una instalación local:
 
 ```bash
 npm run test:local-core
+npm run test:massive-local
 npm run test:quality
 ```
 
@@ -320,6 +338,7 @@ Tablas principales activas:
 - [Instalación y configuración](./docs/INSTALACION.md)
 - [Guía en 15 minutos](./docs/GUIA_15_MINUTOS.md)
 - [Estado real del producto](./docs/ESTADO_REAL.md)
+- [Sistema de módulos](./docs/SISTEMA_DE_MODULOS.md)
 - [DFD y plan de módulos](./docs/MODULOS_DFD.md)
 - [Arquitectura funcional y técnica](./docs/ARQUITECTURA.md)
 - [Visión, alcance y pendientes](./docs/VISION_Y_PENDIENTES.md)

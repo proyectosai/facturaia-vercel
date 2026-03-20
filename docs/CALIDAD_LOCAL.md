@@ -19,8 +19,9 @@ Antes de dar por buena una iteración del modo local, deben pasar estos gates:
 1. `npm run lint`
 2. `npm run typecheck`
 3. `npm test`
-4. `npm run test:smoke`
-5. prueba manual segmentada sobre:
+4. `npm run test:massive-local`
+5. `npm run test:smoke`
+6. prueba manual segmentada sobre:
    - login local
    - perfil fiscal
    - alta de cliente
@@ -110,6 +111,12 @@ Usar tres capas:
    - firma
    - conversión
    - backup
+
+4. **suite masiva local**
+   - lotes de facturas
+   - mezcla de clientes, gastos y documentos
+   - restore en instalación limpia
+   - continuidad de numeración
 
 ## Criterio de producto
 

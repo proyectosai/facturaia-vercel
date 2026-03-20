@@ -1,8 +1,10 @@
 import { getOutboundMailStatusSummary } from "@/lib/mail";
 import { getInboundMailStatusSummary } from "@/lib/inbound-mail";
+import { isLocalFileMode } from "@/lib/demo";
 
 export type ModuleStatus = "active" | "partial" | "next" | "planned";
 export type ModuleMaturity = "daily" | "pilot" | "experimental";
+export type ModuleLocalSupport = "native" | "assisted" | "blocked";
 
 export type ModuleCategory =
   | "canales"
@@ -18,6 +20,7 @@ export type ModuleDefinition = {
   summary: string;
   status: ModuleStatus;
   maturity: ModuleMaturity;
+  localSupport: ModuleLocalSupport;
   category: ModuleCategory;
   routeHref?: string;
   docsPath?: string;
@@ -58,6 +61,10 @@ function hasLocalAi() {
   );
 }
 
+function hasPublicAppUrl() {
+  return Boolean(process.env.NEXT_PUBLIC_APP_URL);
+}
+
 export const MODULE_DEFINITIONS: ModuleDefinition[] = [
   {
     id: "messaging-inbox",
@@ -67,14 +74,15 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
       "Bandeja única para ordenar mensajes entrantes de WhatsApp Business y Telegram por fecha, urgencia y nombre.",
     status: "active",
     maturity: "pilot",
+    localSupport: "assisted",
     category: "canales",
     routeHref: "/messages",
     docsPath: "docs/modulos/MENSAJERIA_WHATSAPP_TELEGRAM.md",
     providers: ["WhatsApp Business", "Telegram Bot API"],
     requirements: [
       "NEXT_PUBLIC_APP_URL accesible por HTTPS",
-      "Supabase configurado",
       "Cuenta oficial de WhatsApp Business o bot de Telegram",
+      "Webhook público alcanzable desde Internet",
     ],
     installSteps: [
       "Abre /messages y copia la webhook URL.",
@@ -95,13 +103,14 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
       "Exportación y restauración JSON del usuario autenticado para mover o recuperar instalaciones privadas.",
     status: "active",
     maturity: "daily",
+    localSupport: "native",
     category: "resiliencia",
     routeHref: "/backups",
     docsPath: "docs/INSTALACION.md",
     requirements: [
-      "Supabase configurado",
       "Usuario autenticado",
-      "Migración de secuencia aplicada",
+      "FACTURAIA_DATA_DIR accesible en modo local o Supabase operativo",
+      "Espacio suficiente para guardar y restaurar el JSON",
     ],
     installSteps: [
       "Abre /backups.",
@@ -119,6 +128,7 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
       "Sincronización de copias hacia almacenamiento externo para no depender solo del disco local o del VPS principal.",
     status: "partial",
     maturity: "pilot",
+    localSupport: "assisted",
     category: "resiliencia",
     routeHref: "/backups",
     docsPath: "docs/modulos/BACKUPS_REMOTOS.md",
@@ -147,6 +157,7 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
       "Envío de facturas y pruebas desde FacturaIA con SMTP clásico o Resend, según prefieras en tu instalación privada.",
     status: "active",
     maturity: "daily",
+    localSupport: "assisted",
     category: "canales",
     routeHref: "/mail",
     docsPath: "docs/modulos/CORREO_SALIENTE.md",
@@ -175,6 +186,7 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
       "Bandeja de entrada para asociar emails entrantes con clientes, documentos y seguimiento operativo.",
     status: "partial",
     maturity: "pilot",
+    localSupport: "assisted",
     category: "canales",
     routeHref: "/mail",
     docsPath: "docs/modulos/CORREO_ENTRANTE.md",
@@ -203,12 +215,13 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
       "Flujo documental previo a la factura, con conversión de presupuesto o albarán en factura definitiva.",
     status: "partial",
     maturity: "pilot",
+    localSupport: "native",
     category: "documentos",
     routeHref: "/presupuestos",
     docsPath: "docs/modulos/PRESUPUESTOS_ALBARANES.md",
     requirements: [
       "Migración commercial_documents aplicada",
-      "Supabase configurado o modo demo local",
+      "Modo local privado o Supabase configurado",
       "Ruta /presupuestos disponible en el panel",
     ],
     installSteps: [
@@ -230,13 +243,14 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
       "Lectura de tickets y facturas de proveedor para extraer importes, IVA y datos básicos de gasto.",
     status: "partial",
     maturity: "experimental",
+    localSupport: "native",
     category: "finanzas",
     routeHref: "/gastos",
     docsPath: "docs/modulos/GASTOS_OCR.md",
     requirements: [
-      "Migración expenses aplicada",
-      "Bucket expense-files operativo",
-      "Supabase configurado o modo demo local",
+      "Modo local privado o storage operativo",
+      "Subida de PDF, texto o imagen válida",
+      "Revisión manual de los datos antes de guardar",
     ],
     installSteps: [
       "Subir ticket o PDF.",
@@ -257,6 +271,7 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
       "Ficha unificada de cliente con notas, documentos, mensajes y estado operativo.",
     status: "partial",
     maturity: "pilot",
+    localSupport: "native",
     category: "canales",
     routeHref: "/clientes",
     docsPath: "docs/modulos/CRM_LIGERO.md",
@@ -280,6 +295,7 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
       "Aceptación o firma de propuestas y contratos con trazabilidad básica dentro del entorno privado.",
     status: "partial",
     maturity: "pilot",
+    localSupport: "assisted",
     category: "documentos",
     routeHref: "/firmas",
     docsPath: "docs/modulos/FIRMA_DOCUMENTAL.md",
@@ -304,6 +320,7 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
       "Importación de extractos CSV para cruzar ingresos y cargos con facturas emitidas o gastos ya revisados.",
     status: "partial",
     maturity: "pilot",
+    localSupport: "blocked",
     category: "finanzas",
     routeHref: "/banca",
     docsPath: "docs/modulos/CONCILIACION_BANCARIA.md",
@@ -331,6 +348,7 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
       "Panel de preparación normativa y exportación inicial a XML Facturae 3.2.2 sin firma, con referencias oficiales de VeriFactu.",
     status: "partial",
     maturity: "experimental",
+    localSupport: "native",
     category: "cumplimiento",
     routeHref: "/facturae",
     docsPath: "docs/modulos/FACTURAE_VERIFACTU.md",
@@ -358,6 +376,7 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
       "Chat de apoyo para preparar expedientes de renta en Espana con checklist, riesgos y referencias oficiales de AEAT.",
     status: "partial",
     maturity: "pilot",
+    localSupport: "native",
     category: "cumplimiento",
     routeHref: "/renta",
     docsPath: "docs/modulos/ASISTENTE_RENTA.md",
@@ -420,6 +439,29 @@ export function getModuleMaturityMeta(maturity: ModuleMaturity) {
   }[maturity];
 }
 
+export function getModuleLocalSupportMeta(localSupport: ModuleLocalSupport) {
+  return {
+    native: {
+      label: "Local nativo",
+      badgeVariant: "success" as const,
+      description:
+        "El módulo puede vivir dentro del ordenador o servidor privado del cliente sin depender de Supabase para su operativa principal.",
+    },
+    assisted: {
+      label: "Local asistido",
+      badgeVariant: "default" as const,
+      description:
+        "La app corre en local, pero este módulo necesita una URL pública, un proveedor externo o un canal adicional para ser realmente útil.",
+    },
+    blocked: {
+      label: "Local pendiente",
+      badgeVariant: "secondary" as const,
+      description:
+        "La pantalla existe, pero el flujo local todavía no está cerrado como para considerarlo operativo en una instalación privada pura.",
+    },
+  }[localSupport];
+}
+
 export function getModuleCategoryLabel(category: ModuleCategory) {
   return {
     canales: "Canales",
@@ -433,21 +475,27 @@ export function getModuleCategoryLabel(category: ModuleCategory) {
 export function getModuleCatalog(): ModuleRuntimeState[] {
   const outboundMail = getOutboundMailStatusSummary();
   const inboundMail = getInboundMailStatusSummary();
+  const localFileMode = isLocalFileMode();
+  const publicAppUrl = hasPublicAppUrl();
 
   return MODULE_DEFINITIONS.map((module) => {
     let configured = false;
     let configuredLabel = "Pendiente";
 
     if (module.id === "messaging-inbox") {
-      configured = hasSupabase() && Boolean(process.env.NEXT_PUBLIC_APP_URL);
+      configured = publicAppUrl && (hasSupabase() || localFileMode);
       configuredLabel = configured
-        ? "Listo para conectar canales"
-        : "Falta URL pública o Supabase";
+        ? localFileMode
+          ? "Listo para pruebas con webhooks y canales reales"
+          : "Listo para conectar canales"
+        : "Falta URL pública";
     } else if (module.id === "local-backups") {
-      configured = hasSupabase();
+      configured = localFileMode || hasSupabase();
       configuredLabel = configured
-        ? "Listo para exportar y restaurar"
-        : "Falta Supabase";
+        ? localFileMode
+          ? "Listo para exportar y restaurar en local"
+          : "Listo para exportar y restaurar"
+        : "Falta modo local o Supabase";
     } else if (module.id === "remote-backups") {
       configured = hasRemoteBackups();
       configuredLabel = configured
@@ -464,35 +512,47 @@ export function getModuleCatalog(): ModuleRuntimeState[] {
         ? `${inboundMail.providerLabel} listo`
         : "Faltan variables IMAP";
     } else if (module.id === "quotes-delivery-notes") {
-      configured = hasSupabase();
+      configured = localFileMode || hasSupabase();
       configuredLabel = configured
-        ? "Listo para crear documentos"
-        : "Falta Supabase";
+        ? localFileMode
+          ? "Listo para crear documentos en local"
+          : "Listo para crear documentos"
+        : "Falta modo local o Supabase";
     } else if (module.id === "expenses-ocr") {
-      configured = hasSupabase();
+      configured = localFileMode || hasSupabase();
       configuredLabel = configured
-        ? "Listo para importar justificantes"
-        : "Falta Supabase";
+        ? localFileMode
+          ? "Listo para guardar gastos en local"
+          : "Listo para importar justificantes"
+        : "Falta modo local o Supabase";
     } else if (module.id === "crm-light") {
-      configured = hasSupabase();
+      configured = localFileMode || hasSupabase();
       configuredLabel = configured
-        ? "Listo para centralizar fichas"
-        : "Falta Supabase";
+        ? localFileMode
+          ? "Listo para fichas y notas en local"
+          : "Listo para centralizar fichas"
+        : "Falta modo local o Supabase";
     } else if (module.id === "document-signature") {
-      configured = hasSupabase() && Boolean(process.env.NEXT_PUBLIC_APP_URL);
+      configured = publicAppUrl && (hasSupabase() || localFileMode);
       configuredLabel = configured
-        ? "Listo para generar enlaces públicos"
-        : "Falta URL pública o Supabase";
+        ? localFileMode
+          ? "Listo para enlaces públicos locales"
+          : "Listo para generar enlaces públicos"
+        : "Falta URL pública";
     } else if (module.id === "bank-reconciliation") {
-      configured = hasSupabase();
+      configured = !localFileMode && hasSupabase();
       configuredLabel = configured
         ? "Listo para importar extractos CSV"
-        : "Falta Supabase";
+        : localFileMode
+          ? "Modo local: persistencia bancaria pendiente"
+          : "Falta Supabase";
     } else if (module.id === "facturae-verifactu") {
-      configured = hasSupabase();
+      configured = localFileMode || hasSupabase();
       configuredLabel = configured
-        ? "Listo para exportar borradores XML"
-        : "Falta Supabase";
+        ? localFileMode
+          ? "Listo para exportar borradores XML en local"
+          : "Listo para exportar borradores XML"
+        : "Falta modo local o Supabase";
     } else if (module.id === "tax-assistant") {
       configured = true;
       configuredLabel = hasLocalAi()

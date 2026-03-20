@@ -12,6 +12,7 @@ import {
 import {
   getModuleCatalog,
   getModuleCategoryLabel,
+  getModuleLocalSupportMeta,
   getModuleMaturityMeta,
   getModuleStatusMeta,
 } from "@/lib/modules";
@@ -248,6 +249,7 @@ export default function ModulesPage() {
           {modules.map((module) => {
             const statusMeta = getModuleStatusMeta(module.status);
             const maturityMeta = getModuleMaturityMeta(module.maturity);
+            const localSupportMeta = getModuleLocalSupportMeta(module.localSupport);
             const CategoryIcon = categoryIcons[module.category] ?? Blocks;
 
             return (
@@ -270,6 +272,9 @@ export default function ModulesPage() {
                     <div className="flex flex-wrap gap-2">
                       <Badge variant={statusMeta.badgeVariant}>{statusMeta.label}</Badge>
                       <Badge variant={maturityMeta.badgeVariant}>{maturityMeta.label}</Badge>
+                      <Badge variant={localSupportMeta.badgeVariant}>
+                        {localSupportMeta.label}
+                      </Badge>
                       <Badge variant={module.configured ? "success" : "secondary"}>
                         {module.configuredLabel}
                       </Badge>
@@ -292,6 +297,15 @@ export default function ModulesPage() {
                         {module.readinessNote}
                       </p>
                     ) : null}
+                  </div>
+
+                  <div className="rounded-[24px] bg-[color:var(--color-panel)] p-4">
+                    <p className="text-sm font-semibold text-foreground">
+                      Compatibilidad con instalación local
+                    </p>
+                    <p className="mt-2 text-sm leading-7 text-muted-foreground">
+                      {localSupportMeta.description}
+                    </p>
                   </div>
 
                   {module.providers?.length ? (

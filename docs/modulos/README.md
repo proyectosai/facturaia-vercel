@@ -2,22 +2,55 @@
 
 Esta carpeta reúne documentación específica por módulo para que una instalación privada de FacturaIA se pueda configurar sin depender de explicaciones dispersas.
 
-Documentos actuales:
+## Antes de abrir un módulo suelto
+
+Lee primero:
+
+- [Sistema de módulos](../SISTEMA_DE_MODULOS.md)
+- [DFD y plan técnico modular](../MODULOS_DFD.md)
+
+Eso te da el contexto correcto:
+
+- qué módulo conviene instalar primero
+- qué significa `uso diario`, `piloto` o `experimental`
+- qué módulos son realmente compatibles con modo local
+- cuáles necesitan servicios o canales externos
+
+## Documentos actuales
+
+### Canales e integraciones
 
 - `MENSAJERIA_WHATSAPP_TELEGRAM.md`
-- `BACKUPS_REMOTOS.md` (WebDAV / Nextcloud ya operativo)
 - `CORREO_SALIENTE.md`
-- `CORREO_ENTRANTE.md` (primera entrega IMAP ya operativa)
-- `PRESUPUESTOS_ALBARANES.md` (primera entrega de pre-facturación ya operativa)
-- `GASTOS_OCR.md` (primera entrega de importación y revisión ya operativa)
-- `CRM_LIGERO.md` (primera entrega de fichas unificadas ya operativa)
-- `FIRMA_DOCUMENTAL.md` (primera entrega de aceptación y firma básica ya operativa)
-- `CONCILIACION_BANCARIA.md` (primera entrega con extractos CSV y conciliación manual ya operativa)
-- `COBROS_Y_VENCIMIENTOS.md` (primera entrega del circuito de cobro ya operativa)
-- `FACTURAE_VERIFACTU.md` (primera entrega con panel de preparación y exportación XML Facturae ya operativa)
-- `ASISTENTE_RENTA.md` (piloto de apoyo para expedientes de IRPF / Renta en España)
-- `FEEDBACK_PILOTOS.md` (bandeja interna para recoger feedback de uso real)
+- `CORREO_ENTRANTE.md`
 
-Documento general:
+### Resiliencia
 
-- `../MODULOS_DFD.md`
+- `BACKUPS_REMOTOS.md`
+
+### Documentos y flujo comercial
+
+- `PRESUPUESTOS_ALBARANES.md`
+- `FIRMA_DOCUMENTAL.md`
+
+### Finanzas y operativa
+
+- `GASTOS_OCR.md`
+- `CRM_LIGERO.md`
+- `CONCILIACION_BANCARIA.md`
+- `COBROS_Y_VENCIMIENTOS.md`
+
+### Cumplimiento y apoyo profesional
+
+- `FACTURAE_VERIFACTU.md`
+- `ASISTENTE_RENTA.md`
+- `FEEDBACK_PILOTOS.md`
+
+## Regla práctica
+
+Para un autónomo o despacho pequeño, lo sensato suele ser:
+
+1. `backups + correo saliente + cobros`
+2. `clientes + presupuestos + firma`
+3. `gastos + renta`
+4. `mensajería + correo entrante + banca + Facturae` solo cuando realmente hagan falta
