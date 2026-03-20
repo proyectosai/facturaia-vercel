@@ -82,3 +82,19 @@ Interpretación práctica:
 - vista de incidencias fiscales por documento
 - preparación de remisión o registro VeriFactu
 - soporte más sólido para flujos con administración pública
+
+## Plan recomendado de cumplimiento
+
+La forma correcta de evolucionar este módulo no es “añadir un botón más”.
+
+El siguiente salto serio pasa por:
+
+1. crear un ledger fiscal append-only separado de la factura visible
+2. generar registros de alta, anulación y evento con cadena de huellas
+3. validar XML contra esquemas y documento de errores AEAT
+4. implementar remisión voluntaria `VERI*FACTU`
+5. añadir firma XAdES con certificado cualificado para escenarios de conservación y requerimiento
+
+Documento detallado:
+
+- [../VERIFACTU_Y_FIRMA_DIGITAL.md](../VERIFACTU_Y_FIRMA_DIGITAL.md)

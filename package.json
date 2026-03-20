@@ -5,14 +5,15 @@
   "license": "MIT",
   "scripts": {
     "dev": "next dev",
-    "demo:build": "FACTURAIA_DEMO_MODE=1 next build",
-    "demo:start": "FACTURAIA_DEMO_MODE=1 next start",
+    "demo:build": "node scripts/run-next-demo.mjs build",
+    "demo:start": "node scripts/run-next-demo.mjs start",
     "build": "next build",
     "start": "next start",
     "doctor": "node scripts/facturaia-doctor.mjs",
     "lint": "eslint .",
     "typecheck": "node -e \"const fs=require('fs'); fs.rmSync('.next/types',{recursive:true,force:true,maxRetries:5,retryDelay:100});\" && next typegen && tsc --noEmit --incremental false",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:smoke": "node scripts/facturaia-smoke.mjs"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.11",

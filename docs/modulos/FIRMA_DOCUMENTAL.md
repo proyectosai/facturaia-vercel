@@ -73,3 +73,21 @@ o ejecuta manualmente:
 - plantillas de texto por tipo de documento
 - firma sobre contratos desde la cabina documental
 - recordatorios automáticos para solicitudes pendientes
+
+## Diferencia importante con la firma fiscal
+
+La firma documental de este módulo no sustituye:
+
+- la firma XAdES de Facturae
+- la firma fiscal de registros para conservación o requerimiento
+- una firma cualificada de tercero de confianza
+
+La solución correcta es separar:
+
+1. evidencia comercial de aceptación o entrega
+2. firma fiscal XML
+3. firma avanzada o cualificada si el caso de uso la exige
+
+Plan detallado:
+
+- [../VERIFACTU_Y_FIRMA_DIGITAL.md](../VERIFACTU_Y_FIRMA_DIGITAL.md)

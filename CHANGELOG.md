@@ -49,6 +49,11 @@ El formato está inspirado en Keep a Changelog y el versionado irá madurando co
 
 ### Mejorado
 
+- CI ampliada a Linux y Windows con `lint`, `typecheck`, tests unitarios, build demo y smoke tests.
+- Scripts demo rehechos para ser multiplataforma y no depender de sintaxis Unix.
+- Nueva batería `npm run test:smoke` contra un `next start` real en modo demo.
+- Nuevos tests para el asistente de renta y helpers del módulo de gastos.
+- Documentación QA alineada con ISO/IEC 25010 y plan detallado de VeriFactu / firma digital.
 - Catálogo `/modules` actualizado para reflejar el estado real del sistema modular.
 - Pantalla `/system` con visibilidad sobre la configuración de backups remotos.
 - Documentación de instalación y despliegue ampliada para usuarios self-hosted.

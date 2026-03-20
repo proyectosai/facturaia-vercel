@@ -36,6 +36,7 @@ FacturaIA es una aplicación Next.js 15 pensada para autónomos y pequeños nego
 - Script `npm run doctor` para validar la instalación local.
 - Cabeceras de seguridad y validación estricta de uploads en puntos sensibles.
 - Suite de tests unitarios para cobros, seguridad, Facturae y firma.
+- Smoke tests de rutas clave sobre `next start` real.
 - Modo demo local para revisar la interfaz sin servicios reales.
 
 ## Filosofía del proyecto
@@ -89,6 +90,8 @@ Si buscas una guía clara antes de instalar nada:
 
 - [Guía en 15 minutos](./docs/GUIA_15_MINUTOS.md)
 - [Estado real, módulo por módulo](./docs/ESTADO_REAL.md)
+- [QA / lectura ISO 25010](./docs/QA_ISO_25010.md)
+- [Plan de VeriFactu y firma digital](./docs/VERIFACTU_Y_FIRMA_DIGITAL.md)
 
 ## Stack técnico
 
@@ -205,6 +208,8 @@ npm run build
 npm run start
 npm run lint
 npm run typecheck
+npm test
+npm run test:smoke
 npm run demo:build
 npm run demo:start
 ```
