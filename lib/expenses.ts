@@ -2,8 +2,6 @@ import "server-only";
 
 import path from "node:path";
 
-import { PDFParse } from "pdf-parse";
-
 import { extractExpenseDataFromText } from "@/lib/ai";
 import { demoExpenses, getDemoExpenseById, isDemoMode } from "@/lib/demo";
 import { hasLocalAiEnv } from "@/lib/env";
@@ -74,16 +72,31 @@ export async function extractRawTextFromExpenseInput({
   }
 
   if (file.type === "application/pdf") {
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const parser = new PDFParse({ data: buffer });
-    const parsed = await parser.getText();
-    await parser.destroy();
-    const rawText = parsed.text.trim();
+    try {
+      const { PDFParse } = await import("pdf-parse");
+      const buffer = Buffer.from(await file.arrayBuffer());
+      const parser = new PDFParse({ data: buffer });
+      const parsed = await parser.getText();
+      await parser.destroy();
+      const rawText = parsed.text.trim();
 
-    return {
-      rawText,
-      method: rawText ? ("pdf_text" as ExpenseExtractionMethod) : ("unavailable" as ExpenseExtractionMethod),
-    };
+      return {
+        rawText,
+        method: rawText
+          ? ("pdf_text" as ExpenseExtractionMethod)
+          : ("unavailable" as ExpenseExtractionMethod),
+      };
+    } catch (error) {
+      console.error(
+        "FacturaIA no ha podido cargar el parser PDF en este entorno:",
+        error,
+      );
+
+      return {
+        rawText: "",
+        method: "unavailable" as ExpenseExtractionMethod,
+      };
+    }
   }
 
   return {
