@@ -8,6 +8,7 @@ import {
   demoDocumentSignatureRequests,
   demoExpenses,
   demoInvoices,
+  demoInvoiceReminders,
   demoMailMessages,
   demoMailSyncRuns,
   demoMailThreads,
@@ -25,6 +26,7 @@ import type {
   DocumentSignatureRequestRecord,
   ExpenseRecord,
   InvoiceRecord,
+  InvoiceReminderRecord,
   MailMessage,
   MailSyncRun,
   MailThread,
@@ -54,6 +56,7 @@ export type FacturaIaBackup = {
   profile: Profile | null;
   clients: ClientRecord[];
   invoices: InvoiceRecord[];
+  invoiceReminders: InvoiceReminderRecord[];
   commercialDocuments: CommercialDocumentRecord[];
   documentSignatureRequests: DocumentSignatureRequestRecord[];
   expenses: ExpenseRecord[];
@@ -74,6 +77,7 @@ export type FacturaIaBackup = {
 export type BackupSummary = {
   clients: number;
   invoices: number;
+  invoiceReminders: number;
   commercialDocuments: number;
   documentSignatureRequests: number;
   expenses: number;
@@ -99,6 +103,7 @@ export async function getBackupSummary(userId: string): Promise<BackupSummary> {
     return {
       clients: demoClients.length,
       invoices: demoInvoices.length,
+      invoiceReminders: demoInvoiceReminders.length,
       commercialDocuments: demoCommercialDocuments.length,
       documentSignatureRequests: demoDocumentSignatureRequests.length,
       expenses: demoExpenses.length,
@@ -116,6 +121,7 @@ export async function getBackupSummary(userId: string): Promise<BackupSummary> {
   const [
     clients,
     invoices,
+    invoiceReminders,
     commercialDocuments,
     documentSignatureRequests,
     expenses,
@@ -129,6 +135,10 @@ export async function getBackupSummary(userId: string): Promise<BackupSummary> {
   ] = await Promise.all([
     admin.from("clients").select("*", { count: "exact", head: true }).eq("user_id", userId),
     admin.from("invoices").select("*", { count: "exact", head: true }).eq("user_id", userId),
+    admin
+      .from("invoice_reminders")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", userId),
     admin
       .from("commercial_documents")
       .select("*", { count: "exact", head: true })
@@ -153,6 +163,7 @@ export async function getBackupSummary(userId: string): Promise<BackupSummary> {
   return {
     clients: clients.count ?? 0,
     invoices: invoices.count ?? 0,
+    invoiceReminders: invoiceReminders.count ?? 0,
     commercialDocuments: commercialDocuments.count ?? 0,
     documentSignatureRequests: documentSignatureRequests.count ?? 0,
     expenses: expenses.count ?? 0,
@@ -180,6 +191,7 @@ export async function exportBackupForUser(
       profile: demoProfile,
       clients: demoClients,
       invoices: demoInvoices,
+      invoiceReminders: demoInvoiceReminders,
       commercialDocuments: demoCommercialDocuments,
       documentSignatureRequests: demoDocumentSignatureRequests,
       expenses: demoExpenses,
@@ -209,6 +221,7 @@ export async function exportBackupForUser(
     profile,
     clients,
     invoices,
+    invoiceReminders,
     commercialDocuments,
     documentSignatureRequests,
     expenses,
@@ -224,6 +237,11 @@ export async function exportBackupForUser(
     admin.from("profiles").select("*").eq("id", userId).maybeSingle(),
     admin.from("clients").select("*").eq("user_id", userId).order("updated_at", { ascending: false }),
     admin.from("invoices").select("*").eq("user_id", userId).order("issue_date", { ascending: true }),
+    admin
+      .from("invoice_reminders")
+      .select("*")
+      .eq("user_id", userId)
+      .order("sent_at", { ascending: false }),
     admin
       .from("commercial_documents")
       .select("*")
@@ -268,6 +286,7 @@ export async function exportBackupForUser(
   if (
     clients.error ||
     invoices.error ||
+    invoiceReminders.error ||
     commercialDocuments.error ||
     documentSignatureRequests.error ||
     expenses.error ||
@@ -292,6 +311,7 @@ export async function exportBackupForUser(
     profile: (profile.data as Profile | null) ?? null,
     clients: (clients.data as ClientRecord[] | null) ?? [],
     invoices: (invoices.data as InvoiceRecord[] | null) ?? [],
+    invoiceReminders: (invoiceReminders.data as InvoiceReminderRecord[] | null) ?? [],
     commercialDocuments:
       (commercialDocuments.data as CommercialDocumentRecord[] | null) ?? [],
     documentSignatureRequests:
@@ -340,6 +360,7 @@ export async function restoreBackupForUser(
     admin.from("mail_threads").delete().eq("user_id", userId),
     admin.from("mail_sync_runs").delete().eq("user_id", userId),
     admin.from("document_signature_requests").delete().eq("user_id", userId),
+    admin.from("invoice_reminders").delete().eq("user_id", userId),
     admin.from("clients").delete().eq("user_id", userId),
     admin.from("message_messages").delete().eq("user_id", userId),
     admin.from("message_threads").delete().eq("user_id", userId),
@@ -539,6 +560,19 @@ export async function restoreBackupForUser(
     }
   }
 
+  if (backup.invoiceReminders.length > 0) {
+    const remindersInsert = await admin.from("invoice_reminders").insert(
+      backup.invoiceReminders.map((row) => ({
+        ...row,
+        user_id: userId,
+      })),
+    );
+
+    if (remindersInsert.error) {
+      throw new Error("No se ha podido restaurar el historial de recordatorios.");
+    }
+  }
+
   if (backup.bankMovements.length > 0) {
     const bankMovementsInsert = await admin.from("bank_movements").insert(
       backup.bankMovements.map((row) => ({
@@ -561,6 +595,7 @@ export async function restoreBackupForUser(
   return {
     clients: backup.clients.length,
     invoices: backup.invoices.length,
+    invoiceReminders: backup.invoiceReminders.length,
     commercialDocuments: backup.commercialDocuments.length,
     documentSignatureRequests: backup.documentSignatureRequests.length,
     expenses: backup.expenses.length,

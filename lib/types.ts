@@ -52,6 +52,12 @@ export type BankMovementStatus = "pending" | "reconciled" | "ignored";
 
 export type InvoicePaymentStatus = "pending" | "partial" | "paid";
 
+export type InvoiceReminderChannel = "email";
+
+export type InvoiceReminderTriggerMode = "manual" | "batch";
+
+export type InvoiceReminderStatus = "sent" | "failed";
+
 export type ClientRelationKind = "client" | "supplier" | "mixed";
 
 export type ClientStatus = "lead" | "active" | "paused" | "archived";
@@ -135,6 +141,21 @@ export type InvoiceRecord = {
   vat_breakdown: InvoiceVatBreakdown[];
   created_at: string;
   updated_at: string;
+};
+
+export type InvoiceReminderRecord = {
+  id: string;
+  user_id: string;
+  invoice_id: string;
+  delivery_channel: InvoiceReminderChannel;
+  trigger_mode: InvoiceReminderTriggerMode;
+  batch_key: string | null;
+  recipient_email: string;
+  subject: string;
+  status: InvoiceReminderStatus;
+  error_message: string | null;
+  sent_at: string;
+  created_at: string;
 };
 
 export type InvoiceListItem = {

@@ -10,7 +10,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "typecheck": "rm -rf .next && next typegen && tsc --noEmit --incremental false"
+    "typecheck": "node -e \"const fs=require('fs'); fs.rmSync('.next/types',{recursive:true,force:true,maxRetries:5,retryDelay:100});\" && next typegen && tsc --noEmit --incremental false"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.11",

@@ -14,16 +14,19 @@ import {
   getInvoiceAmountOutstanding,
   getInvoiceCollectionState,
   getInvoiceCollectionSummary,
+  invoiceReminderBatchLabels,
+  getInvoiceReminderQueues,
   invoiceCollectionStateLabels,
 } from "@/lib/collections";
 import {
+  sendInvoiceBatchReminderAction,
   sendInvoiceReminderAction,
   updateInvoicePaymentStateAction,
 } from "@/lib/actions/invoices";
-import { demoInvoices, isDemoMode } from "@/lib/demo";
+import { demoInvoiceReminders, demoInvoices, isDemoMode } from "@/lib/demo";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { InvoiceCollectionState } from "@/lib/collections";
-import type { InvoiceRecord } from "@/lib/types";
+import type { InvoiceRecord, InvoiceReminderRecord } from "@/lib/types";
 import {
   cn,
   formatCurrency,
@@ -117,6 +120,25 @@ function matchesCollectionQuery(invoice: InvoiceRecord, query: string) {
   return numericMatch || haystack.includes(normalized);
 }
 
+function getReminderTriggerLabel(
+  reminder: Pick<InvoiceReminderRecord, "trigger_mode" | "batch_key">,
+) {
+  if (reminder.trigger_mode === "manual") {
+    return "Envío manual";
+  }
+
+  if (
+    reminder.batch_key &&
+    reminder.batch_key in invoiceReminderBatchLabels
+  ) {
+    return invoiceReminderBatchLabels[
+      reminder.batch_key as keyof typeof invoiceReminderBatchLabels
+    ];
+  }
+
+  return "Envío por lote";
+}
+
 export default async function CobrosPage({
   searchParams,
 }: {
@@ -125,6 +147,7 @@ export default async function CobrosPage({
     state?: string | string[];
     updated?: string | string[];
     reminded?: string | string[];
+    batchMessage?: string | string[];
     error?: string | string[];
   }>;
 }) {
@@ -135,6 +158,7 @@ export default async function CobrosPage({
   const state = getSingleSearchParam(params.state, "all");
   const updated = getSingleSearchParam(params.updated);
   const reminded = getSingleSearchParam(params.reminded);
+  const batchMessage = getSingleSearchParam(params.batchMessage);
   const error = getSingleSearchParam(params.error);
   const supabase = demoMode ? null : await createServerSupabaseClient();
   const collectionFilter: CollectionFilter =
@@ -183,6 +207,18 @@ export default async function CobrosPage({
     return getInvoiceCollectionState(invoice) === collectionFilter;
   });
   const summary = getInvoiceCollectionSummary(sortedInvoices);
+  const reminderQueues = getInvoiceReminderQueues(sortedInvoices);
+  const reminderHistory = demoMode
+    ? [...demoInvoiceReminders]
+        .sort((left, right) => right.sent_at.localeCompare(left.sent_at))
+        .slice(0, 8)
+    : (((await supabase!
+        .from("invoice_reminders")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("sent_at", { ascending: false })
+        .limit(8)).data as InvoiceReminderRecord[] | null) ?? []);
+  const invoiceById = new Map(sortedInvoices.map((invoice) => [invoice.id, invoice]));
   const quickFilters: Array<{ label: string; state: CollectionFilter }> = [
     { label: "Todo", state: "all" },
     { label: "Pendientes", state: "pending" },
@@ -200,6 +236,10 @@ export default async function CobrosPage({
       <RouteToast
         type="success"
         message={reminded ? "Recordatorio de cobro enviado correctamente." : null}
+      />
+      <RouteToast
+        type="success"
+        message={batchMessage ? decodeURIComponent(batchMessage) : null}
       />
       <RouteToast
         type="error"
@@ -277,6 +317,111 @@ export default async function CobrosPage({
           </CardContent>
         </Card>
       </section>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Cola recomendada de recordatorios</CardTitle>
+          <CardDescription>
+            FacturaIA agrupa automáticamente las facturas que conviene tocar ahora según vencimiento, seguimiento reciente y saldo pendiente.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4 xl:grid-cols-3">
+          {reminderQueues.map((queue) => (
+            <div
+              key={queue.key}
+              className="rounded-[28px] border border-white/60 bg-[linear-gradient(145deg,rgba(255,255,255,0.94),rgba(238,247,244,0.88))] p-5"
+            >
+              <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
+                {queue.label}
+              </p>
+              <p className="mt-3 font-display text-4xl text-foreground">
+                {queue.count}
+              </p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {formatCurrency(queue.amountPending)} pendientes
+              </p>
+              <p className="mt-4 text-sm leading-6 text-muted-foreground">
+                {queue.description}
+              </p>
+              <form
+                action={demoMode || queue.count === 0 ? undefined : sendInvoiceBatchReminderAction}
+                className="mt-5"
+              >
+                <input type="hidden" name="batchKey" value={queue.key} />
+                <SubmitButton
+                  variant="outline"
+                  pendingLabel="Enviando lote..."
+                  className="w-full justify-center"
+                  disabled={demoMode || queue.count === 0}
+                >
+                  <Mail className="h-4 w-4" />
+                  {queue.count === 0 ? "Sin candidatos" : "Enviar lote"}
+                </SubmitButton>
+              </form>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Actividad reciente de recordatorios</CardTitle>
+          <CardDescription>
+            Revisa los últimos avisos enviados para no duplicar seguimiento y mantener contexto cuando retomes un cobro.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {reminderHistory.length > 0 ? (
+            reminderHistory.map((reminder) => {
+              const invoice = invoiceById.get(reminder.invoice_id);
+
+              return (
+                <div
+                  key={reminder.id}
+                  className="flex flex-col gap-3 rounded-[24px] border border-white/60 bg-[linear-gradient(145deg,rgba(255,255,255,0.94),rgba(238,247,244,0.88))] p-4 sm:flex-row sm:items-start sm:justify-between"
+                >
+                  <div className="space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant="secondary">
+                        {invoice
+                          ? formatInvoiceNumber(invoice.invoice_number)
+                          : "Factura archivada"}
+                      </Badge>
+                      <Badge variant="secondary">{getReminderTriggerLabel(reminder)}</Badge>
+                      <Badge
+                        variant={reminder.status === "sent" ? "success" : "secondary"}
+                        className={
+                          reminder.status === "sent"
+                            ? undefined
+                            : "bg-[color:rgba(180,68,54,0.14)] text-[color:#8f2f2f]"
+                        }
+                      >
+                        {reminder.status === "sent" ? "Enviado" : "Con incidencia"}
+                      </Badge>
+                    </div>
+                    <p className="text-sm font-medium text-foreground">
+                      {invoice?.client_name ?? reminder.recipient_email}
+                    </p>
+                    <p className="text-sm text-muted-foreground">{reminder.subject}</p>
+                    <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                      {reminder.recipient_email}
+                    </p>
+                  </div>
+
+                  <div className="space-y-1 text-sm text-muted-foreground sm:text-right">
+                    <p>{formatDateLong(reminder.sent_at)}</p>
+                    {reminder.error_message ? <p>{reminder.error_message}</p> : null}
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <div className="rounded-[24px] border border-dashed border-border/70 bg-white/70 p-5 text-sm leading-7 text-muted-foreground">
+              Todavía no se han enviado recordatorios. Cuando mandes uno manual o por lote, aparecerá aquí con el canal, la fecha y el destinatario.
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

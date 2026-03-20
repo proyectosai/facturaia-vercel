@@ -7,6 +7,10 @@ import { z, ZodError } from "zod";
 import { requireFeatureAccess } from "@/lib/billing";
 import { generateBusinessDocument } from "@/lib/ai";
 import { requireUser } from "@/lib/auth";
+import {
+  type InvoiceReminderBatchKey,
+  matchesInvoiceReminderBatch,
+} from "@/lib/collections";
 import { isDemoMode } from "@/lib/demo";
 import { getInvoicePdfFileName } from "@/lib/invoice-files";
 import { syncInvoicePaymentStatusFromBankMatches } from "@/lib/collections-server";
@@ -37,6 +41,98 @@ function getFirstErrorMessage(error: unknown) {
   }
 
   return "Ha ocurrido un error inesperado.";
+}
+
+async function sendReminderForInvoice({
+  invoice,
+  userEmail,
+  supabase,
+  triggerMode,
+  batchKey,
+}: {
+  invoice: InvoiceRecord;
+  userEmail: string | null | undefined;
+  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>;
+  triggerMode: "manual" | "batch";
+  batchKey?: InvoiceReminderBatchKey | null;
+}) {
+  if (invoice.payment_status === "paid") {
+    throw new Error("La factura ya consta como cobrada y no necesita recordatorio.");
+  }
+
+  const amountOutstanding = Math.max(
+    0,
+    toNumber(invoice.grand_total) - toNumber(invoice.amount_paid),
+  );
+
+  if (amountOutstanding <= 0) {
+    throw new Error("La factura ya no tiene saldo pendiente.");
+  }
+
+  let generatedReminderText: string | undefined;
+
+  if (hasLocalAiEnv()) {
+    try {
+      const generated = await generateBusinessDocument({
+        documentType: "payment_reminder",
+        brief: buildInvoiceReminderAiBrief(invoice),
+        issuerName: invoice.issuer_name,
+        clientName: invoice.client_name,
+      });
+      generatedReminderText = generated.body;
+    } catch {
+      generatedReminderText = undefined;
+    }
+  }
+
+  const pdfBuffer = await renderInvoicePdfBuffer(invoice);
+  const subject = `Recordatorio de pago ${formatInvoiceNumber(invoice.invoice_number)} · ${formatCurrency(amountOutstanding)} pendientes`;
+  await sendTransactionalEmail({
+    to: [invoice.client_email],
+    subject,
+    html: buildInvoiceReminderEmailHtml(invoice, generatedReminderText),
+    text: buildInvoiceReminderEmailText(invoice, generatedReminderText),
+    replyTo: userEmail ?? undefined,
+    attachments: [
+      {
+        filename: getInvoicePdfFileName(invoice.invoice_number),
+        content: pdfBuffer,
+      },
+    ],
+  });
+
+  const { error: updateError } = await supabase
+    .from("invoices")
+    .update({
+      last_reminder_at: new Date().toISOString(),
+      reminder_count: (invoice.reminder_count ?? 0) + 1,
+    })
+    .eq("id", invoice.id)
+    .eq("user_id", invoice.user_id);
+
+  if (updateError) {
+    throw new Error("El recordatorio se envió, pero no se pudo registrar su seguimiento.");
+  }
+
+  const { error: reminderLogError } = await supabase.from("invoice_reminders").insert({
+    user_id: invoice.user_id,
+    invoice_id: invoice.id,
+    delivery_channel: "email",
+    trigger_mode: triggerMode,
+    batch_key: batchKey ?? null,
+    recipient_email: invoice.client_email,
+    subject,
+    status: "sent",
+    error_message: null,
+    sent_at: new Date().toISOString(),
+  });
+
+  if (reminderLogError) {
+    console.error(
+      "[facturaia] No se pudo registrar el historial del recordatorio",
+      reminderLogError,
+    );
+  }
 }
 
 export async function createInvoiceAction(formData: FormData) {
@@ -307,70 +403,98 @@ export async function sendInvoiceReminderAction(formData: FormData) {
       throw new Error("No se ha podido cargar la factura para enviar el recordatorio.");
     }
 
-    const typedInvoice = invoice as InvoiceRecord;
-
-    if (typedInvoice.payment_status === "paid") {
-      throw new Error("La factura ya consta como cobrada y no necesita recordatorio.");
-    }
-
-    const amountOutstanding = Math.max(
-      0,
-      toNumber(typedInvoice.grand_total) - toNumber(typedInvoice.amount_paid),
-    );
-
-    if (amountOutstanding <= 0) {
-      throw new Error("La factura ya no tiene saldo pendiente.");
-    }
-
-    let generatedReminderText: string | undefined;
-
-    if (hasLocalAiEnv()) {
-      try {
-        const generated = await generateBusinessDocument({
-          documentType: "payment_reminder",
-          brief: buildInvoiceReminderAiBrief(typedInvoice),
-          issuerName: typedInvoice.issuer_name,
-          clientName: typedInvoice.client_name,
-        });
-        generatedReminderText = generated.body;
-      } catch {
-        generatedReminderText = undefined;
-      }
-    }
-
-    const pdfBuffer = await renderInvoicePdfBuffer(typedInvoice);
-    await sendTransactionalEmail({
-      to: [typedInvoice.client_email],
-      subject: `Recordatorio de pago ${formatInvoiceNumber(typedInvoice.invoice_number)} · ${formatCurrency(amountOutstanding)} pendientes`,
-      html: buildInvoiceReminderEmailHtml(typedInvoice, generatedReminderText),
-      text: buildInvoiceReminderEmailText(typedInvoice, generatedReminderText),
-      replyTo: user.email ?? undefined,
-      attachments: [
-        {
-          filename: getInvoicePdfFileName(typedInvoice.invoice_number),
-          content: pdfBuffer,
-        },
-      ],
+    await sendReminderForInvoice({
+      invoice: invoice as InvoiceRecord,
+      userEmail: user.email,
+      supabase,
+      triggerMode: "manual",
+      batchKey: null,
     });
-
-    const { error: updateError } = await supabase
-      .from("invoices")
-      .update({
-        last_reminder_at: new Date().toISOString(),
-        reminder_count: (typedInvoice.reminder_count ?? 0) + 1,
-      })
-      .eq("id", payload.invoiceId)
-      .eq("user_id", user.id);
-
-    if (updateError) {
-      throw new Error("El recordatorio se envió, pero no se pudo registrar su seguimiento.");
-    }
 
     revalidatePath("/dashboard");
     revalidatePath("/invoices");
     revalidatePath("/cobros");
     revalidatePath("/clientes");
     redirect(`/cobros?reminded=${payload.invoiceId}`);
+  } catch (error) {
+    redirect(`/cobros?error=${encodeURIComponent(getFirstErrorMessage(error))}`);
+  }
+}
+
+const sendInvoiceBatchReminderSchema = z.object({
+  batchKey: z.enum(["overdue_due", "partial_due", "due_soon"]),
+});
+
+export async function sendInvoiceBatchReminderAction(formData: FormData) {
+  try {
+    if (isDemoMode()) {
+      redirect(
+        "/cobros?error=Modo%20demo:%20el%20env%C3%ADo%20por%20lote%20est%C3%A1%20desactivado.",
+      );
+    }
+
+    const user = await requireUser();
+    const payload = sendInvoiceBatchReminderSchema.parse({
+      batchKey: String(formData.get("batchKey") ?? ""),
+    });
+    const supabase = await createServerSupabaseClient();
+    const { data: invoices, error } = await supabase
+      .from("invoices")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("due_date", { ascending: true });
+
+    if (error) {
+      throw new Error("No se ha podido cargar la cola de facturas para el recordatorio.");
+    }
+
+    const candidates = ((invoices ?? []) as InvoiceRecord[]).filter((invoice) =>
+      matchesInvoiceReminderBatch(invoice, payload.batchKey as InvoiceReminderBatchKey),
+    );
+
+    if (candidates.length === 0) {
+      throw new Error("No hay facturas que encajen con esa regla de recordatorio.");
+    }
+
+    let sentCount = 0;
+    let failedCount = 0;
+    let firstFailure: Error | null = null;
+
+    for (const invoice of candidates) {
+      try {
+        await sendReminderForInvoice({
+          invoice,
+          userEmail: user.email,
+          supabase,
+          triggerMode: "batch",
+          batchKey: payload.batchKey,
+        });
+        sentCount += 1;
+      } catch (error) {
+        failedCount += 1;
+        firstFailure =
+          firstFailure ??
+          (error instanceof Error
+            ? error
+            : new Error("No se ha podido enviar uno de los recordatorios."));
+      }
+    }
+
+    if (sentCount === 0) {
+      throw firstFailure ?? new Error("No se ha podido enviar ningún recordatorio.");
+    }
+
+    revalidatePath("/dashboard");
+    revalidatePath("/invoices");
+    revalidatePath("/cobros");
+    revalidatePath("/clientes");
+
+    const message =
+      failedCount > 0
+        ? `Se han enviado ${sentCount} recordatorio(s) y ${failedCount} han fallado.`
+        : `Se han enviado ${sentCount} recordatorio(s) por lote.`;
+
+    redirect(`/cobros?batchMessage=${encodeURIComponent(message)}`);
   } catch (error) {
     redirect(`/cobros?error=${encodeURIComponent(getFirstErrorMessage(error))}`);
   }

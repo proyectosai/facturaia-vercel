@@ -451,16 +451,20 @@ Qué hace ahora:
 - sincroniza cobros cuando una conciliación bancaria se vincula a una factura
 - permite marcar cobros manualmente desde la propia app
 - permite enviar recordatorios de cobro por email y registrar el último envío
+- conserva un historial visible de recordatorios manuales y por lote
+- añade una cola priorizada de envío por lote
 
 Pasos:
 
 1. aplica la migración `202603201900_add_invoice_collection_tracking.sql`
 2. aplica la migración `202603201945_add_invoice_reminder_tracking.sql`
-3. reinicia FacturaIA
-4. abre `/cobros`
-5. emite una factura nueva con fecha de vencimiento
-6. concilia un ingreso en `/banca`, marca la factura como cobrada o envía un recordatorio
-7. comprueba el reflejo del estado también en `/dashboard`, `/invoices` y `/clientes`
+3. aplica la migración `202603202015_add_invoice_reminder_history.sql`
+4. reinicia FacturaIA
+5. abre `/cobros`
+6. emite una factura nueva con fecha de vencimiento
+7. concilia un ingreso en `/banca`, marca la factura como cobrada o envía un recordatorio
+8. prueba un recordatorio individual y otro por lote desde la cola sugerida
+9. revisa la actividad reciente de avisos y confirma también su presencia en `/backups`
 
 Guía completa:
 

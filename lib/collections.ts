@@ -3,6 +3,19 @@ import { roundCurrency, toNumber } from "@/lib/utils";
 
 export type InvoiceCollectionState = InvoicePaymentStatus | "overdue";
 
+export type InvoiceReminderBatchKey =
+  | "overdue_due"
+  | "partial_due"
+  | "due_soon";
+
+export type InvoiceReminderQueue = {
+  key: InvoiceReminderBatchKey;
+  label: string;
+  description: string;
+  count: number;
+  amountPending: number;
+};
+
 export type InvoiceCollectionSummary = {
   total: number;
   pending: number;
@@ -25,6 +38,12 @@ export const invoiceCollectionStateLabels: Record<InvoiceCollectionState, string
   partial: "Parcial",
   paid: "Cobrada",
   overdue: "Vencida",
+};
+
+export const invoiceReminderBatchLabels: Record<InvoiceReminderBatchKey, string> = {
+  overdue_due: "Vencidas sin aviso reciente",
+  partial_due: "Parciales sin seguimiento",
+  due_soon: "Próximas a vencer",
 };
 
 function getTodayUtcTimestamp(referenceDate = new Date()) {
@@ -51,6 +70,13 @@ function getDateUtcTimestamp(dateValue: string | null | undefined) {
   }
 
   return date.getTime();
+}
+
+function differenceInCalendarDays(
+  leftTimestamp: number,
+  rightTimestamp: number,
+) {
+  return Math.round((leftTimestamp - rightTimestamp) / (1000 * 60 * 60 * 24));
 }
 
 export function coerceInvoicePaymentStatus(
@@ -160,4 +186,128 @@ export function getInvoiceCollectionSummary(
       amountPending: 0,
     },
   );
+}
+
+export function getDaysSinceInvoiceReminder(
+  invoice: Pick<InvoiceRecord, "last_reminder_at">,
+  referenceDate = new Date(),
+) {
+  if (!invoice.last_reminder_at) {
+    return null;
+  }
+
+  const reminderDate = new Date(invoice.last_reminder_at);
+
+  if (Number.isNaN(reminderDate.getTime())) {
+    return null;
+  }
+
+  return differenceInCalendarDays(
+    getTodayUtcTimestamp(referenceDate),
+    getTodayUtcTimestamp(reminderDate),
+  );
+}
+
+export function getDaysUntilInvoiceDue(
+  invoice: Pick<InvoiceRecord, "due_date">,
+  referenceDate = new Date(),
+) {
+  const dueTimestamp = getDateUtcTimestamp(invoice.due_date);
+
+  if (dueTimestamp === null) {
+    return null;
+  }
+
+  return differenceInCalendarDays(dueTimestamp, getTodayUtcTimestamp(referenceDate));
+}
+
+export function matchesInvoiceReminderBatch(
+  invoice: Pick<
+    InvoiceRecord,
+    | "payment_status"
+    | "due_date"
+    | "grand_total"
+    | "amount_paid"
+    | "last_reminder_at"
+  >,
+  batchKey: InvoiceReminderBatchKey,
+  referenceDate = new Date(),
+) {
+  const collectionState = getInvoiceCollectionState(invoice, referenceDate);
+  const daysSinceReminder = getDaysSinceInvoiceReminder(invoice, referenceDate);
+  const daysUntilDue = getDaysUntilInvoiceDue(invoice, referenceDate);
+
+  if (batchKey === "overdue_due") {
+    return (
+      collectionState === "overdue" &&
+      (daysSinceReminder === null || daysSinceReminder >= 7)
+    );
+  }
+
+  if (batchKey === "partial_due") {
+    return (
+      collectionState === "partial" &&
+      (daysSinceReminder === null || daysSinceReminder >= 5)
+    );
+  }
+
+  return (
+    collectionState === "pending" &&
+    daysUntilDue !== null &&
+    daysUntilDue >= 0 &&
+    daysUntilDue <= 3 &&
+    (daysSinceReminder === null || daysSinceReminder >= 7)
+  );
+}
+
+export function getInvoiceReminderQueues(
+  invoices: Array<
+    Pick<
+      InvoiceRecord,
+      | "payment_status"
+      | "due_date"
+      | "grand_total"
+      | "amount_paid"
+      | "last_reminder_at"
+    >
+  >,
+  referenceDate = new Date(),
+) {
+  const queueDefinitions: Array<{
+    key: InvoiceReminderBatchKey;
+    description: string;
+  }> = [
+    {
+      key: "overdue_due",
+      description:
+        "Facturas vencidas sin recordatorio en los últimos 7 días.",
+    },
+    {
+      key: "partial_due",
+      description:
+        "Cobros parciales que necesitan un seguimiento adicional.",
+    },
+    {
+      key: "due_soon",
+      description:
+        "Facturas que vencen en los próximos 3 días y aún no han recibido aviso reciente.",
+    },
+  ];
+
+  return queueDefinitions.map((queue) => {
+    const matchingInvoices = invoices.filter((invoice) =>
+      matchesInvoiceReminderBatch(invoice, queue.key, referenceDate),
+    );
+
+    return {
+      key: queue.key,
+      label: invoiceReminderBatchLabels[queue.key],
+      description: queue.description,
+      count: matchingInvoices.length,
+      amountPending: matchingInvoices.reduce(
+        (sum, invoice) => sum + getInvoiceAmountOutstanding(invoice),
+        0,
+      ),
+    } satisfies InvoiceReminderQueue;
+  });
 }

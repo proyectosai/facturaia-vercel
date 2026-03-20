@@ -31,6 +31,7 @@ import type { RemoteBackupRun } from "@/lib/types";
 type BackupSummary = {
   clients: number;
   invoices: number;
+  invoiceReminders: number;
   commercialDocuments: number;
   documentSignatureRequests: number;
   expenses: number;
@@ -209,6 +210,7 @@ export function BackupCenter({
   const stats = [
     { label: "Fichas CRM", value: summary.clients },
     { label: "Facturas", value: summary.invoices },
+    { label: "Recordatorios", value: summary.invoiceReminders },
     { label: "Pre-facturación", value: summary.commercialDocuments },
     { label: "Solicitudes firma", value: summary.documentSignatureRequests },
     { label: "Gastos", value: summary.expenses },

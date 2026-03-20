@@ -36,6 +36,9 @@ El formato está inspirado en Keep a Changelog y el versionado irá madurando co
 - Migración `202603201900_add_invoice_collection_tracking.sql`.
 - Seguimiento de recordatorios de cobro con contador y última fecha enviada.
 - Migración `202603201945_add_invoice_reminder_tracking.sql`.
+- Cola recomendada de recordatorios por lote para vencidas, parciales y próximas a vencer.
+- Historial persistente de recordatorios de cobro con trazabilidad por envío manual o por lote.
+- Migración `202603202015_add_invoice_reminder_history.sql`.
 - Primera entrega del módulo Facturae / VeriFactu con panel propio y exportación XML Facturae 3.2.2 sin firma.
 - Nuevas rutas `/facturae` y `app/api/invoices/[invoiceId]/facturae/route.ts`.
 
@@ -56,6 +59,9 @@ El formato está inspirado en Keep a Changelog y el versionado irá madurando co
 - Dashboard, historial y CRM muestran ahora saldo pendiente, facturas vencidas y estado de cobro.
 - Los PDFs y la vista pública de factura muestran la fecha de vencimiento.
 - `/cobros` permite enviar recordatorios de pago por email con IA local como apoyo opcional y fallback local.
+- `/cobros` incorpora reglas operativas simples para lanzar lotes de recordatorios sin revisar factura por factura.
+- `/cobros` muestra también la actividad reciente de recordatorios y los backups ya conservan esa trazabilidad.
+- `npm run typecheck` deja de depender de borrar toda la carpeta `.next` y ya no se rompe si hay un servidor local activo.
 
 ## [0.1.0] - 2026-03-19
 

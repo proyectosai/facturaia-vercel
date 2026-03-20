@@ -261,6 +261,8 @@ Funciones:
 - mostrar saldo pendiente y facturas vencidas en dashboard, historial y CRM
 - marcar cobros manualmente
 - enviar recordatorios de cobro por email con apoyo opcional de IA local
+- agrupar automáticamente lotes de recordatorio por prioridad operativa
+- conservar un historial visible de avisos enviados y su modo de lanzamiento
 - recalcular cobros al conciliar ingresos bancarios
 - trasladar la fecha de vencimiento a PDF y factura pública
 
@@ -298,6 +300,7 @@ Funciones:
 - restauración en modo reemplazo
 - resincronización de la secuencia de facturas
 - inclusión de presupuestos y albaranes en la copia
+- inclusión del historial de recordatorios de cobro
 - inclusión de gastos y justificantes asociados
 - inclusión de movimientos bancarios y su estado de conciliación
 - inclusión de solicitudes de firma y respuestas

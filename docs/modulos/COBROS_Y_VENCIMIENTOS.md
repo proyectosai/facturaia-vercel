@@ -28,6 +28,7 @@ Dar visibilidad operativa al estado económico de cada factura sin depender de h
 - permite reabrir el seguimiento si el cobro se registró por error
 - permite enviar recordatorios de cobro por email
 - guarda `last_reminder_at` y `reminder_count`
+- añade una cola recomendada para envíos por lote
 - refleja el estado en:
   - `/dashboard`
   - `/invoices`
@@ -94,22 +95,54 @@ Comportamiento actual:
 
 Esto permite ver desde la propia tarjeta si ya se ha insistido antes o no.
 
+Además, FacturaIA deja un historial persistente de los últimos recordatorios enviados con:
+
+- factura afectada
+- destinatario
+- asunto usado
+- fecha y hora del envío
+- origen del envío: manual o por lote
+
+## Recordatorios por lote
+
+La pantalla `/cobros` incorpora una cola priorizada con reglas simples:
+
+- `Vencidas sin aviso reciente`
+  - facturas vencidas
+  - sin recordatorio en los últimos 7 días
+- `Parciales sin seguimiento`
+  - facturas con cobro parcial
+  - sin recordatorio en los últimos 5 días
+- `Próximas a vencer`
+  - facturas pendientes que vencen en 3 días o menos
+  - sin aviso en los últimos 7 días
+
+El envío por lote reutiliza exactamente la misma lógica que el recordatorio individual:
+
+- mismo adjunto PDF
+- mismo uso opcional de IA local
+- mismo registro de `last_reminder_at`
+- mismo incremento de `reminder_count`
+- mismo guardado en el historial persistente de recordatorios
+
 ## Instalación
 
 1. aplica la migración `202603201900_add_invoice_collection_tracking.sql`
 2. aplica la migración `202603201945_add_invoice_reminder_tracking.sql`
-3. reinicia la aplicación
-4. abre `/cobros`
-5. revisa el panel resumen
-6. emite una factura nueva con vencimiento
-7. concilia un ingreso en `/banca`, usa el marcado manual o envía un recordatorio
+3. aplica la migración `202603202015_add_invoice_reminder_history.sql`
+4. reinicia la aplicación
+5. abre `/cobros`
+6. revisa el panel resumen
+7. emite una factura nueva con vencimiento
+8. concilia un ingreso en `/banca`, usa el marcado manual o envía un recordatorio
+9. prueba también la cola de lotes recomendados
+10. confirma que la actividad reciente aparece en la propia pantalla y que el historial entra en `/backups`
 
 ## Limitaciones actuales
 
-- no hay recordatorios automáticos de cobro
+- no hay recordatorios automáticos programados todavía
 - no hay envío automático de reclamaciones
-- no existe todavía histórico de acciones sobre cobro
-- no hay reglas por lotes
+- no hay reglas configurables por el usuario para redefinir lotes o ventanas de espera
 - no hay conciliación OFX
 - no se distingue todavía entre cobro manual y cobro bancario como fuentes separadas
 
