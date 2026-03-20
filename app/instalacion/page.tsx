@@ -1,5 +1,6 @@
 import Link from "next/link";
 import {
+  ArrowRight,
   Database,
   HardDrive,
   LockKeyhole,
@@ -19,21 +20,21 @@ import {
 
 const setupSteps = [
   {
-    title: "1. Clona y arranca",
+    title: "1. Empieza por una demo simple",
     description:
-      "Instala dependencias, copia el entorno de ejemplo y levanta la app en local con tu propio Node.js.",
+      "Si solo quieres ver cómo funciona, usa Docker en modo demo y evita tocar Supabase, IMAP o LM Studio el primer día.",
     icon: TerminalSquare,
   },
   {
-    title: "2. Conecta solo lo que quieras",
+    title: "2. Monta primero el núcleo",
     description:
-      "Supabase, SMTP o Resend, IMAP, LM Studio y mensajería son opcionales según tu forma de trabajar.",
+      "Perfil fiscal, nueva factura, historial, correo saliente y backups locales. Eso ya te da una instalación útil sin abrumarte.",
     icon: LockKeyhole,
   },
   {
-    title: "3. Despliega en tu entorno",
+    title: "3. Activa módulos avanzados después",
     description:
-      "Puedes usar tu ordenador, un VPS o el servidor que prefieras. La idea es que el control sea tuyo.",
+      "Mensajería, IMAP, OCR, banca o Facturae no deberían ser lo primero. Instálalos solo cuando el núcleo ya te funcione bien.",
     icon: ServerCog,
   },
 ];
@@ -118,6 +119,96 @@ export default function InstalacionPage() {
           );
         })}
       </section>
+
+      <section className="grid gap-6 xl:grid-cols-3">
+        <Card className="xl:col-span-1">
+          <CardHeader>
+            <CardTitle>Demo en 5 minutos</CardTitle>
+            <CardDescription>
+              Para mirar la interfaz y enseñar el producto sin tocar servicios externos.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="rounded-[24px] bg-[color:var(--color-panel)] p-4">
+              <pre className="overflow-x-auto text-sm leading-7 text-foreground">
+                <code>docker compose -f compose.demo.yml up --build</code>
+              </pre>
+            </div>
+            <p className="text-sm leading-7 text-muted-foreground">
+              Esto levanta FacturaIA en modo demo con datos internos, sin Supabase
+              ni correo real. Es el camino correcto si primero quieres ver el producto.
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="xl:col-span-1">
+          <CardHeader>
+            <CardTitle>Instalación básica en 15 minutos</CardTitle>
+            <CardDescription>
+              La forma más sensata de empezar una instalación privada real.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="rounded-[24px] bg-[color:var(--color-panel)] p-4">
+              <pre className="overflow-x-auto text-sm leading-7 text-foreground">
+                <code>{`cp .env.example .env.local
+docker compose -f compose.app.yml up --build`}</code>
+              </pre>
+            </div>
+            <p className="text-sm leading-7 text-muted-foreground">
+              Primero configura solo `NEXT_PUBLIC_APP_URL`, Supabase y correo saliente.
+              Todo lo demás puede esperar.
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="xl:col-span-1">
+          <CardHeader>
+            <CardTitle>Lee esto antes de instalar módulos</CardTitle>
+            <CardDescription>
+              La app ya tiene bastante superficie. No conviene activarlo todo a la vez.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm leading-7 text-muted-foreground">
+              Empieza por facturación, correo saliente, backups y cobros. Cuando eso
+              funcione bien, añade banca, OCR, mensajería o Facturae si de verdad te aportan valor.
+            </p>
+            <Button variant="outline" asChild>
+              <Link href="/modules">
+                Ver estado real de módulos
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </section>
+
+      <Card className="overflow-hidden bg-[linear-gradient(160deg,rgba(255,255,255,0.95),rgba(236,247,243,0.85))]">
+        <CardHeader>
+          <CardTitle>Lo que sí conviene instalar primero</CardTitle>
+          <CardDescription>
+            Si eres autónomo y no quieres pelearte con la herramienta, este es el orden correcto.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4 lg:grid-cols-2">
+          {[
+            "1. Perfil fiscal del emisor.",
+            "2. Nueva factura y listado de facturas.",
+            "3. Correo saliente para enviar PDFs.",
+            "4. Backups locales y, si puedes, una primera restauración de prueba.",
+            "5. Cobros y vencimientos.",
+            "6. Solo después: banca, OCR, CRM, mensajería, firma o Facturae.",
+          ].map((item) => (
+            <div
+              key={item}
+              className="rounded-[24px] bg-white/80 p-4 text-sm leading-7 text-muted-foreground"
+            >
+              {item}
+            </div>
+          ))}
+        </CardContent>
+      </Card>
 
       <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
         <Card>

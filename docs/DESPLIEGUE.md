@@ -23,6 +23,13 @@ npm run build
 npm run start
 ```
 
+También puedes desplegar con la imagen del proyecto:
+
+```bash
+docker build -t facturaia .
+docker run --env-file .env.local -p 3000:3000 facturaia
+```
+
 Puerto por defecto:
 
 - `3000`

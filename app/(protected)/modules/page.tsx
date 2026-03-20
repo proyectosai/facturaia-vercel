@@ -12,6 +12,7 @@ import {
 import {
   getModuleCatalog,
   getModuleCategoryLabel,
+  getModuleMaturityMeta,
   getModuleStatusMeta,
 } from "@/lib/modules";
 import { Badge } from "@/components/ui/badge";
@@ -36,6 +37,11 @@ export default function ModulesPage() {
   const modules = getModuleCatalog();
   const activeModules = modules.filter((module) => module.status === "active");
   const nextModule = modules.find((module) => module.status === "next") ?? null;
+  const dailyModules = modules.filter((module) => module.maturity === "daily");
+  const pilotModules = modules.filter((module) => module.maturity === "pilot");
+  const experimentalModules = modules.filter(
+    (module) => module.maturity === "experimental",
+  );
 
   return (
     <div className="space-y-8">
@@ -71,12 +77,12 @@ export default function ModulesPage() {
               </p>
             </div>
             <div className="rounded-[24px] bg-white/82 p-4">
-              <p className="text-sm text-muted-foreground">Siguiente módulo</p>
+              <p className="text-sm text-muted-foreground">Uso diario</p>
               <p className="mt-2 font-display text-3xl text-foreground">
-                {nextModule ? "01" : "--"}
+                {dailyModules.length}
               </p>
               <p className="mt-2 text-sm text-muted-foreground">
-                {nextModule ? nextModule.title : "Roadmap por definir"}
+                Lo más sensato para empezar.
               </p>
             </div>
             <div className="rounded-[24px] bg-white/82 p-4">
@@ -89,6 +95,68 @@ export default function ModulesPage() {
           </CardContent>
         </Card>
       </section>
+
+      <section className="grid gap-4 xl:grid-cols-3">
+        <Card className="border-[color:var(--color-success-soft)] bg-[color:rgba(235,249,241,0.72)]">
+          <CardContent className="space-y-3">
+            <Badge variant="success">Listo para uso diario</Badge>
+            <p className="font-semibold text-foreground">{dailyModules.length} módulos</p>
+            <p className="text-sm leading-7 text-muted-foreground">
+              Son los que mejor encajan para una instalación privada prudente:
+              correo saliente, backups locales y piezas básicas de operativa.
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="space-y-3">
+            <Badge>Piloto</Badge>
+            <p className="font-semibold text-foreground">{pilotModules.length} módulos</p>
+            <p className="text-sm leading-7 text-muted-foreground">
+              Útiles para probar con clientes o en entorno interno, pero todavía
+              no deberían convertirse en piezas críticas sin validación previa.
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="space-y-3">
+            <Badge variant="secondary">Experimental</Badge>
+            <p className="font-semibold text-foreground">
+              {experimentalModules.length} módulos
+            </p>
+            <p className="text-sm leading-7 text-muted-foreground">
+              Mantén aquí lo fiscal delicado o lo que todavía exige mucha
+              revisión manual. No lo instales por inercia.
+            </p>
+          </CardContent>
+        </Card>
+      </section>
+
+      <Card className="overflow-hidden bg-[linear-gradient(155deg,rgba(255,255,255,0.96),rgba(244,239,230,0.92))]">
+        <CardHeader>
+          <CardTitle>Núcleo recomendado para un autónomo no técnico</CardTitle>
+          <CardDescription>
+            Si solo quieres empezar a trabajar sin complicarte, instala primero
+            lo mínimo y deja el resto para más adelante.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4 lg:grid-cols-2">
+          {[
+            "Perfil fiscal + nueva factura + listado de facturas.",
+            "Correo saliente para enviar documentos reales.",
+            "Backups locales antes de tocar módulos avanzados.",
+            "Cobros y vencimientos como segundo bloque útil.",
+          ].map((item) => (
+            <div
+              key={item}
+              className="rounded-[24px] bg-white/80 p-4 text-sm leading-7 text-muted-foreground"
+            >
+              {item}
+            </div>
+          ))}
+        </CardContent>
+      </Card>
 
       {nextModule ? (
         <Card className="overflow-hidden border-white/60 bg-[radial-gradient(circle_at_top_left,rgba(233,244,240,0.96),rgba(255,255,255,0.93)_40%,rgba(244,233,215,0.76)_100%)]">
@@ -179,6 +247,7 @@ export default function ModulesPage() {
         <div className="grid gap-4 xl:grid-cols-2">
           {modules.map((module) => {
             const statusMeta = getModuleStatusMeta(module.status);
+            const maturityMeta = getModuleMaturityMeta(module.maturity);
             const CategoryIcon = categoryIcons[module.category] ?? Blocks;
 
             return (
@@ -200,6 +269,7 @@ export default function ModulesPage() {
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <Badge variant={statusMeta.badgeVariant}>{statusMeta.label}</Badge>
+                      <Badge variant={maturityMeta.badgeVariant}>{maturityMeta.label}</Badge>
                       <Badge variant={module.configured ? "success" : "secondary"}>
                         {module.configuredLabel}
                       </Badge>
@@ -209,6 +279,20 @@ export default function ModulesPage() {
                   <p className="text-sm leading-7 text-muted-foreground">
                     {module.summary}
                   </p>
+
+                  <div className="rounded-[24px] bg-[color:var(--color-panel)] p-4">
+                    <p className="text-sm font-semibold text-foreground">
+                      Estado real de madurez
+                    </p>
+                    <p className="mt-2 text-sm leading-7 text-muted-foreground">
+                      {maturityMeta.description}
+                    </p>
+                    {module.readinessNote ? (
+                      <p className="mt-2 text-sm leading-7 text-muted-foreground">
+                        {module.readinessNote}
+                      </p>
+                    ) : null}
+                  </div>
 
                   {module.providers?.length ? (
                     <div className="rounded-[24px] bg-[color:var(--color-panel)] p-4">

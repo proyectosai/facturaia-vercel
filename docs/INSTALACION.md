@@ -1,5 +1,7 @@
 # Instalación y configuración
 
+> Si quieres el camino más simple, empieza por [la guía en 15 minutos](./GUIA_15_MINUTOS.md). Esta guía sigue siendo la referencia completa.
+
 ## Requisitos
 
 - Node.js 20 o superior
@@ -7,6 +9,21 @@
 - Proyecto Supabase
 - SMTP o cuenta Resend si vas a usar correo saliente
 - LM Studio disponible en red local o en la misma máquina
+
+## Camino rápido con Docker
+
+Demo sin servicios reales:
+
+```bash
+docker compose -f compose.demo.yml up --build
+```
+
+Instalación básica:
+
+```bash
+cp .env.example .env.local
+docker compose -f compose.app.yml up --build
+```
 
 ## 1. Instalar dependencias
 

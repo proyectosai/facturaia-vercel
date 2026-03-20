@@ -2,6 +2,7 @@ import { getOutboundMailStatusSummary } from "@/lib/mail";
 import { getInboundMailStatusSummary } from "@/lib/inbound-mail";
 
 export type ModuleStatus = "active" | "partial" | "next" | "planned";
+export type ModuleMaturity = "daily" | "pilot" | "experimental";
 
 export type ModuleCategory =
   | "canales"
@@ -16,6 +17,7 @@ export type ModuleDefinition = {
   title: string;
   summary: string;
   status: ModuleStatus;
+  maturity: ModuleMaturity;
   category: ModuleCategory;
   routeHref?: string;
   docsPath?: string;
@@ -23,6 +25,7 @@ export type ModuleDefinition = {
   requirements: string[];
   installSteps: string[];
   notes?: string[];
+  readinessNote?: string;
 };
 
 export type ModuleRuntimeState = ModuleDefinition & {
@@ -56,6 +59,7 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
     summary:
       "Bandeja única para ordenar mensajes entrantes de WhatsApp Business y Telegram por fecha, urgencia y nombre.",
     status: "active",
+    maturity: "pilot",
     category: "canales",
     routeHref: "/messages",
     docsPath: "docs/modulos/MENSAJERIA_WHATSAPP_TELEGRAM.md",
@@ -73,6 +77,8 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
     notes: [
       "Solo cubre el canal oficial del negocio, no el WhatsApp personal del cliente.",
     ],
+    readinessNote:
+      "Útil para pruebas y pilotos. No es lo primero que debería instalar un autónomo medio.",
   },
   {
     id: "local-backups",
@@ -81,6 +87,7 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
     summary:
       "Exportación y restauración JSON del usuario autenticado para mover o recuperar instalaciones privadas.",
     status: "active",
+    maturity: "daily",
     category: "resiliencia",
     routeHref: "/backups",
     docsPath: "docs/INSTALACION.md",
@@ -94,6 +101,8 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
       "Descarga un JSON antes de tocar migraciones o mover el servidor.",
       "Restaura ese JSON solo cuando quieras reemplazar el estado actual.",
     ],
+    readinessNote:
+      "Recomendado desde el primer día. Es una de las piezas más importantes para trabajo real.",
   },
   {
     id: "remote-backups",
@@ -102,6 +111,7 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
     summary:
       "Sincronización de copias hacia almacenamiento externo para no depender solo del disco local o del VPS principal.",
     status: "partial",
+    maturity: "pilot",
     category: "resiliencia",
     routeHref: "/backups",
     docsPath: "docs/modulos/BACKUPS_REMOTOS.md",
@@ -119,6 +129,8 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
     notes: [
       "La primera entrega usa WebDAV / Nextcloud; S3 y otros proveedores quedan para iteraciones posteriores.",
     ],
+    readinessNote:
+      "Conviene probarlo, pero no confiar en él como única copia hasta validar varias restauraciones.",
   },
   {
     id: "email-outbound",
@@ -127,6 +139,7 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
     summary:
       "Envío de facturas y pruebas desde FacturaIA con SMTP clásico o Resend, según prefieras en tu instalación privada.",
     status: "active",
+    maturity: "daily",
     category: "canales",
     routeHref: "/mail",
     docsPath: "docs/modulos/CORREO_SALIENTE.md",
@@ -144,6 +157,8 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
     notes: [
       "El envío de facturas del historial usa este mismo módulo.",
     ],
+    readinessNote:
+      "Es de los módulos más aprovechables en el día a día si ya tienes un correo de trabajo configurado.",
   },
   {
     id: "email-inbound",
@@ -152,6 +167,7 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
     summary:
       "Bandeja de entrada para asociar emails entrantes con clientes, documentos y seguimiento operativo.",
     status: "partial",
+    maturity: "pilot",
     category: "canales",
     routeHref: "/mail",
     docsPath: "docs/modulos/CORREO_ENTRANTE.md",
@@ -169,6 +185,8 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
     notes: [
       "Primera entrega con IMAP manual; faltan automatización, hilos avanzados y enlaces con cliente.",
     ],
+    readinessNote:
+      "Mejor tratarlo como apoyo operativo, no como bandeja principal de correo.",
   },
   {
     id: "quotes-delivery-notes",
@@ -177,6 +195,7 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
     summary:
       "Flujo documental previo a la factura, con conversión de presupuesto o albarán en factura definitiva.",
     status: "partial",
+    maturity: "pilot",
     category: "documentos",
     routeHref: "/presupuestos",
     docsPath: "docs/modulos/PRESUPUESTOS_ALBARANES.md",
@@ -193,6 +212,8 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
     notes: [
       "Primera entrega con persistencia, estados y conversión a factura. El PDF específico y la firma llegarán después.",
     ],
+    readinessNote:
+      "Sirve para ordenar el flujo previo a facturar, pero aún no transmite la solidez de un módulo completamente cerrado.",
   },
   {
     id: "expenses-ocr",
@@ -201,6 +222,7 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
     summary:
       "Lectura de tickets y facturas de proveedor para extraer importes, IVA y datos básicos de gasto.",
     status: "partial",
+    maturity: "experimental",
     category: "finanzas",
     routeHref: "/gastos",
     docsPath: "docs/modulos/GASTOS_OCR.md",
@@ -217,6 +239,8 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
     notes: [
       "Primera entrega con PDF/texto y OCR manual pegado. El OCR automático de imágenes llegará después.",
     ],
+    readinessNote:
+      "Úsalo con revisión manual siempre. Todavía no debe convertirse en una fuente de verdad automática.",
   },
   {
     id: "crm-light",
@@ -225,6 +249,7 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
     summary:
       "Ficha unificada de cliente con notas, documentos, mensajes y estado operativo.",
     status: "partial",
+    maturity: "pilot",
     category: "canales",
     routeHref: "/clientes",
     docsPath: "docs/modulos/CRM_LIGERO.md",
@@ -237,6 +262,8 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
       "Vincular historial documental y de mensajería.",
       "Añadir notas y estados.",
     ],
+    readinessNote:
+      "Aporta contexto, pero aún no sustituye un CRM dedicado ni conviene forzar toda tu operativa dentro de él.",
   },
   {
     id: "document-signature",
@@ -245,6 +272,7 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
     summary:
       "Aceptación o firma de propuestas y contratos con trazabilidad básica dentro del entorno privado.",
     status: "partial",
+    maturity: "pilot",
     category: "documentos",
     routeHref: "/firmas",
     docsPath: "docs/modulos/FIRMA_DOCUMENTAL.md",
@@ -258,6 +286,8 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
       "Añadir estados y evidencia.",
       "Vincular a propuestas y contratos.",
     ],
+    readinessNote:
+      "Tiene valor como aceptación básica, pero no debe venderse todavía como firma avanzada o cumplimiento cerrado.",
   },
   {
     id: "bank-reconciliation",
@@ -266,6 +296,7 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
     summary:
       "Importación de extractos CSV para cruzar ingresos y cargos con facturas emitidas o gastos ya revisados.",
     status: "partial",
+    maturity: "pilot",
     category: "finanzas",
     routeHref: "/banca",
     docsPath: "docs/modulos/CONCILIACION_BANCARIA.md",
@@ -282,6 +313,8 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
     notes: [
       "Primera entrega con CSV manual. OFX, reglas automáticas y caja prevista llegarán después.",
     ],
+    readinessNote:
+      "Útil para reconciliar casos sencillos, pero aún requiere mucha revisión manual.",
   },
   {
     id: "facturae-verifactu",
@@ -290,6 +323,7 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
     summary:
       "Panel de preparación normativa y exportación inicial a XML Facturae 3.2.2 sin firma, con referencias oficiales de VeriFactu.",
     status: "partial",
+    maturity: "experimental",
     category: "cumplimiento",
     routeHref: "/facturae",
     docsPath: "docs/modulos/FACTURAE_VERIFACTU.md",
@@ -306,6 +340,8 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
     notes: [
       "Primera entrega sin firma XAdES, sin FACe y sin remisión automática a VeriFactu.",
     ],
+    readinessNote:
+      "Debe considerarse preparatorio. No es una base suficiente para delegar cumplimiento fiscal real.",
   },
 ];
 
@@ -328,6 +364,26 @@ export function getModuleStatusMeta(status: ModuleStatus) {
       badgeVariant: "secondary" as const,
     },
   }[status];
+}
+
+export function getModuleMaturityMeta(maturity: ModuleMaturity) {
+  return {
+    daily: {
+      label: "Uso diario",
+      badgeVariant: "success" as const,
+      description: "Recomendado para trabajo habitual si ya has validado tu instalación básica.",
+    },
+    pilot: {
+      label: "Piloto",
+      badgeVariant: "default" as const,
+      description: "Útil para probar con cuidado, pero todavía requiere validación en casos reales.",
+    },
+    experimental: {
+      label: "Experimental",
+      badgeVariant: "secondary" as const,
+      description: "No conviene convertirlo en una pieza crítica de tu operativa diaria.",
+    },
+  }[maturity];
 }
 
 export function getModuleCategoryLabel(category: ModuleCategory) {

@@ -1,0 +1,86 @@
+# Estado real del producto
+
+Este documento existe para evitar una lectura demasiado optimista del proyecto.
+
+FacturaIA ya tiene bastante funcionalidad, pero no todas las áreas tienen la misma madurez.
+
+## Listo para uso diario
+
+Estas piezas son las más razonables para una instalación privada prudente:
+
+- perfil fiscal del emisor
+- nueva factura
+- listado de facturas
+- PDF y factura pública
+- correo saliente
+- backups locales
+- cobros y vencimientos básicos
+
+Interpretación práctica:
+
+- sí sirven para empezar a trabajar
+- siguen necesitando una instalación correcta y pruebas básicas
+- no conviene mezclar esto con módulos avanzados el primer día
+
+## En piloto
+
+Estas piezas tienen valor, pero todavía conviene tratarlas como módulos de validación:
+
+- presupuestos y albaranes
+- firma documental básica
+- correo entrante por IMAP
+- backups remotos WebDAV / Nextcloud
+- CRM ligero
+- mensajería WhatsApp / Telegram
+- conciliación bancaria por CSV
+
+Interpretación práctica:
+
+- útiles para probar
+- no deberían ser la primera capa de una instalación nueva
+- conviene validarlas con datos de prueba antes de depender de ellas
+
+## Experimentales
+
+Estas piezas todavía requieren mucha revisión manual o madurez adicional:
+
+- OCR de gastos
+- Facturae / VeriFactu
+
+Interpretación práctica:
+
+- no conviene venderlas como cumplimiento cerrado
+- no deben sustituir revisión humana
+- no son todavía una base suficiente para delegar tranquilidad fiscal
+
+## Qué le falta al proyecto para dar más confianza
+
+- más pruebas de extremo a extremo
+- más restauraciones de backup validadas
+- mejor instalación para no técnicos
+- más pilotos reales con autónomos
+- mayor cierre fiscal en Facturae / VeriFactu
+- menos dependencia de configuración manual en módulos avanzados
+
+## Orden recomendado de adopción
+
+1. perfil fiscal
+2. facturas
+3. correo saliente
+4. backups
+5. cobros
+6. presupuestos
+7. firma
+8. banca
+9. correo entrante
+10. mensajería
+11. OCR
+12. Facturae / VeriFactu
+
+## Regla general
+
+Si eres autónomo y no técnico:
+
+- no intentes instalarlo todo a la vez
+- no conviertas un módulo experimental en pieza crítica
+- no metas datos sensibles hasta haber validado backup, envío y recuperación

@@ -1,0 +1,10 @@
+services:
+  facturaia-demo:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      FACTURAIA_DEMO_MODE: "1"
+    ports:
+      - "3000:3000"

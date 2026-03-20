@@ -44,6 +44,50 @@ FacturaIA es una aplicación Next.js 15 pensada para autónomos y pequeños nego
 - arquitectura moderna, pero pragmática
 - foco en utilidad real para autónomos españoles
 
+## Empieza por aquí
+
+Si eres autónomo o una pequeña empresa y no quieres complicarte:
+
+1. **Primero prueba la demo**.
+2. **Después instala solo el núcleo**: perfil, facturas, correo saliente, backups y cobros.
+3. **Deja los módulos avanzados para más tarde**: IMAP, mensajería, OCR, banca, firma o Facturae.
+
+### Demo rápida con Docker
+
+```bash
+docker compose -f compose.demo.yml up --build
+```
+
+Esto arranca FacturaIA en modo demo, sin Supabase real ni servicios externos.
+
+### Instalación privada básica
+
+```bash
+cp .env.example .env.local
+docker compose -f compose.app.yml up --build
+```
+
+Primero configura solo:
+
+- `NEXT_PUBLIC_APP_URL`
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- tu bloque de correo saliente
+
+## Estado real del producto
+
+No todo tiene la misma madurez. Esta es la forma correcta de leer el proyecto hoy:
+
+- **Listo para uso diario**: núcleo de facturación, listado de facturas, perfil fiscal, correo saliente, backups locales y cobros básicos.
+- **En piloto**: presupuestos y albaranes, firma documental básica, IMAP, banca CSV, CRM ligero, mensajería y backups remotos.
+- **Experimental**: OCR de gastos y Facturae / VeriFactu.
+
+Si buscas una guía clara antes de instalar nada:
+
+- [Guía en 15 minutos](./docs/GUIA_15_MINUTOS.md)
+- [Estado real, módulo por módulo](./docs/ESTADO_REAL.md)
+
 ## Stack técnico
 
 - Next.js 15 + App Router
@@ -103,6 +147,12 @@ Modo demo:
 
 ```bash
 FACTURAIA_DEMO_MODE=1 npm run dev
+```
+
+También puedes usar Docker:
+
+```bash
+docker compose -f compose.demo.yml up --build
 ```
 
 ## Variables de entorno
@@ -196,6 +246,8 @@ Tablas principales activas:
 ## Documentación adicional
 
 - [Instalación y configuración](./docs/INSTALACION.md)
+- [Guía en 15 minutos](./docs/GUIA_15_MINUTOS.md)
+- [Estado real del producto](./docs/ESTADO_REAL.md)
 - [DFD y plan de módulos](./docs/MODULOS_DFD.md)
 - [Arquitectura funcional y técnica](./docs/ARQUITECTURA.md)
 - [Visión, alcance y pendientes](./docs/VISION_Y_PENDIENTES.md)
