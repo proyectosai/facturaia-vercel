@@ -1,5 +1,11 @@
 # Instalación local privada
 
+> Si buscas instrucciones literales por sistema operativo, usa primero estas guías:
+>
+> - [Windows](./INSTALACION_WINDOWS.md)
+> - [macOS](./INSTALACION_MACOS.md)
+> - [Linux](./INSTALACION_LINUX.md)
+
 ## Objetivo
 
 Este modo está pensado para clientes que quieren ejecutar FacturaIA en su propio ordenador o en un servidor suyo, sin depender de enlaces mágicos ni de correo para iniciar sesión.

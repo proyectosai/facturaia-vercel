@@ -75,6 +75,12 @@ Esto arranca FacturaIA en modo demo, sin Supabase real ni servicios externos.
 
 ### Instalación privada básica
 
+Guías paso a paso en GitHub:
+
+- [Windows](./docs/INSTALACION_WINDOWS.md)
+- [macOS](./docs/INSTALACION_MACOS.md)
+- [Linux](./docs/INSTALACION_LINUX.md)
+
 ```bash
 cp .env.example .env.local
 docker compose -f compose.app.yml up --build
@@ -83,9 +89,10 @@ docker compose -f compose.app.yml up --build
 Primero configura solo:
 
 - `NEXT_PUBLIC_APP_URL`
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY`
+- `FACTURAIA_LOCAL_MODE=1`
+- `FACTURAIA_LOCAL_BOOTSTRAP=1`
+- `FACTURAIA_LOCAL_SESSION_SECRET`
+- `FACTURAIA_DATA_DIR`
 - tu bloque de correo saliente
 
 ### Modo local privado sin magic link
@@ -123,6 +130,9 @@ No todo tiene la misma madurez. Esta es la forma correcta de leer el proyecto ho
 Si buscas una guía clara antes de instalar nada:
 
 - [Guía en 15 minutos](./docs/GUIA_15_MINUTOS.md)
+- [Instalación en Windows](./docs/INSTALACION_WINDOWS.md)
+- [Instalación en macOS](./docs/INSTALACION_MACOS.md)
+- [Instalación en Linux](./docs/INSTALACION_LINUX.md)
 - [Estado real, módulo por módulo](./docs/ESTADO_REAL.md)
 - [Estándar de calidad para el modo local](./docs/CALIDAD_LOCAL.md)
 - [QA / lectura ISO 25010](./docs/QA_ISO_25010.md)
@@ -170,6 +180,12 @@ Si buscas una guía clara antes de instalar nada:
 - `/firma/[token]`
 
 ## Instalación rápida
+
+Si prefieres instrucciones literales por sistema operativo:
+
+- [Windows](./docs/INSTALACION_WINDOWS.md)
+- [macOS](./docs/INSTALACION_MACOS.md)
+- [Linux](./docs/INSTALACION_LINUX.md)
 
 Si usas `nvm`, puedes fijar la versión recomendada con:
 

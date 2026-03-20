@@ -2,6 +2,12 @@
 
 Esta guía está pensada para una persona no técnica o semi-técnica que quiere probar FacturaIA sin instalar todos los módulos de golpe.
 
+Si quieres instrucciones completas por sistema operativo:
+
+- [Windows](./INSTALACION_WINDOWS.md)
+- [macOS](./INSTALACION_MACOS.md)
+- [Linux](./INSTALACION_LINUX.md)
+
 ## Camino 1: demo rápida en 5 minutos
 
 Si solo quieres ver la app:
@@ -18,9 +24,17 @@ Después abre:
 
 Con esto no necesitas Supabase, correo, IMAP, LM Studio ni mensajería.
 
-## Camino 2: instalación básica real en 15 minutos
+## Camino 2: instalación local privada real en 15 minutos
 
-### 1. Copia el entorno
+### 1. Crea `.env.local`
+
+Windows PowerShell:
+
+```powershell
+Copy-Item .env.example .env.local
+```
+
+macOS / Linux:
 
 ```bash
 cp .env.example .env.local
@@ -30,9 +44,10 @@ cp .env.example .env.local
 
 ```env
 NEXT_PUBLIC_APP_URL=http://localhost:3000
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
+FACTURAIA_LOCAL_MODE=1
+FACTURAIA_LOCAL_BOOTSTRAP=1
+FACTURAIA_LOCAL_SESSION_SECRET=pon-aqui-un-secreto-largo-y-unico
+FACTURAIA_DATA_DIR=.facturaia-local
 
 MAIL_PROVIDER=smtp
 SMTP_HOST=
@@ -45,6 +60,7 @@ SMTP_FROM_EMAIL=
 
 No actives todavía:
 
+- Supabase
 - IMAP
 - mensajería
 - OCR de gastos
@@ -62,12 +78,15 @@ docker compose -f compose.app.yml up --build
 
 Haz solo esto:
 
-1. entra en `/profile`
-2. rellena emisor, NIF, dirección y logo
-3. crea una factura en `/new-invoice`
-4. revisa `/invoices`
-5. prueba el correo saliente en `/mail`
-6. exporta un backup en `/backups`
+1. entra en `/login` y crea la cuenta local inicial
+2. cambia `FACTURAIA_LOCAL_BOOTSTRAP=0`
+3. reinicia la app
+4. entra en `/profile`
+5. rellena emisor, NIF, dirección y logo
+6. crea una factura en `/new-invoice`
+7. revisa `/invoices`
+8. prueba el correo saliente en `/mail`
+9. exporta un backup en `/backups`
 
 ### 5. Decide si te merece la pena seguir
 
