@@ -17,13 +17,13 @@ import type {
   Profile,
 } from "@/lib/types";
 
+export function hasSupabasePublicEnv() {
+  return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()) &&
+    Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim());
+}
+
 export function isDemoMode() {
-  return (
-    process.env.FACTURAIA_DEMO_MODE === "1" ||
-    (process.env.NODE_ENV === "development" &&
-      (!process.env.NEXT_PUBLIC_SUPABASE_URL ||
-        !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY))
-  );
+  return process.env.FACTURAIA_DEMO_MODE === "1" || !hasSupabasePublicEnv();
 }
 
 export const DEMO_USER_ID = "00000000-0000-4000-8000-000000000001";

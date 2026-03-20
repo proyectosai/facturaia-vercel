@@ -1,5 +1,7 @@
 # Despliegue en Coolify / Hetzner
 
+> Si lo que necesitas es una demo rápida para enseñar el producto, usa la guía específica de [demo en Vercel](./DEPLOY_VERCEL_DEMO.md). Esta guía sigue orientada a despliegue privado real.
+
 ## Objetivo
 
 Esta guía deja FacturaIA lista para desplegar en una máquina propia o en una infraestructura tipo Hetzner con Coolify.

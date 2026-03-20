@@ -200,6 +200,7 @@ Tablas principales activas:
 - [Arquitectura funcional y técnica](./docs/ARQUITECTURA.md)
 - [Visión, alcance y pendientes](./docs/VISION_Y_PENDIENTES.md)
 - [Despliegue en Coolify / Hetzner](./docs/DESPLIEGUE.md)
+- [Demo en Vercel](./docs/DEPLOY_VERCEL_DEMO.md)
 - [Índice de módulos](./docs/modulos/README.md)
 - [Mensajería WhatsApp y Telegram](./docs/modulos/MENSAJERIA_WHATSAPP_TELEGRAM.md)
 - [Backups remotos](./docs/modulos/BACKUPS_REMOTOS.md)
