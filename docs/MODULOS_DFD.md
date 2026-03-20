@@ -83,16 +83,17 @@ flowchart LR
 - Backups locales: exportación y restauración JSON.
 - Backups remotos: primera entrega operativa con WebDAV / Nextcloud.
 - Correo saliente: envío de facturas y correos de prueba con SMTP o Resend.
+- Correo entrante: primera entrega operativa con importación IMAP manual.
 
 ## Siguiente módulo
 
-### Correo entrante
+### Presupuestos y albaranes
 
 Motivo de prioridad:
 
-- ya existe una base funcional de salida
-- permite unificar comunicación con clientes dentro de FacturaIA
-- encaja bien con facturas, documentos y CRM ligero
+- ya existe estudio documental y núcleo de facturación
+- falta cerrar el flujo previo a la factura
+- encaja con propuestas, cliente y futura firma documental
 
 ## Documentación asociada
 

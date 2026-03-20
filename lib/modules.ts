@@ -1,4 +1,5 @@
 import { getOutboundMailStatusSummary } from "@/lib/mail";
+import { getInboundMailStatusSummary } from "@/lib/inbound-mail";
 
 export type ModuleStatus = "active" | "partial" | "next" | "planned";
 
@@ -154,22 +155,23 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
     title: "Correo entrante",
     summary:
       "Bandeja de entrada para asociar emails entrantes con clientes, documentos y seguimiento operativo.",
-    status: "next",
+    status: "partial",
     category: "canales",
+    routeHref: "/mail",
     docsPath: "docs/modulos/CORREO_ENTRANTE.md",
-    providers: ["IMAP", "reenvío entrante", "webhook de proveedor"],
+    providers: ["IMAP"],
     requirements: [
-      "Modelo de correo saliente ya asentado",
-      "Persistencia de conversaciones por cliente",
-      "Reglas de importación seguras",
+      "Variables IMAP completas",
+      "Migración del módulo de correo entrante aplicada",
+      "Sincronización manual desde la pantalla /mail",
     ],
     installSteps: [
-      "Definir origen del correo entrante.",
-      "Crear bandeja interna y mapeo con clientes.",
-      "Añadir reglas de clasificación y seguimiento.",
+      "Añade el bloque IMAP en .env.local o en tu despliegue.",
+      "Abre /mail y revisa el estado del buzón.",
+      "Ejecuta una sincronización manual para importar correos.",
     ],
     notes: [
-      "Es el siguiente paso natural para unificar facturas, documentos y comunicación.",
+      "Primera entrega con IMAP manual; faltan automatización, hilos avanzados y enlaces con cliente.",
     ],
   },
   {
@@ -178,7 +180,7 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
     title: "Presupuestos y albaranes",
     summary:
       "Flujo documental previo a la factura, con conversión de presupuesto o albarán en factura definitiva.",
-    status: "planned",
+    status: "next",
     category: "documentos",
     requirements: [
       "Modelo documental estable",
@@ -320,6 +322,7 @@ export function getModuleCategoryLabel(category: ModuleCategory) {
 
 export function getModuleCatalog(): ModuleRuntimeState[] {
   const outboundMail = getOutboundMailStatusSummary();
+  const inboundMail = getInboundMailStatusSummary();
 
   return MODULE_DEFINITIONS.map((module) => {
     let configured = false;
@@ -346,8 +349,10 @@ export function getModuleCatalog(): ModuleRuntimeState[] {
         ? `${outboundMail.providerLabel} listo`
         : "Faltan variables de correo";
     } else if (module.id === "email-inbound") {
-      configured = false;
-      configuredLabel = "Siguiente iteración";
+      configured = inboundMail.configured;
+      configuredLabel = configured
+        ? `${inboundMail.providerLabel} listo`
+        : "Faltan variables IMAP";
     } else if (module.id === "quotes-delivery-notes") {
       configured = hasLmStudio();
       configuredLabel = configured

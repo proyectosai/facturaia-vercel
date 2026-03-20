@@ -16,6 +16,7 @@ FacturaIA es una aplicación Next.js 15 pensada para autónomos y pequeños nego
 - Estudio documental con IA local vía LM Studio para propuestas, presupuestos, contratos y mensajes.
 - Exportación de documentos a PDF y Word.
 - Módulo de correo saliente con pantalla de prueba y soporte SMTP / Resend.
+- Módulo de correo entrante con importación IMAP manual y bandeja interna.
 - Módulo opcional de mensajería unificada para WhatsApp Business y Telegram por webhook.
 - Centro de backups para exportar, restaurar y sincronizar copias remotas por WebDAV / Nextcloud.
 - Catálogo de módulos opcionales con estado e instalación en `/modules`.
@@ -101,6 +102,15 @@ SMTP_SECURE=
 SMTP_USERNAME=
 SMTP_PASSWORD=
 SMTP_FROM_EMAIL=
+INBOUND_MAIL_PROVIDER=
+IMAP_HOST=
+IMAP_PORT=
+IMAP_SECURE=
+IMAP_USERNAME=
+IMAP_PASSWORD=
+IMAP_MAILBOX=
+IMAP_SYNC_UNSEEN_ONLY=
+IMAP_SYNC_MAX_MESSAGES=
 RESEND_API_KEY=
 RESEND_FROM_EMAIL=
 REMOTE_BACKUP_PROVIDER=
@@ -132,6 +142,7 @@ Migraciones incluidas:
 - [`supabase/migrations/202603192345_remove_billing_for_self_hosted.sql`](./supabase/migrations/202603192345_remove_billing_for_self_hosted.sql)
 - [`supabase/migrations/202603200915_add_invoice_sequence_sync_function.sql`](./supabase/migrations/202603200915_add_invoice_sequence_sync_function.sql)
 - [`supabase/migrations/202603201030_add_remote_backup_runs.sql`](./supabase/migrations/202603201030_add_remote_backup_runs.sql)
+- [`supabase/migrations/202603201200_add_inbound_mail_module.sql`](./supabase/migrations/202603201200_add_inbound_mail_module.sql)
 
 Tablas principales activas:
 
@@ -143,6 +154,9 @@ Tablas principales activas:
 - `message_threads`
 - `message_messages`
 - `remote_backup_runs`
+- `mail_threads`
+- `mail_messages`
+- `mail_sync_runs`
 
 ## Documentación adicional
 
@@ -170,6 +184,7 @@ Tablas principales activas:
 - Está planteado para uso privado y autogestionado.
 - El backup exporta JSON del usuario autenticado, la restauración funciona en modo reemplazo y el primer proveedor remoto soportado es WebDAV / Nextcloud.
 - El correo saliente soporta SMTP y Resend, con pantalla de prueba propia en `/mail`.
+- El correo entrante soporta una primera entrega IMAP con sincronización manual desde `/mail`.
 - La parte legal y fiscal mostrada en la UI no sustituye asesoramiento profesional.
 
 ## Verificación

@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
   Bot,
   Database,
+  Inbox,
   Mail,
   ArchiveRestore,
   ServerCog,
@@ -10,6 +11,7 @@ import {
 } from "lucide-react";
 
 import { isDemoMode } from "@/lib/demo";
+import { getInboundMailStatusSummary } from "@/lib/inbound-mail";
 import { getOutboundMailStatusSummary } from "@/lib/mail";
 import { getRemoteBackupStatusSummary } from "@/lib/remote-backups";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +27,7 @@ import {
 function getEnvironmentFlags() {
   const remoteBackups = getRemoteBackupStatusSummary();
   const outboundMail = getOutboundMailStatusSummary();
+  const inboundMail = getInboundMailStatusSummary();
 
   return {
     demoMode: isDemoMode(),
@@ -38,6 +41,7 @@ function getEnvironmentFlags() {
     lmStudioBaseUrl: process.env.LM_STUDIO_BASE_URL || "No configurado",
     lmStudioModel: process.env.LM_STUDIO_MODEL || "No configurado",
     outboundMail,
+    inboundMail,
     remoteBackups,
   };
 }
@@ -76,6 +80,14 @@ export default function SystemPage() {
         : "El destino externo todavía no está configurado; por ahora solo cuentas con copias locales.",
       ready: env.remoteBackups.configured,
       icon: ArchiveRestore,
+    },
+    {
+      title: "Correo entrante",
+      description: env.inboundMail.configured
+        ? `${env.inboundMail.providerLabel} listo sobre ${env.inboundMail.accountLabel}.`
+        : "La bandeja IMAP aún no está configurada.",
+      ready: env.inboundMail.configured,
+      icon: Inbox,
     },
   ];
 

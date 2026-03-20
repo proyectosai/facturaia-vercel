@@ -27,7 +27,7 @@ const setupSteps = [
   {
     title: "2. Conecta solo lo que quieras",
     description:
-      "Supabase, SMTP o Resend, LM Studio y mensajería son opcionales según tu forma de trabajar.",
+      "Supabase, SMTP o Resend, IMAP, LM Studio y mensajería son opcionales según tu forma de trabajar.",
     icon: LockKeyhole,
   },
   {
@@ -152,6 +152,12 @@ export default function InstalacionPage() {
                 description:
                   "SMTP o Resend para enviar facturas y correos de prueba desde tu instalación.",
                 icon: LockKeyhole,
+              },
+              {
+                title: "Correo entrante",
+                description:
+                  "IMAP para importar correos y ordenarlos dentro de la propia app.",
+                icon: Sparkles,
               },
             ].map((item) => {
               const Icon = item.icon;

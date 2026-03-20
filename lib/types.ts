@@ -10,6 +10,10 @@ export type MessageUrgency = "low" | "medium" | "high";
 
 export type MessageSortKey = "recent" | "urgency" | "name" | "surname";
 
+export type MailSource = "imap";
+
+export type MailSortKey = "recent" | "urgency" | "name" | "email";
+
 export type Profile = {
   id: string;
   email: string;
@@ -163,5 +167,50 @@ export type RemoteBackupRun = {
   file_name: string;
   remote_path: string;
   error_message: string | null;
+  created_at: string;
+};
+
+export type MailThread = {
+  id: string;
+  user_id: string;
+  source: MailSource;
+  external_thread_key: string;
+  from_name: string | null;
+  from_email: string;
+  subject: string | null;
+  urgency: MessageUrgency;
+  urgency_score: number;
+  unread_count: number;
+  last_message_preview: string | null;
+  last_message_at: string;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+};
+
+export type MailMessage = {
+  id: string;
+  user_id: string;
+  thread_id: string;
+  source: MailSource;
+  external_message_id: string;
+  from_name: string | null;
+  from_email: string;
+  to_emails: string[];
+  subject: string | null;
+  body_text: string;
+  body_html: string | null;
+  received_at: string;
+  raw_headers: Record<string, unknown>;
+  created_at: string;
+};
+
+export type MailSyncRun = {
+  id: string;
+  user_id: string;
+  source: MailSource;
+  status: "success" | "error";
+  imported_count: number;
+  detail: string | null;
   created_at: string;
 };

@@ -34,6 +34,8 @@ type BackupSummary = {
   messageConnections: number;
   messageThreads: number;
   messageRecords: number;
+  mailThreads: number;
+  mailMessages: number;
 };
 
 type RemoteBackupState = {
@@ -205,6 +207,8 @@ export function BackupCenter({
     { label: "Conexiones", value: summary.messageConnections },
     { label: "Conversaciones", value: summary.messageThreads },
     { label: "Mensajes", value: summary.messageRecords },
+    { label: "Hilos correo", value: summary.mailThreads },
+    { label: "Emails", value: summary.mailMessages },
   ];
 
   return (
@@ -216,7 +220,7 @@ export function BackupCenter({
         </div>
       ) : null}
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-7">
         {stats.map((item) => (
           <Card key={item.label}>
             <CardContent className="space-y-2">

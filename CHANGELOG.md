@@ -14,7 +14,8 @@ El formato está inspirado en Keep a Changelog y el versionado irá madurando co
 - Migración `202603201030_add_remote_backup_runs.sql`.
 - Nuevo módulo de correo saliente con soporte SMTP o Resend.
 - Nueva pantalla `/mail` para comprobar proveedor y enviar correos de prueba.
-- Documento `docs/modulos/CORREO_ENTRANTE.md` para la siguiente fase del roadmap.
+- Primera entrega del correo entrante con IMAP manual, bandeja interna e historial de sincronizaciones.
+- Migración `202603201200_add_inbound_mail_module.sql`.
 
 ### Mejorado
 
@@ -22,6 +23,7 @@ El formato está inspirado en Keep a Changelog y el versionado irá madurando co
 - Pantalla `/system` con visibilidad sobre la configuración de backups remotos.
 - Documentación de instalación y despliegue ampliada para usuarios self-hosted.
 - Envío de facturas desacoplado de Resend como único proveedor.
+- Los backups ahora incluyen también el inbox de correo y su historial de sincronización.
 
 ## [0.1.0] - 2026-03-19
 

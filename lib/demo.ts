@@ -1,6 +1,9 @@
 import type {
   AppUserRecord,
   InvoiceRecord,
+  MailMessage,
+  MailSyncRun,
+  MailThread,
   MessageConnection,
   MessageRecord,
   MessageThread,
@@ -242,6 +245,129 @@ export const demoMessageRecords: MessageRecord[] = [
   },
 ];
 
+export const demoMailThreads: MailThread[] = [
+  {
+    id: "70000000-0000-4000-8000-000000000001",
+    user_id: DEMO_USER_ID,
+    source: "imap",
+    external_thread_key: "administracion@brisalegal.es",
+    from_name: "Brisa Legal Administración",
+    from_email: "administracion@brisalegal.es",
+    subject: "Factura FAC-1027 y ajuste de datos",
+    urgency: "high",
+    urgency_score: 88,
+    unread_count: 1,
+    last_message_preview:
+      "Necesitamos la factura rectificada hoy para cerrar contabilidad antes de las 18:00.",
+    last_message_at: "2026-03-19T14:20:00.000Z",
+    metadata: {},
+    created_at: "2026-03-17T10:00:00.000Z",
+    updated_at: "2026-03-19T14:20:00.000Z",
+  },
+  {
+    id: "70000000-0000-4000-8000-000000000002",
+    user_id: DEMO_USER_ID,
+    source: "imap",
+    external_thread_key: "finanzas@nexodigital.es",
+    from_name: "Nexo Digital Finanzas",
+    from_email: "finanzas@nexodigital.es",
+    subject: "Seguimiento de propuesta y próxima factura",
+    urgency: "medium",
+    urgency_score: 58,
+    unread_count: 2,
+    last_message_preview:
+      "Cuando puedas, confirma si la propuesta mensual incluye también la revisión del automatismo nuevo.",
+    last_message_at: "2026-03-18T09:42:00.000Z",
+    metadata: {},
+    created_at: "2026-03-15T11:30:00.000Z",
+    updated_at: "2026-03-18T09:42:00.000Z",
+  },
+  {
+    id: "70000000-0000-4000-8000-000000000003",
+    user_id: DEMO_USER_ID,
+    source: "imap",
+    external_thread_key: "hola@atalaya.studio",
+    from_name: "Atalaya Studio",
+    from_email: "hola@atalaya.studio",
+    subject: "Confirmación de presupuesto",
+    urgency: "low",
+    urgency_score: 20,
+    unread_count: 0,
+    last_message_preview:
+      "Te confirmamos que el presupuesto nos encaja. Si puedes, envía la versión final esta semana.",
+    last_message_at: "2026-03-16T08:15:00.000Z",
+    metadata: {},
+    created_at: "2026-03-16T08:15:00.000Z",
+    updated_at: "2026-03-16T08:15:00.000Z",
+  },
+];
+
+export const demoMailMessages: MailMessage[] = [
+  {
+    id: "71000000-0000-4000-8000-000000000001",
+    user_id: DEMO_USER_ID,
+    thread_id: "70000000-0000-4000-8000-000000000001",
+    source: "imap",
+    external_message_id: "<demo-brisa-1@local.test>",
+    from_name: "Brisa Legal Administración",
+    from_email: "administracion@brisalegal.es",
+    to_emails: ["demo@local.test"],
+    subject: "Factura FAC-1027 y ajuste de datos",
+    body_text:
+      "Buenos días. Hemos detectado un error en los datos fiscales de la factura FAC-1027. Necesitamos la factura rectificada hoy para cerrar contabilidad antes de las 18:00.",
+    body_html: null,
+    received_at: "2026-03-19T14:20:00.000Z",
+    raw_headers: {},
+    created_at: "2026-03-19T14:20:00.000Z",
+  },
+  {
+    id: "71000000-0000-4000-8000-000000000002",
+    user_id: DEMO_USER_ID,
+    thread_id: "70000000-0000-4000-8000-000000000002",
+    source: "imap",
+    external_message_id: "<demo-nexo-1@local.test>",
+    from_name: "Nexo Digital Finanzas",
+    from_email: "finanzas@nexodigital.es",
+    to_emails: ["demo@local.test"],
+    subject: "Seguimiento de propuesta y próxima factura",
+    body_text:
+      "Hola. Cuando puedas, confirma si la propuesta mensual incluye también la revisión del automatismo nuevo. Nos gustaría tenerlo esta semana.",
+    body_html: null,
+    received_at: "2026-03-18T09:42:00.000Z",
+    raw_headers: {},
+    created_at: "2026-03-18T09:42:00.000Z",
+  },
+  {
+    id: "71000000-0000-4000-8000-000000000003",
+    user_id: DEMO_USER_ID,
+    thread_id: "70000000-0000-4000-8000-000000000003",
+    source: "imap",
+    external_message_id: "<demo-atalaya-1@local.test>",
+    from_name: "Atalaya Studio",
+    from_email: "hola@atalaya.studio",
+    to_emails: ["demo@local.test"],
+    subject: "Confirmación de presupuesto",
+    body_text:
+      "Te confirmamos que el presupuesto nos encaja. Si puedes, envía la versión final esta semana.",
+    body_html: null,
+    received_at: "2026-03-16T08:15:00.000Z",
+    raw_headers: {},
+    created_at: "2026-03-16T08:15:00.000Z",
+  },
+];
+
+export const demoMailSyncRuns: MailSyncRun[] = [
+  {
+    id: "72000000-0000-4000-8000-000000000001",
+    user_id: DEMO_USER_ID,
+    source: "imap",
+    status: "success",
+    imported_count: 3,
+    detail: "Sincronización demo completada desde INBOX.",
+    created_at: "2026-03-19T14:25:00.000Z",
+  },
+];
+
 export const demoInvoices: InvoiceRecord[] = [
   {
     id: "20000000-0000-4000-8000-000000000001",
@@ -425,4 +551,8 @@ export function getDemoInvoiceByPublicId(publicId: string) {
 
 export function getDemoThreadById(threadId: string) {
   return demoMessageThreads.find((thread) => thread.id === threadId) ?? null;
+}
+
+export function getDemoMailThreadById(threadId: string) {
+  return demoMailThreads.find((thread) => thread.id === threadId) ?? null;
 }

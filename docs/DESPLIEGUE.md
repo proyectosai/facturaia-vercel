@@ -47,6 +47,16 @@ SMTP_USERNAME=
 SMTP_PASSWORD=
 SMTP_FROM_EMAIL=
 
+INBOUND_MAIL_PROVIDER=imap
+IMAP_HOST=
+IMAP_PORT=993
+IMAP_SECURE=true
+IMAP_USERNAME=
+IMAP_PASSWORD=
+IMAP_MAILBOX=INBOX
+IMAP_SYNC_UNSEEN_ONLY=true
+IMAP_SYNC_MAX_MESSAGES=25
+
 RESEND_API_KEY=
 RESEND_FROM_EMAIL=
 
@@ -135,6 +145,31 @@ Después del despliegue:
 3. envía una prueba
 4. valida luego `/invoices`
 
+## Correo entrante en producción
+
+La primera integración soportada es **IMAP**.
+
+Ejemplo:
+
+```env
+INBOUND_MAIL_PROVIDER=imap
+IMAP_HOST=outlook.office365.com
+IMAP_PORT=993
+IMAP_SECURE=true
+IMAP_USERNAME=facturacion@tudominio.es
+IMAP_PASSWORD=tu-password-o-app-password
+IMAP_MAILBOX=INBOX
+IMAP_SYNC_UNSEEN_ONLY=true
+IMAP_SYNC_MAX_MESSAGES=25
+```
+
+Después del despliegue:
+
+1. abre `/mail`
+2. revisa el estado del buzón
+3. lanza una sincronización manual
+4. comprueba que la bandeja se rellena
+
 ## Backups remotos en producción
 
 La primera integración remota soportada es **WebDAV / Nextcloud**.
@@ -161,6 +196,7 @@ WEBDAV_BACKUP_PATH=/FacturaIA
 - poner la app detrás de proxy con HTTPS
 - limitar acceso al host de LM Studio
 - limitar acceso al destino WebDAV si el proveedor lo permite
+- proteger también las credenciales IMAP como secretos
 - revisar logs de mensajería si activas WhatsApp Business o Telegram
 - monitorizar errores de render PDF / DOCX
 - almacenar backups fuera del servidor principal de vez en cuando
@@ -178,7 +214,8 @@ WEBDAV_BACKUP_PATH=/FacturaIA
 8. Webhooks de mensajería, si están activados.
 9. Exportación y restauración de backup desde `/backups`.
 10. Envío de un backup remoto manual a WebDAV / Nextcloud, si está activado.
-11. Revisión del catálogo modular en `/modules`.
+11. Sincronización IMAP manual desde `/mail`, si está activada.
+12. Revisión del catálogo modular en `/modules`.
 
 ## Checklist de producción
 

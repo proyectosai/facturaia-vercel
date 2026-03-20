@@ -132,6 +132,65 @@ const backupSchema = z.object({
       threads: [],
       records: [],
     }),
+  mail: z
+    .object({
+      threads: z
+        .array(
+          z.object({
+            id: z.string(),
+            source: z.literal("imap"),
+            external_thread_key: z.string(),
+            from_name: z.string().nullable().optional(),
+            from_email: z.string(),
+            subject: z.string().nullable().optional(),
+            urgency: z.enum(["low", "medium", "high"]),
+            urgency_score: z.number(),
+            unread_count: z.number(),
+            last_message_preview: z.string().nullable().optional(),
+            last_message_at: z.string(),
+            metadata: z.any(),
+            created_at: z.string().optional(),
+            updated_at: z.string().optional(),
+          }),
+        )
+        .default([]),
+      messages: z
+        .array(
+          z.object({
+            id: z.string(),
+            thread_id: z.string(),
+            source: z.literal("imap"),
+            external_message_id: z.string(),
+            from_name: z.string().nullable().optional(),
+            from_email: z.string(),
+            to_emails: z.array(z.string()).default([]),
+            subject: z.string().nullable().optional(),
+            body_text: z.string(),
+            body_html: z.string().nullable().optional(),
+            received_at: z.string(),
+            raw_headers: z.any(),
+            created_at: z.string().optional(),
+          }),
+        )
+        .default([]),
+      syncRuns: z
+        .array(
+          z.object({
+            id: z.string(),
+            source: z.literal("imap"),
+            status: z.enum(["success", "error"]),
+            imported_count: z.number(),
+            detail: z.string().nullable().optional(),
+            created_at: z.string().optional(),
+          }),
+        )
+        .default([]),
+    })
+    .default({
+      threads: [],
+      messages: [],
+      syncRuns: [],
+    }),
 });
 
 export async function POST(request: Request) {

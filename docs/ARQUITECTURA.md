@@ -133,6 +133,7 @@ Archivos clave:
 - `app/(protected)/mail/page.tsx`
 - `lib/actions/mail.ts`
 - `lib/mail.ts`
+- `lib/inbound-mail.ts`
 - `lib/resend.ts`
 - `lib/actions/invoices.ts`
 
@@ -143,6 +144,9 @@ Funciones:
 - envío de factura por email
 - correo de prueba desde la propia app
 - adjunto del PDF generado
+- importación IMAP manual
+- bandeja interna por remitente
+- historial de sincronizaciones entrantes
 
 ## 7. Copias de seguridad
 
@@ -194,6 +198,9 @@ Tablas principales:
 - `message_threads`
 - `message_messages`
 - `remote_backup_runs`
+- `mail_threads`
+- `mail_messages`
+- `mail_sync_runs`
 
 ## `users`
 
@@ -254,6 +261,26 @@ Tablas principales:
 - estado `success` o `error`
 - ruta remota y nombre de fichero
 - último error, si existe
+
+## `mail_threads`
+
+- hilo de correo agrupado por remitente
+- urgencia calculada
+- último asunto y vista previa
+- contador de no leídos
+
+## `mail_messages`
+
+- mensaje individual importado por IMAP
+- remitente y destinatarios
+- cuerpo de texto y HTML
+- `message-id` externo para deduplicación
+
+## `mail_sync_runs`
+
+- historial de sincronizaciones IMAP
+- cantidad importada
+- detalle del resultado
 
 ## Modo demo
 

@@ -3,6 +3,9 @@ import "server-only";
 import {
   demoAiUsage,
   demoInvoices,
+  demoMailMessages,
+  demoMailSyncRuns,
+  demoMailThreads,
   demoMessageConnections,
   demoMessageRecords,
   demoMessageThreads,
@@ -12,6 +15,9 @@ import {
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import type {
   InvoiceRecord,
+  MailMessage,
+  MailSyncRun,
+  MailThread,
   MessageConnection,
   MessageRecord,
   MessageThread,
@@ -43,6 +49,11 @@ export type FacturaIaBackup = {
     threads: MessageThread[];
     records: MessageRecord[];
   };
+  mail: {
+    threads: MailThread[];
+    messages: MailMessage[];
+    syncRuns: MailSyncRun[];
+  };
 };
 
 export type BackupSummary = {
@@ -51,6 +62,8 @@ export type BackupSummary = {
   messageConnections: number;
   messageThreads: number;
   messageRecords: number;
+  mailThreads: number;
+  mailMessages: number;
 };
 
 function getAppUrl() {
@@ -69,11 +82,21 @@ export async function getBackupSummary(userId: string): Promise<BackupSummary> {
       messageConnections: demoMessageConnections.length,
       messageThreads: demoMessageThreads.length,
       messageRecords: demoMessageRecords.length,
+      mailThreads: demoMailThreads.length,
+      mailMessages: demoMailMessages.length,
     };
   }
 
   const admin = createAdminSupabaseClient();
-  const [invoices, aiUsage, connections, threads, records] = await Promise.all([
+  const [
+    invoices,
+    aiUsage,
+    connections,
+    threads,
+    records,
+    mailThreads,
+    mailMessages,
+  ] = await Promise.all([
     admin.from("invoices").select("*", { count: "exact", head: true }).eq("user_id", userId),
     admin.from("ai_usage").select("*", { count: "exact", head: true }).eq("user_id", userId),
     admin
@@ -82,6 +105,8 @@ export async function getBackupSummary(userId: string): Promise<BackupSummary> {
       .eq("user_id", userId),
     admin.from("message_threads").select("*", { count: "exact", head: true }).eq("user_id", userId),
     admin.from("message_messages").select("*", { count: "exact", head: true }).eq("user_id", userId),
+    admin.from("mail_threads").select("*", { count: "exact", head: true }).eq("user_id", userId),
+    admin.from("mail_messages").select("*", { count: "exact", head: true }).eq("user_id", userId),
   ]);
 
   return {
@@ -90,6 +115,8 @@ export async function getBackupSummary(userId: string): Promise<BackupSummary> {
     messageConnections: connections.count ?? 0,
     messageThreads: threads.count ?? 0,
     messageRecords: records.count ?? 0,
+    mailThreads: mailThreads.count ?? 0,
+    mailMessages: mailMessages.count ?? 0,
   };
 }
 
@@ -118,11 +145,26 @@ export async function exportBackupForUser(
         threads: demoMessageThreads,
         records: demoMessageRecords,
       },
+      mail: {
+        threads: demoMailThreads,
+        messages: demoMailMessages,
+        syncRuns: demoMailSyncRuns,
+      },
     };
   }
 
   const admin = createAdminSupabaseClient();
-  const [profile, invoices, aiUsage, connections, threads, records] = await Promise.all([
+  const [
+    profile,
+    invoices,
+    aiUsage,
+    connections,
+    threads,
+    records,
+    mailThreads,
+    mailMessages,
+    mailSyncRuns,
+  ] = await Promise.all([
     admin.from("profiles").select("*").eq("id", userId).maybeSingle(),
     admin.from("invoices").select("*").eq("user_id", userId).order("issue_date", { ascending: true }),
     admin.from("ai_usage").select("*").eq("user_id", userId).order("date", { ascending: true }),
@@ -141,13 +183,25 @@ export async function exportBackupForUser(
       .select("*")
       .eq("user_id", userId)
       .order("received_at", { ascending: true }),
+    admin.from("mail_threads").select("*").eq("user_id", userId).order("last_message_at", { ascending: false }),
+    admin.from("mail_messages").select("*").eq("user_id", userId).order("received_at", { ascending: true }),
+    admin.from("mail_sync_runs").select("*").eq("user_id", userId).order("created_at", { ascending: true }),
   ]);
 
   if (profile.error) {
     throw new Error("No se ha podido cargar el perfil para la copia de seguridad.");
   }
 
-  if (invoices.error || aiUsage.error || connections.error || threads.error || records.error) {
+  if (
+    invoices.error ||
+    aiUsage.error ||
+    connections.error ||
+    threads.error ||
+    records.error ||
+    mailThreads.error ||
+    mailMessages.error ||
+    mailSyncRuns.error
+  ) {
     throw new Error("No se han podido reunir todos los datos para la copia de seguridad.");
   }
 
@@ -164,6 +218,11 @@ export async function exportBackupForUser(
       connections: (connections.data as MessageConnection[] | null) ?? [],
       threads: (threads.data as MessageThread[] | null) ?? [],
       records: (records.data as MessageRecord[] | null) ?? [],
+    },
+    mail: {
+      threads: (mailThreads.data as MailThread[] | null) ?? [],
+      messages: (mailMessages.data as MailMessage[] | null) ?? [],
+      syncRuns: (mailSyncRuns.data as MailSyncRun[] | null) ?? [],
     },
   };
 }
@@ -192,6 +251,9 @@ export async function restoreBackupForUser(
   }
 
   const cleanupSteps = [
+    admin.from("mail_messages").delete().eq("user_id", userId),
+    admin.from("mail_threads").delete().eq("user_id", userId),
+    admin.from("mail_sync_runs").delete().eq("user_id", userId),
     admin.from("message_messages").delete().eq("user_id", userId),
     admin.from("message_threads").delete().eq("user_id", userId),
     admin.from("message_connections").delete().eq("user_id", userId),
@@ -283,6 +345,45 @@ export async function restoreBackupForUser(
     }
   }
 
+  if (backup.mail.threads.length > 0) {
+    const threadsInsert = await admin.from("mail_threads").insert(
+      backup.mail.threads.map((row) => ({
+        ...row,
+        user_id: userId,
+      })),
+    );
+
+    if (threadsInsert.error) {
+      throw new Error("No se han podido restaurar los hilos de correo.");
+    }
+  }
+
+  if (backup.mail.messages.length > 0) {
+    const messagesInsert = await admin.from("mail_messages").insert(
+      backup.mail.messages.map((row) => ({
+        ...row,
+        user_id: userId,
+      })),
+    );
+
+    if (messagesInsert.error) {
+      throw new Error("No se han podido restaurar los mensajes de correo.");
+    }
+  }
+
+  if (backup.mail.syncRuns.length > 0) {
+    const runsInsert = await admin.from("mail_sync_runs").insert(
+      backup.mail.syncRuns.map((row) => ({
+        ...row,
+        user_id: userId,
+      })),
+    );
+
+    if (runsInsert.error) {
+      throw new Error("No se ha podido restaurar el historial IMAP.");
+    }
+  }
+
   if (backup.invoices.length > 0) {
     const invoicesInsert = await admin.from("invoices").insert(
       backup.invoices.map((row) => ({
@@ -308,5 +409,7 @@ export async function restoreBackupForUser(
     messageConnections: backup.messages.connections.length,
     messageThreads: backup.messages.threads.length,
     messageRecords: backup.messages.records.length,
+    mailThreads: backup.mail.threads.length,
+    mailMessages: backup.mail.messages.length,
   };
 }

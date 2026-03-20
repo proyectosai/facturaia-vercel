@@ -50,6 +50,16 @@ SMTP_USERNAME=
 SMTP_PASSWORD=
 SMTP_FROM_EMAIL=
 
+INBOUND_MAIL_PROVIDER=imap
+IMAP_HOST=
+IMAP_PORT=993
+IMAP_SECURE=true
+IMAP_USERNAME=
+IMAP_PASSWORD=
+IMAP_MAILBOX=INBOX
+IMAP_SYNC_UNSEEN_ONLY=true
+IMAP_SYNC_MAX_MESSAGES=25
+
 RESEND_API_KEY=
 RESEND_FROM_EMAIL=
 
@@ -78,6 +88,7 @@ Ejecuta las migraciones en este orden:
 4. `supabase/migrations/202603192345_remove_billing_for_self_hosted.sql`
 5. `supabase/migrations/202603200915_add_invoice_sequence_sync_function.sql`
 6. `supabase/migrations/202603201030_add_remote_backup_runs.sql`
+7. `supabase/migrations/202603201200_add_inbound_mail_module.sql`
 
 Estas migraciones crean:
 
@@ -90,6 +101,7 @@ Estas migraciones crean:
 - limpieza de tablas y columnas de billing heredadas
 - resincronización segura de numeración tras restaurar backups
 - historial de ejecuciones de backups remotos
+- bandeja interna de correo entrante por IMAP
 
 ## 4. Configurar correo saliente
 
@@ -209,7 +221,35 @@ Guía completa:
 
 - `docs/modulos/CORREO_SALIENTE.md`
 
-## 11. Backups remotos por WebDAV / Nextcloud
+## 11. Correo entrante por IMAP
+
+Variables mínimas:
+
+```env
+INBOUND_MAIL_PROVIDER=imap
+IMAP_HOST=
+IMAP_PORT=993
+IMAP_SECURE=true
+IMAP_USERNAME=
+IMAP_PASSWORD=
+IMAP_MAILBOX=INBOX
+IMAP_SYNC_UNSEEN_ONLY=true
+IMAP_SYNC_MAX_MESSAGES=25
+```
+
+Instalación mínima:
+
+1. añade las variables IMAP
+2. reinicia FacturaIA
+3. abre `/mail`
+4. revisa el bloque `Correo entrante`
+5. pulsa `Sincronizar inbox ahora`
+
+Guía completa:
+
+- `docs/modulos/CORREO_ENTRANTE.md`
+
+## 12. Backups remotos por WebDAV / Nextcloud
 
 Si quieres una copia fuera del equipo o del VPS principal, activa el módulo remoto.
 

@@ -7,7 +7,7 @@ Documentos actuales:
 - `MENSAJERIA_WHATSAPP_TELEGRAM.md`
 - `BACKUPS_REMOTOS.md` (WebDAV / Nextcloud ya operativo)
 - `CORREO_SALIENTE.md`
-- `CORREO_ENTRANTE.md`
+- `CORREO_ENTRANTE.md` (primera entrega IMAP ya operativa)
 
 Documento general:
 
