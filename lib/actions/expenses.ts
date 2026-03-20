@@ -5,8 +5,14 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { requireUser } from "@/lib/auth";
+import { rethrowIfRedirectError } from "@/lib/actions/redirect-error";
 import { buildExpenseDraftFromInput, getExpenseByIdForUser, getExpenseStoragePath } from "@/lib/expenses";
-import { isDemoMode } from "@/lib/demo";
+import { isDemoMode, isLocalFileMode } from "@/lib/demo";
+import {
+  createLocalExpenseRecord,
+  fileToDataUrl,
+  toggleLocalExpenseReview,
+} from "@/lib/local-core";
 import { assertAllowedUpload, uploadRules } from "@/lib/security";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
@@ -49,6 +55,41 @@ export async function createExpenseAction(formData: FormData) {
     }
 
     assertAllowedUpload(file, uploadRules.expenseSource);
+    const { extraction, draft } = await buildExpenseDraftFromInput({
+      file,
+      expenseKind: payload.expenseKind,
+      manualText: payload.manualText,
+    });
+
+    if (isLocalFileMode()) {
+      const expense = await createLocalExpenseRecord({
+        userId: user.id,
+        expenseKind: payload.expenseKind,
+        reviewStatus: "draft",
+        vendorName: draft.vendorName,
+        vendorNif: draft.vendorNif,
+        expenseDate: draft.expenseDate,
+        currency: "EUR",
+        baseAmount: draft.baseAmount,
+        vatAmount: draft.vatAmount,
+        totalAmount: draft.totalAmount,
+        notes: payload.notes?.trim() || draft.notes || null,
+        sourceFileName: file.name,
+        sourceFilePath: await fileToDataUrl(file),
+        sourceFileMimeType: file.type || "application/octet-stream",
+        extractionMethod: extraction.method,
+        rawText: extraction.rawText || null,
+        extractedPayload: {
+          confidence: draft.confidence ?? null,
+          parser: draft.source,
+        },
+      });
+
+      revalidatePath("/gastos");
+      revalidatePath("/backups");
+      revalidatePath("/modules");
+      redirect(`/gastos?created=${expense.id}`);
+    }
 
     const supabase = await createServerSupabaseClient();
     const storagePath = getExpenseStoragePath(user.id, file.name || "gasto.pdf");
@@ -62,13 +103,6 @@ export async function createExpenseAction(formData: FormData) {
     if (uploadError) {
       throw new Error("No se ha podido subir el justificante del gasto.");
     }
-
-    const { extraction, draft } = await buildExpenseDraftFromInput({
-      file,
-      expenseKind: payload.expenseKind,
-      manualText: payload.manualText,
-    });
-
     const { data, error } = await supabase
       .from("expenses")
       .insert({
@@ -106,6 +140,7 @@ export async function createExpenseAction(formData: FormData) {
 
     redirect(`/gastos?created=${data.id}`);
   } catch (error) {
+    rethrowIfRedirectError(error);
     redirect(`/gastos?error=${encodeURIComponent(getFirstErrorMessage(error))}`);
   }
 }
@@ -131,6 +166,18 @@ export async function markExpenseReviewedAction(formData: FormData) {
       throw new Error("No se ha podido cargar el gasto.");
     }
 
+    if (isLocalFileMode()) {
+      const updatedExpense = await toggleLocalExpenseReview(user.id, expenseId);
+
+      if (!updatedExpense) {
+        throw new Error("No se ha podido actualizar el estado del gasto.");
+      }
+
+      revalidatePath("/gastos");
+      revalidatePath("/backups");
+      redirect("/gastos?updated=1");
+    }
+
     const supabase = await createServerSupabaseClient();
     const { error } = await supabase
       .from("expenses")
@@ -147,6 +194,7 @@ export async function markExpenseReviewedAction(formData: FormData) {
     revalidatePath("/gastos");
     redirect("/gastos?updated=1");
   } catch (error) {
+    rethrowIfRedirectError(error);
     redirect(`/gastos?error=${encodeURIComponent(getFirstErrorMessage(error))}`);
   }
 }

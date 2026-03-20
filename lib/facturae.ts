@@ -1,6 +1,7 @@
 import "server-only";
 
-import { demoInvoices, getDemoInvoiceById, isDemoMode } from "@/lib/demo";
+import { demoInvoices, getDemoInvoiceById, isDemoMode, isLocalFileMode } from "@/lib/demo";
+import { getLocalInvoiceById, listLocalInvoicesForUser } from "@/lib/local-core";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { InvoiceLineItemStored, InvoiceRecord, InvoiceVatBreakdown } from "@/lib/types";
 import {
@@ -553,6 +554,10 @@ export async function getFacturaeInvoicesForUser(userId: string) {
     return [...demoInvoices].sort((left, right) => right.issue_date.localeCompare(left.issue_date));
   }
 
+  if (isLocalFileMode()) {
+    return listLocalInvoicesForUser(userId);
+  }
+
   const supabase = await createServerSupabaseClient();
   const { data, error } = await supabase
     .from("invoices")
@@ -570,6 +575,10 @@ export async function getFacturaeInvoicesForUser(userId: string) {
 export async function getFacturaeInvoiceByIdForUser(userId: string, invoiceId: string) {
   if (isDemoMode()) {
     return getDemoInvoiceById(invoiceId);
+  }
+
+  if (isLocalFileMode()) {
+    return getLocalInvoiceById(userId, invoiceId);
   }
 
   const supabase = await createServerSupabaseClient();

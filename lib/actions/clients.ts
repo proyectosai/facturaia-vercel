@@ -5,7 +5,9 @@ import { redirect } from "next/navigation";
 import { ZodError, z } from "zod";
 
 import { requireUser } from "@/lib/auth";
-import { isDemoMode } from "@/lib/demo";
+import { rethrowIfRedirectError } from "@/lib/actions/redirect-error";
+import { isDemoMode, isLocalFileMode } from "@/lib/demo";
+import { saveLocalClientRecord } from "@/lib/local-core";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 const clientSchema = z.object({
@@ -51,7 +53,6 @@ export async function saveClientAction(formData: FormData) {
     }
 
     const user = await requireUser();
-    const supabase = await createServerSupabaseClient();
     const payload = clientSchema.parse({
       clientId: String(formData.get("clientId") ?? "").trim() || undefined,
       relationKind: String(formData.get("relationKind") ?? "client"),
@@ -75,6 +76,33 @@ export async function saveClientAction(formData: FormData) {
           .map((segment) => segment.trim())
           .filter(Boolean)
       : [];
+
+    if (isLocalFileMode()) {
+      const client = await saveLocalClientRecord({
+        userId: user.id,
+        clientId: payload.clientId,
+        relationKind: payload.relationKind,
+        status: payload.status,
+        priority: payload.priority,
+        displayName: payload.displayName,
+        firstName: payload.firstName?.trim() || null,
+        lastName: payload.lastName?.trim() || null,
+        companyName: payload.companyName?.trim() || null,
+        email: payload.email || null,
+        phone: payload.phone?.trim() || null,
+        nif: payload.nif?.trim() || null,
+        address: payload.address?.trim() || null,
+        notes: payload.notes?.trim() || null,
+        tags,
+      });
+
+      revalidatePath("/clientes");
+      revalidatePath("/modules");
+      revalidatePath("/backups");
+      redirect(`/clientes?client=${client.id}&${payload.clientId ? "updated=1" : "created=1"}`);
+    }
+
+    const supabase = await createServerSupabaseClient();
 
     if (payload.clientId) {
       const { error } = await supabase
@@ -137,6 +165,7 @@ export async function saveClientAction(formData: FormData) {
     revalidatePath("/backups");
     redirect(`/clientes?client=${data.id}&created=1`);
   } catch (error) {
+    rethrowIfRedirectError(error);
     redirect(`/clientes?error=${encodeURIComponent(getActionError(error))}`);
   }
 }

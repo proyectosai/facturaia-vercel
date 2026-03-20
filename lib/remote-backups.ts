@@ -2,7 +2,7 @@ import "server-only";
 
 import { z } from "zod";
 
-import { isDemoMode } from "@/lib/demo";
+import { isDemoMode, isLocalFileMode } from "@/lib/demo";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import type { RemoteBackupRun } from "@/lib/types";
 
@@ -152,7 +152,7 @@ export async function getRemoteBackupRuns(
   userId: string,
   limit = 5,
 ): Promise<RemoteBackupRun[]> {
-  if (isDemoMode()) {
+  if (isDemoMode() || isLocalFileMode()) {
     return [];
   }
 
@@ -189,7 +189,7 @@ export async function logRemoteBackupRun(
   userId: string,
   payload: Omit<RemoteBackupRun, "id" | "user_id" | "created_at">,
 ) {
-  if (isDemoMode()) {
+  if (isDemoMode() || isLocalFileMode()) {
     return null;
   }
 

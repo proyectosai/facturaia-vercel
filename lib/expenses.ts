@@ -3,8 +3,9 @@ import "server-only";
 import path from "node:path";
 
 import { extractExpenseDataFromText } from "@/lib/ai";
-import { demoExpenses, getDemoExpenseById, isDemoMode } from "@/lib/demo";
+import { demoExpenses, getDemoExpenseById, isDemoMode, isLocalFileMode } from "@/lib/demo";
 import { hasLocalAiEnv } from "@/lib/env";
+import { getLocalExpenseById, listLocalExpensesForUser } from "@/lib/local-core";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type {
   ExpenseExtractionMethod,
@@ -308,6 +309,25 @@ export async function getExpensesForUser(
       });
   }
 
+  if (isLocalFileMode()) {
+    return (await listLocalExpensesForUser(userId))
+      .map(normalizeExpense)
+      .filter((expense) => (reviewStatus === "all" ? true : expense.review_status === reviewStatus))
+      .filter((expense) => (expenseKind === "all" ? true : expense.expense_kind === expenseKind))
+      .filter((expense) => {
+        if (!query) {
+          return true;
+        }
+
+        return [
+          expense.vendor_name,
+          expense.vendor_nif,
+          expense.source_file_name,
+          expense.notes,
+        ].some((value) => String(value ?? "").toLowerCase().includes(query));
+      });
+  }
+
   const supabase = await createServerSupabaseClient();
   let dbQuery = supabase
     .from("expenses")
@@ -343,6 +363,11 @@ export async function getExpenseByIdForUser(userId: string, expenseId: string) {
   if (isDemoMode()) {
     const expense = getDemoExpenseById(expenseId);
     return expense && expense.user_id === userId ? normalizeExpense(expense) : null;
+  }
+
+  if (isLocalFileMode()) {
+    const expense = await getLocalExpenseById(userId, expenseId);
+    return expense ? normalizeExpense(expense) : null;
   }
 
   const supabase = await createServerSupabaseClient();

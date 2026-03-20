@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z, ZodError } from "zod";
 
 import { requireFeatureAccess } from "@/lib/billing";
+import { rethrowIfRedirectError } from "@/lib/actions/redirect-error";
 import { generateBusinessDocument } from "@/lib/ai";
 import { requireUser } from "@/lib/auth";
 import {
@@ -311,6 +312,7 @@ export async function createInvoiceAction(formData: FormData) {
 
     redirect(`/invoices?created=${invoice.id}`);
   } catch (error) {
+    rethrowIfRedirectError(error);
     redirect(`/new-invoice?error=${encodeURIComponent(getFirstErrorMessage(error))}`);
   }
 }
@@ -404,6 +406,7 @@ export async function updateInvoicePaymentStateAction(formData: FormData) {
     revalidatePath("/banca");
     redirect("/cobros?updated=1");
   } catch (error) {
+    rethrowIfRedirectError(error);
     redirect(`/cobros?error=${encodeURIComponent(getFirstErrorMessage(error))}`);
   }
 }
@@ -478,6 +481,7 @@ export async function sendInvoiceEmailAction(formData: FormData) {
     revalidatePath("/invoices");
     redirect(`/invoices?emailed=${invoiceId}`);
   } catch (error) {
+    rethrowIfRedirectError(error);
     redirect(`/invoices?error=${encodeURIComponent(getFirstErrorMessage(error))}`);
   }
 }
@@ -553,6 +557,7 @@ export async function sendInvoiceReminderAction(formData: FormData) {
     revalidatePath("/clientes");
     redirect(`/cobros?reminded=${payload.invoiceId}`);
   } catch (error) {
+    rethrowIfRedirectError(error);
     redirect(`/cobros?error=${encodeURIComponent(getFirstErrorMessage(error))}`);
   }
 }
@@ -690,6 +695,7 @@ export async function sendInvoiceBatchReminderAction(formData: FormData) {
 
     redirect(`/cobros?batchMessage=${encodeURIComponent(message)}`);
   } catch (error) {
+    rethrowIfRedirectError(error);
     redirect(`/cobros?error=${encodeURIComponent(getFirstErrorMessage(error))}`);
   }
 }

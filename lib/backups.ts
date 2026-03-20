@@ -18,7 +18,12 @@ import {
   demoMessageThreads,
   demoProfile,
   isDemoMode,
+  isLocalFileMode,
 } from "@/lib/demo";
+import {
+  getLocalCoreSnapshot,
+  replaceLocalUserData,
+} from "@/lib/local-core";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import type {
   BankMovementRecord,
@@ -122,6 +127,30 @@ export async function getBackupSummary(userId: string): Promise<BackupSummary> {
     };
   }
 
+  if (isLocalFileMode()) {
+    const snapshot = await getLocalCoreSnapshot();
+    return {
+      clients: snapshot.clients.filter((client) => client.user_id === userId).length,
+      feedbackEntries: 0,
+      invoices: snapshot.invoices.filter((invoice) => invoice.user_id === userId).length,
+      invoiceReminders: snapshot.invoiceReminders.filter((reminder) => reminder.user_id === userId)
+        .length,
+      commercialDocuments: snapshot.commercialDocuments.filter((document) => document.user_id === userId)
+        .length,
+      documentSignatureRequests: snapshot.documentSignatureRequests.filter(
+        (request) => request.user_id === userId,
+      ).length,
+      expenses: snapshot.expenses.filter((expense) => expense.user_id === userId).length,
+      bankMovements: 0,
+      aiUsageRows: snapshot.aiUsage.filter((entry) => entry.user_id === userId).length,
+      messageConnections: 0,
+      messageThreads: 0,
+      messageRecords: 0,
+      mailThreads: 0,
+      mailMessages: 0,
+    };
+  }
+
   const admin = createAdminSupabaseClient();
   const [
     clients,
@@ -221,6 +250,55 @@ export async function exportBackupForUser(
         threads: demoMailThreads,
         messages: demoMailMessages,
         syncRuns: demoMailSyncRuns,
+      },
+    };
+  }
+
+  if (isLocalFileMode()) {
+    const snapshot = await getLocalCoreSnapshot();
+    const profile =
+      snapshot.profiles.find((candidate) => candidate.id === userId) ?? null;
+    const invoices = snapshot.invoices
+      .filter((invoice) => invoice.user_id === userId)
+      .sort((left, right) => left.issue_date.localeCompare(right.issue_date));
+    const invoiceReminders = snapshot.invoiceReminders
+      .filter((reminder) => reminder.user_id === userId)
+      .sort((left, right) => right.sent_at.localeCompare(left.sent_at));
+    const aiUsage = snapshot.aiUsage
+      .filter((entry) => entry.user_id === userId)
+      .map((entry) => ({
+        user_id: entry.user_id,
+        date: entry.date,
+        calls_count: entry.calls_count,
+      }));
+
+    return {
+      schemaVersion: 1,
+      exportedAt: new Date().toISOString(),
+      source: "live",
+      appUrl: getAppUrl(),
+      user: { id: userId, email },
+      profile,
+      clients: snapshot.clients.filter((client) => client.user_id === userId),
+      feedbackEntries: [],
+      invoices,
+      invoiceReminders,
+      commercialDocuments: snapshot.commercialDocuments.filter((document) => document.user_id === userId),
+      documentSignatureRequests: snapshot.documentSignatureRequests.filter(
+        (request) => request.user_id === userId,
+      ),
+      expenses: snapshot.expenses.filter((expense) => expense.user_id === userId),
+      bankMovements: [],
+      aiUsage,
+      messages: {
+        connections: [],
+        threads: [],
+        records: [],
+      },
+      mail: {
+        threads: [],
+        messages: [],
+        syncRuns: [],
       },
     };
   }
@@ -356,6 +434,51 @@ export async function restoreBackupForUser(
 ) {
   if (isDemoMode()) {
     throw new Error("La restauración está desactivada en modo demo.");
+  }
+
+  if (isLocalFileMode()) {
+    await replaceLocalUserData({
+      userId,
+      email,
+      profile: backup.profile
+        ? {
+            ...backup.profile,
+            id: userId,
+            email,
+          }
+        : null,
+      clients: backup.clients.map((client) => ({
+        ...client,
+        user_id: userId,
+      })),
+      invoices: backup.invoices.map((invoice) => ({
+        ...invoice,
+        user_id: userId,
+      })),
+      invoiceReminders: backup.invoiceReminders.map((reminder) => ({
+        ...reminder,
+        user_id: userId,
+      })),
+      commercialDocuments: backup.commercialDocuments.map((document) => ({
+        ...document,
+        user_id: userId,
+      })),
+      documentSignatureRequests: backup.documentSignatureRequests.map((request) => ({
+        ...request,
+        user_id: userId,
+      })),
+      expenses: backup.expenses.map((expense) => ({
+        ...expense,
+        user_id: userId,
+      })),
+      aiUsage: backup.aiUsage.map((entry) => ({
+        user_id: userId,
+        date: entry.date,
+        calls_count: entry.calls_count,
+      })),
+    });
+
+    return;
   }
 
   const admin = createAdminSupabaseClient();

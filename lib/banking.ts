@@ -9,7 +9,9 @@ import {
   demoInvoices,
   getDemoBankMovementById,
   isDemoMode,
+  isLocalFileMode,
 } from "@/lib/demo";
+import { listLocalInvoicesForUser } from "@/lib/local-core";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type {
   BankMovementDirection,
@@ -511,6 +513,13 @@ const getBankMatchingCollections = cache(
       };
     }
 
+    if (isLocalFileMode()) {
+      return {
+        invoices: await listLocalInvoicesForUser(userId),
+        expenses: [],
+      };
+    }
+
     const supabase = await createServerSupabaseClient();
     const [invoices, expenses] = await Promise.all([
       safeSelectArray<InvoiceRecord>(
@@ -556,6 +565,10 @@ export async function getBankMovementsForUser(
     );
   }
 
+  if (isLocalFileMode()) {
+    return applyBankFilters([], filters);
+  }
+
   const supabase = await createServerSupabaseClient();
   const movements = await safeSelectArray<BankMovementRecord>(
     supabase
@@ -573,6 +586,10 @@ export async function getBankMovementsForUser(
 export async function getBankMovementByIdForUser(userId: string, movementId: string) {
   if (isDemoMode()) {
     return getDemoBankMovementById(movementId);
+  }
+
+  if (isLocalFileMode()) {
+    return null;
   }
 
   const supabase = await createServerSupabaseClient();

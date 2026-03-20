@@ -2,6 +2,7 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 import { cache } from "react";
+import { headers } from "next/headers";
 
 import {
   demoCommercialDocuments,
@@ -9,7 +10,15 @@ import {
   getDemoCommercialDocumentById,
   getDemoDocumentSignatureRequestByToken,
   isDemoMode,
+  isLocalFileMode,
 } from "@/lib/demo";
+import {
+  expireLocalDocumentSignatureRequest,
+  getLocalPublicSignatureRequestByToken,
+  listLocalCommercialDocumentsForUser,
+  listLocalDocumentSignatureRequestsForUser,
+  markLocalSignatureRequestViewed,
+} from "@/lib/local-core";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type {
@@ -83,6 +92,32 @@ export function buildSignatureRequestUrl(token: string) {
   return `${getBaseUrl()}/firma/${token}`;
 }
 
+async function getRuntimeBaseUrl() {
+  const fallback = getBaseUrl().replace(/\/+$/, "");
+
+  try {
+    const headerStore = await headers();
+    const host =
+      headerStore.get("x-forwarded-host") ??
+      headerStore.get("host") ??
+      null;
+
+    if (!host) {
+      return fallback;
+    }
+
+    const protocol =
+      headerStore.get("x-forwarded-proto") ??
+      (host.startsWith("localhost") || host.startsWith("127.0.0.1")
+        ? "http"
+        : "https");
+
+    return `${protocol}://${host}`;
+  } catch {
+    return fallback;
+  }
+}
+
 export function isSignatureExpired(request: Pick<DocumentSignatureRequestRecord, "status" | "expires_at">) {
   return (
     request.status === "pending" &&
@@ -129,6 +164,19 @@ async function syncExpiredRequest(
     return request;
   }
 
+  if (isLocalFileMode()) {
+    if (isSignatureExpired(request)) {
+      return (
+        (await expireLocalDocumentSignatureRequest(request.id)) ?? {
+          ...request,
+          status: "expired",
+        }
+      );
+    }
+
+    return request;
+  }
+
   if (!isSignatureExpired(request)) {
     return request;
   }
@@ -168,6 +216,15 @@ export async function getDocumentSignatureRequestsForUser(
     );
   }
 
+  if (isLocalFileMode()) {
+    return Promise.all(
+      (await listLocalDocumentSignatureRequestsForUser(userId))
+        .filter((request) => (status === "all" ? true : request.status === status))
+        .filter((request) => (type === "all" ? true : request.document_type === type))
+        .map((request) => syncExpiredRequest(request)),
+    );
+  }
+
   const supabase = await createServerSupabaseClient();
   let query = supabase
     .from("document_signature_requests")
@@ -202,6 +259,15 @@ const getDocumentMapForUser = cache(async (userId: string) => {
     );
   }
 
+  if (isLocalFileMode()) {
+    return new Map(
+      (await listLocalCommercialDocumentsForUser(userId)).map((document) => [
+        document.id,
+        normaliseCommercialDocument(document),
+      ]),
+    );
+  }
+
   const supabase = await createServerSupabaseClient();
   const { data, error } = await supabase
     .from("commercial_documents")
@@ -228,11 +294,12 @@ export async function getSignatureListItemsForUser(
     getDocumentSignatureRequestsForUser(userId, filters),
     getDocumentMapForUser(userId),
   ]);
+  const baseUrl = await getRuntimeBaseUrl();
 
   return requests.map((request) => ({
     ...request,
     document: documentMap.get(request.document_id) ?? null,
-    publicUrl: buildSignatureRequestUrl(request.public_token),
+    publicUrl: `${baseUrl}/firma/${request.public_token}`,
   }));
 }
 
@@ -263,6 +330,8 @@ export async function getSignatureRequestForUser(
 }
 
 export async function getPublicSignatureRequestByToken(token: string) {
+  const baseUrl = await getRuntimeBaseUrl();
+
   if (isDemoMode()) {
     const request = getDemoDocumentSignatureRequestByToken(token);
 
@@ -276,7 +345,31 @@ export async function getPublicSignatureRequestByToken(token: string) {
     return {
       request: synced,
       document: document ? normaliseCommercialDocument(document) : null,
-      publicUrl: buildSignatureRequestUrl(synced.public_token),
+      publicUrl: `${baseUrl}/firma/${synced.public_token}`,
+    };
+  }
+
+  if (isLocalFileMode()) {
+    const request = await getLocalPublicSignatureRequestByToken(token);
+
+    if (!request) {
+      return null;
+    }
+
+    const synced = await syncExpiredRequest(request);
+    const requestWithView =
+      synced.status === "pending" && !synced.viewed_at
+        ? ((await markLocalSignatureRequestViewed(token)) ?? {
+            ...synced,
+            viewed_at: new Date().toISOString(),
+          })
+        : synced;
+    const documentMap = await getDocumentMapForUser(requestWithView.user_id);
+
+    return {
+      request: requestWithView,
+      document: documentMap.get(requestWithView.document_id) ?? null,
+      publicUrl: `${baseUrl}/firma/${requestWithView.public_token}`,
     };
   }
 
@@ -332,7 +425,7 @@ export async function getPublicSignatureRequestByToken(token: string) {
     document: documentData
       ? normaliseCommercialDocument(documentData as CommercialDocumentRecord)
       : null,
-    publicUrl: buildSignatureRequestUrl(requestWithView.public_token),
+    publicUrl: `${baseUrl}/firma/${requestWithView.public_token}`,
   };
 }
 

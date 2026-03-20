@@ -5,7 +5,8 @@ import { redirect } from "next/navigation";
 import { z, ZodError } from "zod";
 
 import { requireUser } from "@/lib/auth";
-import { isDemoMode } from "@/lib/demo";
+import { rethrowIfRedirectError } from "@/lib/actions/redirect-error";
+import { isDemoMode, isLocalFileMode } from "@/lib/demo";
 import { syncInboundMailForUser } from "@/lib/inbound-mail";
 import { sendTransactionalEmail } from "@/lib/mail";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
@@ -66,6 +67,7 @@ export async function sendMailTestAction(formData: FormData) {
 
     redirect(`/mail?sent=${encodeURIComponent(payload.recipientEmail)}`);
   } catch (error) {
+    rethrowIfRedirectError(error);
     redirect(`/mail?error=${encodeURIComponent(getErrorMessage(error))}`);
   }
 }
@@ -78,6 +80,12 @@ export async function syncInboundMailAction() {
       );
     }
 
+    if (isLocalFileMode()) {
+      redirect(
+        "/mail?info=Modo%20local:%20la%20bandeja%20IMAP%20todav%C3%ADa%20no%20persiste%20mensajes%20importados.",
+      );
+    }
+
     const user = await requireUser();
     const result = await syncInboundMailForUser(user.id);
 
@@ -85,6 +93,7 @@ export async function syncInboundMailAction() {
       `/mail?synced=${result.importedCount}&info=${encodeURIComponent(result.detail)}`,
     );
   } catch (error) {
+    rethrowIfRedirectError(error);
     redirect(`/mail?error=${encodeURIComponent(getErrorMessage(error))}`);
   }
 }
@@ -93,7 +102,7 @@ export async function markMailThreadReadAction(formData: FormData) {
   const user = await requireUser();
   const threadId = String(formData.get("threadId") ?? "");
 
-  if (!threadId || isDemoMode()) {
+  if (!threadId || isDemoMode() || isLocalFileMode()) {
     revalidatePath("/mail");
     return;
   }

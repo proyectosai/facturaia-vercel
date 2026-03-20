@@ -10,11 +10,18 @@ import {
   demoMailThreads,
   demoMessageThreads,
   isDemoMode,
+  isLocalFileMode,
 } from "@/lib/demo";
 import {
   getInvoiceAmountOutstanding,
   getInvoiceCollectionState,
 } from "@/lib/collections";
+import {
+  listLocalClientsForUser,
+  listLocalCommercialDocumentsForUser,
+  listLocalExpensesForUser,
+  listLocalInvoicesForUser,
+} from "@/lib/local-core";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type {
   ClientPriority,
@@ -255,6 +262,16 @@ const getClientCollections = cache(async (userId: string): Promise<ClientCollect
     };
   }
 
+  if (isLocalFileMode()) {
+    return {
+      invoices: await listLocalInvoicesForUser(userId),
+      documents: await listLocalCommercialDocumentsForUser(userId),
+      messages: [],
+      mailThreads: [],
+      expenses: await listLocalExpensesForUser(userId),
+    };
+  }
+
   const supabase = await createServerSupabaseClient();
 
   const [invoices, documents, messages, mailThreads, expenses] = await Promise.all([
@@ -320,7 +337,9 @@ export async function getClientsForUser(
 ) {
   const clients = isDemoMode()
     ? demoClients
-    : await (async () => {
+    : isLocalFileMode()
+      ? await listLocalClientsForUser(userId)
+      : await (async () => {
         const supabase = await createServerSupabaseClient();
         const result = await supabase
           .from("clients")

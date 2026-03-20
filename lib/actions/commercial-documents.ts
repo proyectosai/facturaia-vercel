@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { ZodError, z } from "zod";
 
 import { requireUser } from "@/lib/auth";
+import { rethrowIfRedirectError } from "@/lib/actions/redirect-error";
 import { requireFeatureAccess } from "@/lib/billing";
 import {
   buildCommercialDocumentInsertPayload,
@@ -13,8 +14,17 @@ import {
   getCommercialDocumentByIdForUser,
   parseCommercialDocumentLines,
 } from "@/lib/commercial-documents";
-import { isDemoMode } from "@/lib/demo";
+import { isDemoMode, isLocalFileMode } from "@/lib/demo";
 import { calculateInvoice, getLogoStoragePath } from "@/lib/invoices";
+import {
+  createLocalCommercialDocumentRecord,
+  createLocalInvoiceRecord,
+  fileToDataUrl,
+  getLocalCommercialDocumentById,
+  linkLocalCommercialDocumentToInvoice,
+  saveLocalProfile,
+  updateLocalCommercialDocumentStatus,
+} from "@/lib/local-core";
 import { assertAllowedUpload, uploadRules } from "@/lib/security";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
@@ -36,7 +46,6 @@ async function persistIssuerProfile(
   payload: z.infer<typeof commercialDocumentFormSchema>,
   formData: FormData,
 ) {
-  const supabase = await createServerSupabaseClient();
   const existingLogoPath =
     String(formData.get("existingLogoPath") ?? "").trim() || null;
   const existingLogoUrl =
@@ -45,6 +54,27 @@ async function persistIssuerProfile(
 
   let issuerLogoPath = existingLogoPath;
   let issuerLogoUrl = existingLogoUrl;
+
+  if (isLocalFileMode()) {
+    if (logoFile instanceof File && logoFile.size > 0) {
+      assertAllowedUpload(logoFile, uploadRules.logo);
+      issuerLogoUrl = await fileToDataUrl(logoFile);
+      issuerLogoPath = null;
+    }
+
+    await saveLocalProfile({
+      userId,
+      email,
+      fullName: payload.issuerName,
+      nif: payload.issuerNif,
+      address: payload.issuerAddress,
+      logoUrl: issuerLogoUrl,
+    });
+
+    return { issuerLogoUrl };
+  }
+
+  const supabase = await createServerSupabaseClient();
 
   if (logoFile instanceof File && logoFile.size > 0) {
     assertAllowedUpload(logoFile, uploadRules.logo);
@@ -82,7 +112,7 @@ async function persistIssuerProfile(
     throw new Error("No se ha podido guardar el perfil del emisor.");
   }
 
-  return { supabase, issuerLogoUrl };
+  return { issuerLogoUrl };
 }
 
 export async function createCommercialDocumentAction(formData: FormData) {
@@ -111,7 +141,7 @@ export async function createCommercialDocumentAction(formData: FormData) {
     });
     const lines = parseCommercialDocumentLines(String(formData.get("lines") ?? "[]"));
     const { lineItems, totals } = calculateInvoice(lines, payload.irpfRate);
-    const { supabase, issuerLogoUrl } = await persistIssuerProfile(
+    const { issuerLogoUrl } = await persistIssuerProfile(
       user.id,
       user.email ?? "",
       payload,
@@ -129,6 +159,24 @@ export async function createCommercialDocumentAction(formData: FormData) {
       notes,
     });
 
+    if (isLocalFileMode()) {
+      const { user_id, ...documentInput } = insertPayload;
+      void user_id;
+      const document = await createLocalCommercialDocumentRecord({
+        userId: user.id,
+        input: documentInput,
+      });
+
+      revalidatePath("/dashboard");
+      revalidatePath("/presupuestos");
+      revalidatePath("/profile");
+      revalidatePath("/modules");
+      revalidatePath("/backups");
+
+      redirect(`/presupuestos?created=${document.id}`);
+    }
+
+    const supabase = await createServerSupabaseClient();
     const { data, error } = await supabase
       .from("commercial_documents")
       .insert(insertPayload)
@@ -146,6 +194,7 @@ export async function createCommercialDocumentAction(formData: FormData) {
 
     redirect(`/presupuestos?created=${data.id}`);
   } catch (error) {
+    rethrowIfRedirectError(error);
     redirect(`/presupuestos?error=${encodeURIComponent(getFirstErrorMessage(error))}`);
   }
 }
@@ -168,7 +217,9 @@ export async function updateCommercialDocumentStatusAction(formData: FormData) {
       throw new Error("Documento no encontrado.");
     }
 
-    const document = await getCommercialDocumentByIdForUser(user.id, documentId);
+    const document = isLocalFileMode()
+      ? await getLocalCommercialDocumentById(user.id, documentId)
+      : await getCommercialDocumentByIdForUser(user.id, documentId);
 
     if (!document) {
       throw new Error("No se ha podido cargar el documento.");
@@ -181,6 +232,19 @@ export async function updateCommercialDocumentStatusAction(formData: FormData) {
         !["delivered", "signed"].includes(status))
     ) {
       throw new Error("El estado no es válido para este tipo de documento.");
+    }
+
+    if (isLocalFileMode()) {
+      const updatedDocument = await updateLocalCommercialDocumentStatus(user.id, documentId, status);
+
+      if (!updatedDocument) {
+        throw new Error("No se ha podido actualizar el estado.");
+      }
+
+      revalidatePath("/presupuestos");
+      revalidatePath("/dashboard");
+      revalidatePath("/backups");
+      redirect("/presupuestos?updated=1");
     }
 
     const supabase = await createServerSupabaseClient();
@@ -199,6 +263,7 @@ export async function updateCommercialDocumentStatusAction(formData: FormData) {
 
     redirect("/presupuestos?updated=1");
   } catch (error) {
+    rethrowIfRedirectError(error);
     redirect(`/presupuestos?error=${encodeURIComponent(getFirstErrorMessage(error))}`);
   }
 }
@@ -219,7 +284,9 @@ export async function convertCommercialDocumentToInvoiceAction(formData: FormDat
       throw new Error("Documento no encontrado.");
     }
 
-    const document = await getCommercialDocumentByIdForUser(user.id, documentId);
+    const document = isLocalFileMode()
+      ? await getLocalCommercialDocumentById(user.id, documentId)
+      : await getCommercialDocumentByIdForUser(user.id, documentId);
 
     if (!document) {
       throw new Error("No se ha podido cargar el documento.");
@@ -229,8 +296,52 @@ export async function convertCommercialDocumentToInvoiceAction(formData: FormDat
       throw new Error("Este documento todavía no está listo para facturar.");
     }
 
-    const supabase = await createServerSupabaseClient();
     const issueDate = new Date().toISOString().slice(0, 10);
+
+    if (isLocalFileMode()) {
+      const invoice = await createLocalInvoiceRecord({
+        userId: user.id,
+        payload: {
+          issueDate,
+          dueDate: issueDate,
+          issuerName: document.issuer_name,
+          issuerNif: document.issuer_nif,
+          issuerAddress: document.issuer_address,
+          clientName: document.client_name,
+          clientNif: document.client_nif,
+          clientAddress: document.client_address,
+          clientEmail: document.client_email,
+        },
+        lineItems: document.line_items,
+        totals: {
+          subtotal: Number(document.subtotal),
+          vatTotal: Number(document.vat_total),
+          irpfRate: Number(document.irpf_rate),
+          irpfAmount: Number(document.irpf_amount),
+          grandTotal: Number(document.grand_total),
+          vatBreakdown: document.vat_breakdown,
+        },
+        issuerLogoUrl: document.issuer_logo_url,
+      });
+
+      const linked = await linkLocalCommercialDocumentToInvoice({
+        userId: user.id,
+        documentId,
+        invoiceId: invoice.id,
+      });
+
+      if (!linked) {
+        throw new Error("La factura se creó, pero no se pudo vincular el documento origen.");
+      }
+
+      revalidatePath("/presupuestos");
+      revalidatePath("/invoices");
+      revalidatePath("/dashboard");
+      revalidatePath("/backups");
+      redirect(`/invoices?created=${invoice.id}`);
+    }
+
+    const supabase = await createServerSupabaseClient();
 
     const { data: invoice, error: invoiceError } = await supabase
       .from("invoices")
@@ -279,6 +390,7 @@ export async function convertCommercialDocumentToInvoiceAction(formData: FormDat
 
     redirect(`/invoices?created=${invoice.id}`);
   } catch (error) {
+    rethrowIfRedirectError(error);
     redirect(`/presupuestos?error=${encodeURIComponent(getFirstErrorMessage(error))}`);
   }
 }

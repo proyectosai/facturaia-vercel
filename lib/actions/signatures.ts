@@ -6,8 +6,17 @@ import { redirect } from "next/navigation";
 import { ZodError, z } from "zod";
 
 import { requireUser } from "@/lib/auth";
+import { rethrowIfRedirectError } from "@/lib/actions/redirect-error";
 import { getCommercialDocumentByIdForUser } from "@/lib/commercial-documents";
-import { isDemoMode } from "@/lib/demo";
+import { isDemoMode, isLocalFileMode } from "@/lib/demo";
+import {
+  createLocalDocumentSignatureRequest,
+  getLocalCommercialDocumentById,
+  getLocalPublicSignatureRequestByToken,
+  respondToLocalDocumentSignatureRequest,
+  revokeLocalDocumentSignatureRequest,
+  updateLocalCommercialDocumentStatus,
+} from "@/lib/local-core";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import {
@@ -79,7 +88,9 @@ export async function createDocumentSignatureRequestAction(formData: FormData) {
       requestNote: String(formData.get("requestNote") ?? ""),
     });
 
-    const document = await getCommercialDocumentByIdForUser(user.id, payload.documentId);
+    const document = isLocalFileMode()
+      ? await getLocalCommercialDocumentById(user.id, payload.documentId)
+      : await getCommercialDocumentByIdForUser(user.id, payload.documentId);
 
     if (!document) {
       throw new Error("No se ha encontrado el documento para solicitar firma.");
@@ -94,6 +105,38 @@ export async function createDocumentSignatureRequestAction(formData: FormData) {
     }
 
     const note = payload.requestNote?.trim() ? payload.requestNote.trim() : null;
+
+    if (isLocalFileMode()) {
+      const insertPayload = buildSignatureRequestInsertPayload(document, note);
+      const request = await createLocalDocumentSignatureRequest({
+        userId: user.id,
+        documentId: document.id,
+        documentType: document.document_type,
+        requestKind: insertPayload.request_kind,
+        publicToken: insertPayload.public_token,
+        requestNote: insertPayload.request_note,
+        requestedAt: insertPayload.requested_at,
+        expiresAt: insertPayload.expires_at,
+        evidence: insertPayload.evidence,
+      });
+
+      if (document.document_type === "quote" && document.status === "draft") {
+        await updateLocalCommercialDocumentStatus(user.id, document.id, "sent");
+      }
+
+      if (document.document_type === "delivery_note" && document.status === "draft") {
+        await updateLocalCommercialDocumentStatus(user.id, document.id, "delivered");
+      }
+
+      revalidatePath("/firmas");
+      revalidatePath("/presupuestos");
+      revalidatePath("/modules");
+      revalidatePath("/dashboard");
+      revalidatePath("/backups");
+
+      redirect(`/firmas?created=${request.id}`);
+    }
+
     const supabase = await createServerSupabaseClient();
 
     const { error: revokeError } = await supabase
@@ -147,6 +190,7 @@ export async function createDocumentSignatureRequestAction(formData: FormData) {
 
     redirect(`/firmas?created=${data.id}`);
   } catch (error) {
+    rethrowIfRedirectError(error);
     redirect(`/firmas?error=${encodeURIComponent(getActionError(error))}`);
   }
 }
@@ -163,6 +207,20 @@ export async function revokeDocumentSignatureRequestAction(formData: FormData) {
     const payload = revokeRequestSchema.parse({
       requestId: String(formData.get("requestId") ?? ""),
     });
+
+    if (isLocalFileMode()) {
+      const revoked = await revokeLocalDocumentSignatureRequest(user.id, payload.requestId);
+
+      if (!revoked) {
+        throw new Error("No se ha podido revocar la solicitud.");
+      }
+
+      revalidatePath("/firmas");
+      revalidatePath("/presupuestos");
+      revalidatePath("/backups");
+      redirect("/firmas?updated=1");
+    }
+
     const supabase = await createServerSupabaseClient();
 
     const { error } = await supabase
@@ -183,6 +241,7 @@ export async function revokeDocumentSignatureRequestAction(formData: FormData) {
     revalidatePath("/presupuestos");
     redirect("/firmas?updated=1");
   } catch (error) {
+    rethrowIfRedirectError(error);
     redirect(`/firmas?error=${encodeURIComponent(getActionError(error))}`);
   }
 }
@@ -202,6 +261,64 @@ export async function respondToDocumentSignatureAction(formData: FormData) {
     });
 
     if (isDemoMode()) {
+      redirect(
+        `/firma/${payload.token}?${
+          payload.decision === "accept" ? "accepted=1" : "rejected=1"
+        }`,
+      );
+    }
+
+    if (isLocalFileMode()) {
+      const request = await getLocalPublicSignatureRequestByToken(payload.token);
+
+      if (!request) {
+        throw new Error("La solicitud ya no está disponible.");
+      }
+
+      if (request.status !== "pending") {
+        throw new Error("Esta solicitud ya ha sido cerrada.");
+      }
+
+      if (request.expires_at && new Date(request.expires_at).getTime() < Date.now()) {
+        throw new Error("La solicitud ha caducado y ya no admite respuesta.");
+      }
+
+      const document = await getLocalCommercialDocumentById(request.user_id, request.document_id);
+
+      if (!document) {
+        throw new Error("No se ha podido validar el documento asociado a la solicitud.");
+      }
+
+      if (hasSignatureSnapshotMismatch(request, document)) {
+        throw new Error(
+          "El documento ha cambiado desde que se generó este enlace. Pide al emisor que cree una nueva solicitud de firma.",
+        );
+      }
+
+      const requestHeaders = await headers();
+      const forwardedFor = requestHeaders.get("x-forwarded-for");
+      const userAgent = requestHeaders.get("user-agent");
+      const updated = await respondToLocalDocumentSignatureRequest({
+        token: payload.token,
+        status: payload.decision === "accept" ? "signed" : "rejected",
+        signerName: payload.signerName,
+        signerEmail: payload.signerEmail || null,
+        signerNif: payload.signerNif || null,
+        signerMessage: payload.signerMessage || null,
+        acceptedTerms: payload.acceptTerms,
+        forwardedFor,
+        userAgent,
+      });
+
+      if (!updated) {
+        throw new Error("No se ha podido registrar la respuesta.");
+      }
+
+      revalidatePath("/firmas");
+      revalidatePath("/presupuestos");
+      revalidatePath("/backups");
+      revalidatePath(`/firma/${payload.token}`);
+
       redirect(
         `/firma/${payload.token}?${
           payload.decision === "accept" ? "accepted=1" : "rejected=1"
@@ -316,6 +433,7 @@ export async function respondToDocumentSignatureAction(formData: FormData) {
       }`,
     );
   } catch (error) {
+    rethrowIfRedirectError(error);
     redirect(`/firma/${rawToken}?error=${encodeURIComponent(getActionError(error))}`);
   }
 }

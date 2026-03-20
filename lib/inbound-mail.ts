@@ -10,6 +10,7 @@ import {
   demoMailThreads,
   getDemoMailThreadById,
   isDemoMode,
+  isLocalFileMode,
 } from "@/lib/demo";
 import { getUrgencyMeta } from "@/lib/messages";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
@@ -291,6 +292,14 @@ export async function getMailThreadsForUser(
     });
   }
 
+  if (isLocalFileMode()) {
+    return applyMailFilters([], {
+      q: filters.q ?? "",
+      urgency: filters.urgency ?? "all",
+      sort: filters.sort ?? "recent",
+    });
+  }
+
   const admin = createAdminSupabaseClient();
   const { data, error } = await admin
     .from("mail_threads")
@@ -317,6 +326,10 @@ export async function getMailThreadForUser(userId: string, threadId: string) {
     return getDemoMailThreadById(threadId);
   }
 
+  if (isLocalFileMode()) {
+    return null;
+  }
+
   const admin = createAdminSupabaseClient();
   const { data, error } = await admin
     .from("mail_threads")
@@ -339,6 +352,10 @@ export async function getMailThreadForUser(userId: string, threadId: string) {
 export async function getMailMessagesForUser(userId: string, threadId: string) {
   if (isDemoMode()) {
     return demoMailMessages.filter((message) => message.thread_id === threadId);
+  }
+
+  if (isLocalFileMode()) {
+    return [];
   }
 
   const admin = createAdminSupabaseClient();
@@ -365,6 +382,10 @@ export async function getMailSyncRunsForUser(userId: string, limit = 5) {
     return demoMailSyncRuns.slice(0, limit);
   }
 
+  if (isLocalFileMode()) {
+    return [];
+  }
+
   const admin = createAdminSupabaseClient();
   const { data, error } = await admin
     .from("mail_sync_runs")
@@ -388,7 +409,7 @@ async function logMailSyncRun(
   userId: string,
   payload: Omit<MailSyncRun, "id" | "user_id" | "created_at">,
 ) {
-  if (isDemoMode()) {
+  if (isDemoMode() || isLocalFileMode()) {
     return null;
   }
 
@@ -691,6 +712,13 @@ export async function syncInboundMailForUser(userId: string) {
     return {
       importedCount: 0,
       detail: "Modo demo: la sincronización IMAP real está desactivada.",
+    };
+  }
+
+  if (isLocalFileMode()) {
+    return {
+      importedCount: 0,
+      detail: "Modo local: la bandeja IMAP queda visible, pero la importación persistente todavía no está activada.",
     };
   }
 

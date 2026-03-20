@@ -71,6 +71,7 @@ function printCheck(title, missing, note) {
 
 const env = loadMergedEnv();
 const nodeMajor = Number(process.versions.node.split(".")[0] ?? "0");
+const localModeEnabled = String(env.FACTURAIA_LOCAL_MODE ?? "").trim() === "1";
 const supabaseMissing = getMissingKeys(env, [
   "NEXT_PUBLIC_SUPABASE_URL",
   "NEXT_PUBLIC_SUPABASE_ANON_KEY",
@@ -112,13 +113,16 @@ const webdavMissing =
       ])
     : [];
 
-const criticalMissing = [...appUrlMissing, ...supabaseMissing];
+const criticalMissing = localModeEnabled
+  ? [...appUrlMissing, ...getMissingKeys(env, ["FACTURAIA_LOCAL_SESSION_SECRET"])]
+  : [...appUrlMissing, ...supabaseMissing];
 
 console.log("");
 console.log("FacturaIA doctor");
 console.log("=================");
 console.log(`Proyecto: ${cwd}`);
 console.log(`Node.js: ${process.versions.node}`);
+console.log(`Modo local: ${localModeEnabled ? "sí" : "no"}`);
 console.log("");
 
 console.log("- [INFO] Recomendado Node 20 o superior");
@@ -127,11 +131,21 @@ if (nodeMajor < 20) {
 }
 
 printCheck("URL pública", appUrlMissing, "Base para enlaces mágicos, QR y rutas públicas.");
-printCheck(
-  "Supabase",
-  supabaseMissing,
-  "Necesario para auth, base de datos, storage y módulos persistentes.",
-);
+if (localModeEnabled) {
+  printCheck(
+    "Sesión local",
+    getMissingKeys(env, ["FACTURAIA_LOCAL_SESSION_SECRET"]),
+    "Necesaria para autenticación privada en instalación 100% local.",
+  );
+  console.log("- [INFO] Supabase");
+  console.log("  En modo local no es obligatorio para el núcleo privado de facturación.");
+} else {
+  printCheck(
+    "Supabase",
+    supabaseMissing,
+    "Necesario para auth, base de datos, storage y módulos persistentes.",
+  );
+}
 printCheck(
   "LM Studio",
   lmStudioMissing,

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { requireUser } from "@/lib/auth";
-import { isDemoMode } from "@/lib/demo";
+import { isDemoMode, isLocalFileMode } from "@/lib/demo";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 function getUrgencyScore(urgency: string) {
@@ -18,7 +18,7 @@ export async function markThreadReadAction(formData: FormData) {
   const user = await requireUser();
   const threadId = String(formData.get("threadId") ?? "");
 
-  if (!threadId || isDemoMode()) {
+  if (!threadId || isDemoMode() || isLocalFileMode()) {
     revalidatePath("/messages");
     return;
   }
@@ -42,7 +42,7 @@ export async function setThreadUrgencyAction(formData: FormData) {
   const threadId = String(formData.get("threadId") ?? "");
   const urgency = String(formData.get("urgency") ?? "");
 
-  if (!threadId || !["low", "medium", "high"].includes(urgency) || isDemoMode()) {
+  if (!threadId || !["low", "medium", "high"].includes(urgency) || isDemoMode() || isLocalFileMode()) {
     revalidatePath("/messages");
     return;
   }
@@ -69,7 +69,7 @@ export async function unlockThreadUrgencyAction(formData: FormData) {
   const user = await requireUser();
   const threadId = String(formData.get("threadId") ?? "");
 
-  if (!threadId || isDemoMode()) {
+  if (!threadId || isDemoMode() || isLocalFileMode()) {
     revalidatePath("/messages");
     return;
   }

@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { requireUser } from "@/lib/auth";
+import { rethrowIfRedirectError } from "@/lib/actions/redirect-error";
 import { isDemoMode } from "@/lib/demo";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
@@ -83,6 +84,7 @@ export async function createFeedbackEntryAction(formData: FormData) {
     revalidatePath("/backups");
     redirect("/feedback?created=1");
   } catch (error) {
+    rethrowIfRedirectError(error);
     redirect(`/feedback?error=${encodeURIComponent(getActionError(error))}`);
   }
 }
@@ -117,6 +119,7 @@ export async function updateFeedbackStatusAction(formData: FormData) {
     revalidatePath("/feedback");
     redirect("/feedback?updated=1");
   } catch (error) {
+    rethrowIfRedirectError(error);
     redirect(`/feedback?error=${encodeURIComponent(getActionError(error))}`);
   }
 }

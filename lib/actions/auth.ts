@@ -7,6 +7,7 @@ import { ZodError, z } from "zod";
 
 import { requireUser } from "@/lib/auth";
 import { isDemoMode, isLocalBootstrapEnabled, isLocalFileMode, isLocalMode } from "@/lib/demo";
+import { rethrowIfRedirectError } from "@/lib/actions/redirect-error";
 import { getLogoStoragePath } from "@/lib/invoices";
 import {
   ensureInitialLocalUser,
@@ -278,6 +279,7 @@ export async function updateProfileAction(formData: FormData) {
     revalidatePath("/profile");
     redirect("/profile?updated=1");
   } catch (error) {
+    rethrowIfRedirectError(error);
     redirect(`/profile?error=${encodeURIComponent(getActionError(error))}`);
   }
 }

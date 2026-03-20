@@ -4,8 +4,13 @@ import {
   demoCommercialDocuments,
   getDemoCommercialDocumentById,
   isDemoMode,
+  isLocalFileMode,
 } from "@/lib/demo";
 import { calculateInvoice, invoiceFormSchema, parseInvoiceLines } from "@/lib/invoices";
+import {
+  getLocalCommercialDocumentById,
+  listLocalCommercialDocumentsForUser,
+} from "@/lib/local-core";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type {
   CommercialDocumentRecord,
@@ -20,7 +25,7 @@ import {
   toNumber,
 } from "@/lib/utils";
 
-export const commercialDocumentFormSchema = invoiceFormSchema.extend({
+export const commercialDocumentFormSchema = invoiceFormSchema.omit({ dueDate: true }).extend({
   documentType: z.enum(["quote", "delivery_note"]),
   validUntil: z.string().optional(),
   notes: z.string().trim().max(2000).optional(),
@@ -218,7 +223,10 @@ export function buildCommercialDocumentInsertPayload(input: {
   totals: ReturnType<typeof calculateInvoice>["totals"];
   issuerLogoUrl: string | null;
   notes: string | null;
-}) {
+}): Omit<
+  CommercialDocumentRecord,
+  "id" | "public_id" | "document_number" | "created_at" | "updated_at"
+> {
   return {
     user_id: input.userId,
     document_type: input.documentType,
@@ -244,6 +252,7 @@ export function buildCommercialDocumentInsertPayload(input: {
     irpf_amount: input.totals.irpfAmount,
     grand_total: input.totals.grandTotal,
     notes: input.notes,
+    converted_invoice_id: null,
   };
 }
 
@@ -287,6 +296,26 @@ export async function getCommercialDocumentsForUser(
       );
   }
 
+  if (isLocalFileMode()) {
+    return (await listLocalCommercialDocumentsForUser(userId))
+      .map(normaliseCommercialDocument)
+      .filter((document) => (type === "all" ? true : document.document_type === type))
+      .filter((document) => (status === "all" ? true : document.status === status))
+      .filter((document) => {
+        if (!query) {
+          return true;
+        }
+
+        const haystack = [
+          document.client_name,
+          document.client_email,
+          document.client_nif,
+        ];
+
+        return haystack.some((value) => String(value ?? "").toLowerCase().includes(query));
+      });
+  }
+
   const supabase = await createServerSupabaseClient();
   let dbQuery = supabase
     .from("commercial_documents")
@@ -328,6 +357,11 @@ export async function getCommercialDocumentByIdForUser(
     return document && document.user_id === userId
       ? normaliseCommercialDocument(document)
       : null;
+  }
+
+  if (isLocalFileMode()) {
+    const document = await getLocalCommercialDocumentById(userId, documentId);
+    return document ? normaliseCommercialDocument(document) : null;
   }
 
   const supabase = await createServerSupabaseClient();

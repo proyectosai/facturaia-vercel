@@ -5,9 +5,10 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { requireUser } from "@/lib/auth";
+import { rethrowIfRedirectError } from "@/lib/actions/redirect-error";
 import { getBankMovementByIdForUser, parseBankCsvFile } from "@/lib/banking";
 import { syncInvoicePaymentStatusFromBankMatches } from "@/lib/collections-server";
-import { isDemoMode } from "@/lib/demo";
+import { isDemoMode, isLocalFileMode } from "@/lib/demo";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 const importBankMovementsSchema = z.object({
@@ -31,6 +32,12 @@ export async function importBankMovementsAction(formData: FormData) {
     if (isDemoMode()) {
       redirect(
         "/banca?error=Modo%20demo:%20la%20importaci%C3%B3n%20real%20de%20extractos%20est%C3%A1%20desactivada.",
+      );
+    }
+
+    if (isLocalFileMode()) {
+      redirect(
+        "/banca?error=Modo%20local:%20la%20conciliaci%C3%B3n%20bancaria%20todav%C3%ADa%20no%20guarda%20movimientos%20persistentes.",
       );
     }
 
@@ -101,6 +108,7 @@ export async function importBankMovementsAction(formData: FormData) {
     revalidatePath("/system");
     redirect(`/banca?created=${rowsToInsert.length}`);
   } catch (error) {
+    rethrowIfRedirectError(error);
     redirect(`/banca?error=${encodeURIComponent(getFirstErrorMessage(error))}`);
   }
 }
@@ -117,6 +125,12 @@ export async function reconcileBankMovementAction(formData: FormData) {
     if (isDemoMode()) {
       redirect(
         "/banca?error=Modo%20demo:%20la%20conciliaci%C3%B3n%20real%20est%C3%A1%20desactivada.",
+      );
+    }
+
+    if (isLocalFileMode()) {
+      redirect(
+        "/banca?error=Modo%20local:%20todav%C3%ADa%20no%20puedes%20conciliar%20movimientos%20bancarios.",
       );
     }
 
@@ -211,6 +225,7 @@ export async function reconcileBankMovementAction(formData: FormData) {
     revalidatePath("/backups");
     redirect("/banca?updated=1");
   } catch (error) {
+    rethrowIfRedirectError(error);
     redirect(`/banca?error=${encodeURIComponent(getFirstErrorMessage(error))}`);
   }
 }
