@@ -24,6 +24,12 @@ import {
   getLocalCoreSnapshot,
   replaceLocalUserData,
 } from "@/lib/local-core";
+import {
+  decryptEncryptedEnvelope,
+  encryptTextForScope,
+  isBackupEncryptionRequested,
+  tryParseEncryptedEnvelope,
+} from "@/lib/local-encryption";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import type {
   BankMovementRecord,
@@ -104,7 +110,27 @@ function getAppUrl() {
 }
 
 export function buildBackupFilename(date = new Date()) {
-  return `facturaia-backup-${date.toISOString().slice(0, 10)}.json`;
+  const suffix = isBackupEncryptionRequested() ? "-encrypted" : "";
+  return `facturaia-backup-${date.toISOString().slice(0, 10)}${suffix}.json`;
+}
+
+export function serializeBackupPayload(backup: FacturaIaBackup) {
+  const serialized = JSON.stringify(backup, null, 2);
+
+  if (!isBackupEncryptionRequested()) {
+    return serialized;
+  }
+
+  return JSON.stringify(encryptTextForScope(serialized, "backup"), null, 2);
+}
+
+export function parseBackupPayload(raw: string) {
+  const encryptedEnvelope = tryParseEncryptedEnvelope(raw);
+  const decrypted = encryptedEnvelope
+    ? decryptEncryptedEnvelope(encryptedEnvelope, "backup")
+    : raw;
+
+  return JSON.parse(decrypted) as FacturaIaBackup;
 }
 
 export async function getBackupSummary(userId: string): Promise<BackupSummary> {

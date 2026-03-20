@@ -27,6 +27,7 @@ Hoy el modo local privado:
 - guarda el núcleo en un fichero local JSON dentro del equipo
 - cubre perfil, facturas, PDF, factura pública, cobros y recordatorios
 - deja todavía fuera de ese núcleo local completo a piezas como IMAP, banca, CRM, firma, OCR o mensajería
+- permite cifrado opcional del fichero local y de los backups, si decides activarlo
 
 ## Variables mínimas
 
@@ -36,6 +37,9 @@ FACTURAIA_LOCAL_MODE=1
 FACTURAIA_LOCAL_BOOTSTRAP=1
 FACTURAIA_LOCAL_SESSION_SECRET=pon-aqui-un-secreto-largo
 FACTURAIA_DATA_DIR=.facturaia-local
+FACTURAIA_ENCRYPT_LOCAL_DATA=0
+FACTURAIA_ENCRYPT_BACKUPS=0
+FACTURAIA_ENCRYPTION_PASSPHRASE=
 ```
 
 ## Primer arranque
@@ -53,6 +57,23 @@ FACTURAIA_LOCAL_BOOTSTRAP=0
 ```
 
 8. Reinicia la aplicación.
+
+## Cifrado opcional
+
+Si quieres que el fichero local y los backups salgan cifrados, activa:
+
+```env
+FACTURAIA_ENCRYPT_LOCAL_DATA=1
+FACTURAIA_ENCRYPT_BACKUPS=1
+FACTURAIA_ENCRYPTION_PASSPHRASE=una-passphrase-larga-y-unica
+```
+
+Notas importantes:
+
+- no se activa por defecto
+- si no defines la passphrase, FacturaIA seguirá funcionando en plano
+- los backups JSON antiguos sin cifrar siguen restaurando
+- si pierdes la passphrase, no podrás descifrar el núcleo local ni los backups cifrados
 
 ## Recomendación práctica
 

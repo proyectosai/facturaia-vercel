@@ -48,6 +48,9 @@ FACTURAIA_LOCAL_MODE=1
 FACTURAIA_LOCAL_BOOTSTRAP=1
 FACTURAIA_LOCAL_SESSION_SECRET=pon-aqui-un-secreto-largo-y-unico
 FACTURAIA_DATA_DIR=.facturaia-local
+FACTURAIA_ENCRYPT_LOCAL_DATA=0
+FACTURAIA_ENCRYPT_BACKUPS=0
+FACTURAIA_ENCRYPTION_PASSPHRASE=
 
 MAIL_PROVIDER=smtp
 SMTP_HOST=
@@ -67,6 +70,12 @@ No actives todavía:
 - banca
 - Facturae
 - LM Studio
+
+El cifrado local es opcional:
+
+- si quieres activarlo, cambia `FACTURAIA_ENCRYPT_LOCAL_DATA=1` y `FACTURAIA_ENCRYPT_BACKUPS=1`
+- define además `FACTURAIA_ENCRYPTION_PASSPHRASE`
+- si no, deja esos valores en `0` y la instalación seguirá funcionando en plano
 
 ### 3. Arranca la app
 

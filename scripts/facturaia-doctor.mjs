@@ -72,6 +72,12 @@ function printCheck(title, missing, note) {
 const env = loadMergedEnv();
 const nodeMajor = Number(process.versions.node.split(".")[0] ?? "0");
 const localModeEnabled = String(env.FACTURAIA_LOCAL_MODE ?? "").trim() === "1";
+const encryptLocalData = String(env.FACTURAIA_ENCRYPT_LOCAL_DATA ?? "").trim() === "1";
+const encryptBackups = String(env.FACTURAIA_ENCRYPT_BACKUPS ?? "").trim() === "1";
+const encryptionPassphraseMissing =
+  (encryptLocalData || encryptBackups)
+    ? getMissingKeys(env, ["FACTURAIA_ENCRYPTION_PASSPHRASE"])
+    : [];
 const supabaseMissing = getMissingKeys(env, [
   "NEXT_PUBLIC_SUPABASE_URL",
   "NEXT_PUBLIC_SUPABASE_ANON_KEY",
@@ -139,6 +145,16 @@ if (localModeEnabled) {
   );
   console.log("- [INFO] Supabase");
   console.log("  En modo local no es obligatorio para el núcleo privado de facturación.");
+  if (encryptLocalData || encryptBackups) {
+    printCheck(
+      "Cifrado opcional",
+      encryptionPassphraseMissing,
+      "Necesario si quieres cifrar el fichero local o los backups JSON.",
+    );
+  } else {
+    console.log("- [INFO] Cifrado opcional");
+    console.log("  Define FACTURAIA_ENCRYPT_LOCAL_DATA=1 o FACTURAIA_ENCRYPT_BACKUPS=1 si quieres activarlo.");
+  }
 } else {
   printCheck(
     "Supabase",

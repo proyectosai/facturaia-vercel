@@ -95,6 +95,12 @@ Primero configura solo:
 - `FACTURAIA_DATA_DIR`
 - tu bloque de correo saliente
 
+Si quieres cifrado opcional en reposo y en backups:
+
+- `FACTURAIA_ENCRYPT_LOCAL_DATA=1`
+- `FACTURAIA_ENCRYPT_BACKUPS=1`
+- `FACTURAIA_ENCRYPTION_PASSPHRASE=una-passphrase-larga-y-unica`
+
 ### Modo local privado sin magic link
 
 Si el cliente quiere entrar con email y contraseña dentro de su propia instalación, sin depender de Supabase para el núcleo:
@@ -104,6 +110,9 @@ FACTURAIA_LOCAL_MODE=1
 FACTURAIA_LOCAL_BOOTSTRAP=1
 FACTURAIA_LOCAL_SESSION_SECRET=pon-aqui-un-secreto-largo
 FACTURAIA_DATA_DIR=.facturaia-local
+FACTURAIA_ENCRYPT_LOCAL_DATA=0
+FACTURAIA_ENCRYPT_BACKUPS=0
+FACTURAIA_ENCRYPTION_PASSPHRASE=
 ```
 
 Comportamiento:
@@ -118,6 +127,7 @@ Importante:
 - este modo ya permite usar el núcleo sin `NEXT_PUBLIC_SUPABASE_URL` ni `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - los módulos más avanzados siguen necesitando más trabajo para vivir completamente en local
 - conviene guardar `FACTURAIA_DATA_DIR` en una carpeta incluida en tu estrategia de backup
+- el cifrado local y el cifrado de backups son **opcionales** y se activan solo si defines las variables anteriores
 
 ## Estado real del producto
 
@@ -250,6 +260,9 @@ FACTURAIA_LOCAL_MODE=
 FACTURAIA_LOCAL_BOOTSTRAP=
 FACTURAIA_LOCAL_SESSION_SECRET=
 FACTURAIA_DATA_DIR=
+FACTURAIA_ENCRYPT_LOCAL_DATA=
+FACTURAIA_ENCRYPT_BACKUPS=
+FACTURAIA_ENCRYPTION_PASSPHRASE=
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=

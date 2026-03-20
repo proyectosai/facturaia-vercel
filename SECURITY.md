@@ -40,11 +40,13 @@ Canales recomendados:
 Estas áreas merecen especial atención:
 
 - autenticación con Supabase
+- autenticación local, cookies firmadas y passphrase de cifrado opcional
 - políticas RLS y migraciones
 - webhooks opcionales de WhatsApp Business y Telegram
 - generación pública de PDFs y facturas
 - subida de logos y acceso a Storage
 - uso de IA local y endpoints internos
+- cifrado opcional en reposo del núcleo local y de los backups JSON
 
 ## Divulgación responsable
 

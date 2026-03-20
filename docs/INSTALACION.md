@@ -50,6 +50,9 @@ FACTURAIA_LOCAL_MODE=1
 FACTURAIA_LOCAL_BOOTSTRAP=1
 FACTURAIA_LOCAL_SESSION_SECRET=pon-aqui-un-secreto-largo-y-unico
 FACTURAIA_DATA_DIR=.facturaia-local
+FACTURAIA_ENCRYPT_LOCAL_DATA=0
+FACTURAIA_ENCRYPT_BACKUPS=0
+FACTURAIA_ENCRYPTION_PASSPHRASE=
 ```
 
 Notas:
@@ -57,6 +60,7 @@ Notas:
 - `FACTURAIA_LOCAL_BOOTSTRAP=1` solo se usa en el primer arranque
 - después de crear la primera cuenta local, cambia ese valor a `0` y reinicia la app
 - si quieres más control, usa una ruta absoluta en `FACTURAIA_DATA_DIR`
+- el cifrado local es opcional: solo se activa si cambias los flags a `1` y defines una passphrase
 
 ## Variables para instalación completa con Supabase
 

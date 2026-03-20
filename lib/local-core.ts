@@ -39,6 +39,12 @@ import type {
   ExpenseRecord,
   Profile,
 } from "@/lib/types";
+import {
+  decryptEncryptedEnvelope,
+  encryptTextForScope,
+  isLocalDataEncryptionRequested,
+  tryParseEncryptedEnvelope,
+} from "@/lib/local-encryption";
 import { roundCurrency, toNumber } from "@/lib/utils";
 
 type LocalCoreAuthUser = AppUserRecord & {
@@ -154,6 +160,14 @@ async function readLocalCoreData(): Promise<LocalCoreData> {
 
   try {
     const raw = await fs.readFile(filePath, "utf8");
+    const encryptedEnvelope = tryParseEncryptedEnvelope(raw);
+
+    if (encryptedEnvelope) {
+      return tryParseLocalCoreData(
+        decryptEncryptedEnvelope(encryptedEnvelope, "local-core"),
+      );
+    }
+
     return tryParseLocalCoreData(raw);
   } catch (error) {
     if ((error as NodeJS.ErrnoException)?.code === "ENOENT") {
@@ -168,7 +182,11 @@ async function writeLocalCoreData(data: LocalCoreData) {
   await ensureLocalDataDir();
   const filePath = getLocalDataFilePath();
   const tempPath = `${filePath}.${process.pid}.${Date.now()}.${randomUUID()}.tmp`;
-  await fs.writeFile(tempPath, JSON.stringify(data, null, 2), "utf8");
+  const serialized = JSON.stringify(data, null, 2);
+  const payload = isLocalDataEncryptionRequested()
+    ? JSON.stringify(encryptTextForScope(serialized, "local-core"), null, 2)
+    : serialized;
+  await fs.writeFile(tempPath, payload, "utf8");
   await fs.rename(tempPath, filePath);
 }
 

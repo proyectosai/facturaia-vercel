@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { isRedirectError } from "next/dist/client/components/redirect-error";
 
-import { exportBackupForUser, buildBackupFilename } from "@/lib/backups";
+import {
+  buildBackupFilename,
+  exportBackupForUser,
+  serializeBackupPayload,
+} from "@/lib/backups";
 import { requireUser } from "@/lib/auth";
 
 export const runtime = "nodejs";
@@ -11,8 +15,9 @@ export async function GET() {
   try {
     const user = await requireUser();
     const backup = await exportBackupForUser(user.id, user.email ?? "");
+    const payload = serializeBackupPayload(backup);
 
-    return new NextResponse(JSON.stringify(backup, null, 2), {
+    return new NextResponse(payload, {
       status: 200,
       headers: {
         "Content-Type": "application/json; charset=utf-8",

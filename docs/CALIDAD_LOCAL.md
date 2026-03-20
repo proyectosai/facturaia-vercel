@@ -50,6 +50,7 @@ Antes de dar por buena una iteración del modo local, deben pasar estos gates:
 - validación de uploads
 - errores legibles en modo local
 - acceso protegido a export y restore
+- cifrado opcional reproducible del núcleo local y de los backups cuando esté activado
 
 ### UX operativa
 
