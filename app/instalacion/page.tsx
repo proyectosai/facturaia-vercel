@@ -159,6 +159,12 @@ export default function InstalacionPage() {
                   "IMAP para importar correos y ordenarlos dentro de la propia app.",
                 icon: Sparkles,
               },
+              {
+                title: "Pre-facturación",
+                description:
+                  "Presupuestos y albaranes para trabajar el paso previo antes de emitir la factura final.",
+                icon: Database,
+              },
             ].map((item) => {
               const Icon = item.icon;
 
@@ -200,21 +206,28 @@ export default function InstalacionPage() {
                 label: "Abrir perfil",
               },
               {
-                title: "2. Emite una primera factura",
+                title: "2. Prepara un presupuesto o albarán",
+                description:
+                  "Valida el flujo previo a facturación y conviértelo en factura cuando toque.",
+                href: "/presupuestos",
+                label: "Abrir pre-facturación",
+              },
+              {
+                title: "3. Emite una primera factura",
                 description:
                   "Verifica el flujo base con cliente, líneas, PDF y envío por email.",
                 href: "/new-invoice",
                 label: "Nueva factura",
               },
               {
-                title: "3. Revisa correo y backups",
+                title: "4. Revisa correo y backups",
                 description:
                   "Configura el envío saliente y prepara copias remotas antes de usarlo a diario.",
                 href: "/mail",
                 label: "Abrir correo",
               },
               {
-                title: "4. Activa documentos o mensajería",
+                title: "5. Activa documentos o mensajería",
                 description:
                   "Añade IA local y bandeja de mensajes solo si de verdad te aportan valor.",
                 href: "/documents-ai",

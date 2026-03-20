@@ -38,10 +38,6 @@ function hasSupabase() {
   );
 }
 
-function hasLmStudio() {
-  return Boolean(process.env.LM_STUDIO_BASE_URL) && Boolean(process.env.LM_STUDIO_MODEL);
-}
-
 function hasRemoteBackups() {
   return (
     process.env.REMOTE_BACKUP_PROVIDER === "webdav" &&
@@ -180,17 +176,22 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
     title: "Presupuestos y albaranes",
     summary:
       "Flujo documental previo a la factura, con conversión de presupuesto o albarán en factura definitiva.",
-    status: "next",
+    status: "partial",
     category: "documentos",
+    routeHref: "/presupuestos",
+    docsPath: "docs/modulos/PRESUPUESTOS_ALBARANES.md",
     requirements: [
-      "Modelo documental estable",
-      "Estados previos a facturación",
-      "Conversión controlada a factura",
+      "Migración commercial_documents aplicada",
+      "Supabase configurado o modo demo local",
+      "Ruta /presupuestos disponible en el panel",
     ],
     installSteps: [
-      "Definir tipos documentales y plantillas.",
-      "Añadir persistencia específica.",
-      "Conectar el flujo con Nueva Factura.",
+      "Aplica la migración del módulo documental.",
+      "Abre /presupuestos y crea un documento de prueba.",
+      "Convierte un presupuesto o albarán en factura cuando proceda.",
+    ],
+    notes: [
+      "Primera entrega con persistencia, estados y conversión a factura. El PDF específico y la firma llegarán después.",
     ],
   },
   {
@@ -199,7 +200,7 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
     title: "OCR de gastos",
     summary:
       "Lectura de tickets y facturas de proveedor para extraer importes, IVA y datos básicos de gasto.",
-    status: "planned",
+    status: "next",
     category: "finanzas",
     requirements: [
       "Pipeline OCR",
@@ -354,10 +355,10 @@ export function getModuleCatalog(): ModuleRuntimeState[] {
         ? `${inboundMail.providerLabel} listo`
         : "Faltan variables IMAP";
     } else if (module.id === "quotes-delivery-notes") {
-      configured = hasLmStudio();
+      configured = hasSupabase();
       configuredLabel = configured
-        ? "Base documental disponible"
-        : "Pendiente de persistencia";
+        ? "Listo para crear documentos"
+        : "Falta Supabase";
     } else {
       configured = false;
       configuredLabel = "Pendiente de implementación";

@@ -1,5 +1,6 @@
 import type {
   AppUserRecord,
+  CommercialDocumentRecord,
   InvoiceRecord,
   MailMessage,
   MailSyncRun,
@@ -541,6 +542,136 @@ export const demoInvoices: InvoiceRecord[] = [
   },
 ];
 
+export const demoCommercialDocuments: CommercialDocumentRecord[] = [
+  {
+    id: "90000000-0000-4000-8000-000000000001",
+    user_id: DEMO_USER_ID,
+    document_type: "quote",
+    status: "accepted",
+    public_id: "91000000-0000-4000-8000-000000000001",
+    document_number: 1,
+    issue_date: "2026-03-11",
+    valid_until: "2026-04-10",
+    issuer_name: demoProfile.full_name ?? "Estudio Rivera Consultoría",
+    issuer_nif: demoProfile.nif ?? "B12345678",
+    issuer_address: demoProfile.address ?? "Calle Velázquez 52, 28001 Madrid",
+    issuer_logo_url: demoProfile.logo_url,
+    client_name: "Nexo Digital S.L.",
+    client_nif: "B88234110",
+    client_address: "Calle Alcalá 120, 28009 Madrid",
+    client_email: "equipo@nexodigital.es",
+    line_items: [
+      {
+        description: "Diagnóstico inicial de procesos y mapa de automatizaciones prioritarias.",
+        quantity: 1,
+        unitPrice: 950,
+        vatRate: 21,
+        lineBase: 950,
+        vatAmount: 199.5,
+        lineTotal: 1149.5,
+      },
+      {
+        description: "Acompañamiento mensual y revisión quincenal de implantación.",
+        quantity: 2,
+        unitPrice: 620,
+        vatRate: 21,
+        lineBase: 1240,
+        vatAmount: 260.4,
+        lineTotal: 1500.4,
+      },
+    ],
+    subtotal: 2190,
+    vat_total: 459.9,
+    irpf_rate: 0,
+    irpf_amount: 0,
+    grand_total: 2649.9,
+    vat_breakdown: [{ rate: 21, taxableBase: 2190, vatAmount: 459.9 }],
+    notes:
+      "Presupuesto válido durante 30 días. Incluye acompañamiento operativo y documentación final.",
+    converted_invoice_id: null,
+    created_at: "2026-03-11T09:40:00.000Z",
+    updated_at: "2026-03-15T13:15:00.000Z",
+  },
+  {
+    id: "90000000-0000-4000-8000-000000000002",
+    user_id: DEMO_USER_ID,
+    document_type: "quote",
+    status: "sent",
+    public_id: "91000000-0000-4000-8000-000000000002",
+    document_number: 2,
+    issue_date: "2026-03-18",
+    valid_until: "2026-04-17",
+    issuer_name: demoProfile.full_name ?? "Estudio Rivera Consultoría",
+    issuer_nif: demoProfile.nif ?? "B12345678",
+    issuer_address: demoProfile.address ?? "Calle Velázquez 52, 28001 Madrid",
+    issuer_logo_url: demoProfile.logo_url,
+    client_name: "Costa Verde Studio",
+    client_nif: "B74322118",
+    client_address: "Plaza de España 8, 46007 Valencia",
+    client_email: "operaciones@costaverde.es",
+    line_items: [
+      {
+        description: "Revisión integral de reporting comercial y automatización de seguimiento.",
+        quantity: 1,
+        unitPrice: 1450,
+        vatRate: 21,
+        lineBase: 1450,
+        vatAmount: 304.5,
+        lineTotal: 1754.5,
+      },
+    ],
+    subtotal: 1450,
+    vat_total: 304.5,
+    irpf_rate: 0,
+    irpf_amount: 0,
+    grand_total: 1754.5,
+    vat_breakdown: [{ rate: 21, taxableBase: 1450, vatAmount: 304.5 }],
+    notes: "Pendiente de aprobación por parte del cliente.",
+    converted_invoice_id: null,
+    created_at: "2026-03-18T10:10:00.000Z",
+    updated_at: "2026-03-18T10:10:00.000Z",
+  },
+  {
+    id: "90000000-0000-4000-8000-000000000003",
+    user_id: DEMO_USER_ID,
+    document_type: "delivery_note",
+    status: "delivered",
+    public_id: "91000000-0000-4000-8000-000000000003",
+    document_number: 3,
+    issue_date: "2026-03-19",
+    valid_until: null,
+    issuer_name: demoProfile.full_name ?? "Estudio Rivera Consultoría",
+    issuer_nif: demoProfile.nif ?? "B12345678",
+    issuer_address: demoProfile.address ?? "Calle Velázquez 52, 28001 Madrid",
+    issuer_logo_url: demoProfile.logo_url,
+    client_name: "Brisa Legal SLP",
+    client_nif: "B61999321",
+    client_address: "Gran Vía 14, 28013 Madrid",
+    client_email: "administracion@brisalegal.es",
+    line_items: [
+      {
+        description: "Entrega de documentación operativa y checklist de automatizaciones completadas.",
+        quantity: 1,
+        unitPrice: 780,
+        vatRate: 21,
+        lineBase: 780,
+        vatAmount: 163.8,
+        lineTotal: 943.8,
+      },
+    ],
+    subtotal: 780,
+    vat_total: 163.8,
+    irpf_rate: 0,
+    irpf_amount: 0,
+    grand_total: 943.8,
+    vat_breakdown: [{ rate: 21, taxableBase: 780, vatAmount: 163.8 }],
+    notes: "Albarán pendiente de firma digital interna del cliente.",
+    converted_invoice_id: null,
+    created_at: "2026-03-19T08:00:00.000Z",
+    updated_at: "2026-03-19T12:45:00.000Z",
+  },
+];
+
 export function getDemoInvoiceById(invoiceId: string) {
   return demoInvoices.find((invoice) => invoice.id === invoiceId) ?? null;
 }
@@ -555,4 +686,8 @@ export function getDemoThreadById(threadId: string) {
 
 export function getDemoMailThreadById(threadId: string) {
   return demoMailThreads.find((thread) => thread.id === threadId) ?? null;
+}
+
+export function getDemoCommercialDocumentById(documentId: string) {
+  return demoCommercialDocuments.find((document) => document.id === documentId) ?? null;
 }

@@ -216,6 +216,7 @@ WEBDAV_BACKUP_PATH=/FacturaIA
 10. Envío de un backup remoto manual a WebDAV / Nextcloud, si está activado.
 11. Sincronización IMAP manual desde `/mail`, si está activada.
 12. Revisión del catálogo modular en `/modules`.
+13. Creación y conversión de un documento en `/presupuestos`.
 
 ## Checklist de producción
 
@@ -225,6 +226,7 @@ WEBDAV_BACKUP_PATH=/FacturaIA
 - proveedor de correo configurado y probado
 - LM Studio accesible
 - estrategia de backup definida
+- módulo de pre-facturación probado si lo vas a usar
 - variables WebDAV definidas si usarás backups remotos
 - build correcto
 - healthcheck manual sobre `/`, `/instalacion`, `/login`

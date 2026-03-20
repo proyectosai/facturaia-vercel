@@ -56,6 +56,46 @@ const backupSchema = z.object({
       }),
     )
     .default([]),
+  commercialDocuments: z
+    .array(
+      z.object({
+        id: z.string(),
+        document_type: z.enum(["quote", "delivery_note"]),
+        status: z.enum([
+          "draft",
+          "sent",
+          "accepted",
+          "rejected",
+          "delivered",
+          "signed",
+          "converted",
+        ]),
+        public_id: z.string(),
+        document_number: z.number(),
+        issue_date: z.string(),
+        valid_until: z.string().nullable().optional(),
+        issuer_name: z.string(),
+        issuer_nif: z.string(),
+        issuer_address: z.string(),
+        issuer_logo_url: z.string().nullable().optional(),
+        client_name: z.string(),
+        client_nif: z.string(),
+        client_address: z.string(),
+        client_email: z.string(),
+        line_items: z.any(),
+        vat_breakdown: z.any(),
+        subtotal: z.union([z.number(), z.string()]),
+        vat_total: z.union([z.number(), z.string()]),
+        irpf_rate: z.union([z.number(), z.string()]),
+        irpf_amount: z.union([z.number(), z.string()]),
+        grand_total: z.union([z.number(), z.string()]),
+        notes: z.string().nullable().optional(),
+        converted_invoice_id: z.string().nullable().optional(),
+        created_at: z.string().optional(),
+        updated_at: z.string().optional(),
+      }),
+    )
+    .default([]),
   aiUsage: z
     .array(
       z.object({

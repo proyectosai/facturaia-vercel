@@ -30,6 +30,7 @@ import type { RemoteBackupRun } from "@/lib/types";
 
 type BackupSummary = {
   invoices: number;
+  commercialDocuments: number;
   aiUsageRows: number;
   messageConnections: number;
   messageThreads: number;
@@ -203,6 +204,7 @@ export function BackupCenter({
 
   const stats = [
     { label: "Facturas", value: summary.invoices },
+    { label: "Pre-facturación", value: summary.commercialDocuments },
     { label: "Registros IA", value: summary.aiUsageRows },
     { label: "Conexiones", value: summary.messageConnections },
     { label: "Conversaciones", value: summary.messageThreads },
@@ -220,7 +222,7 @@ export function BackupCenter({
         </div>
       ) : null}
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-7">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-8">
         {stats.map((item) => (
           <Card key={item.label}>
             <CardContent className="space-y-2">

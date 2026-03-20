@@ -21,6 +21,7 @@ FacturaIA está diseñada como una aplicación Next.js 15 con App Router, priori
 - `app/factura/[publicId]/page.tsx`
 - `app/(protected)/dashboard/page.tsx`
 - `app/(protected)/new-invoice/page.tsx`
+- `app/(protected)/presupuestos/page.tsx`
 - `app/(protected)/invoices/page.tsx`
 - `app/(protected)/messages/page.tsx`
 - `app/(protected)/documents-ai/page.tsx`
@@ -92,7 +93,22 @@ Responsabilidades:
 - compatibilidad con modo demo
 - copy y rutas orientadas a instalación privada
 
-## 4. Catálogo modular
+## 4. Pre-facturación documental
+
+Archivos clave:
+
+- `app/(protected)/presupuestos/page.tsx`
+- `components/commercial/commercial-document-form.tsx`
+- `lib/actions/commercial-documents.ts`
+- `lib/commercial-documents.ts`
+
+Responsabilidades:
+
+- crear presupuestos y albaranes
+- persistirlos con numeración propia
+- cambiar su estado operativo
+- convertirlos después en factura sin rehacer datos
+## 5. Catálogo modular
 
 Archivos clave:
 
@@ -107,7 +123,7 @@ Responsabilidades:
 - mostrar requisitos e instalación resumida por módulo
 - dar un orden de implementación coherente
 
-## 5. Documentos con IA
+## 6. Documentos con IA
 
 Archivos clave:
 
@@ -126,7 +142,7 @@ Funciones:
 - exportación a Word
 - plantillas listas para propuesta, presupuesto y contrato
 
-## 6. Email
+## 7. Email
 
 Archivos clave:
 
@@ -148,7 +164,7 @@ Funciones:
 - bandeja interna por remitente
 - historial de sincronizaciones entrantes
 
-## 7. Copias de seguridad
+## 8. Copias de seguridad
 
 Archivos clave:
 
@@ -165,10 +181,11 @@ Funciones:
 - exportación JSON del usuario autenticado
 - restauración en modo reemplazo
 - resincronización de la secuencia de facturas
+- inclusión de presupuestos y albaranes en la copia
 - sincronización manual a WebDAV / Nextcloud
 - historial de últimas ejecuciones remotas
 
-## 8. Mensajería opcional
+## 9. Mensajería opcional
 
 Archivos clave:
 
@@ -193,6 +210,7 @@ Tablas principales:
 - `users`
 - `profiles`
 - `invoices`
+- `commercial_documents`
 - `ai_usage`
 - `message_connections`
 - `message_threads`
@@ -225,6 +243,15 @@ Tablas principales:
 - total
 - identificador público
 - número automático
+
+## `commercial_documents`
+
+- tipo documental (`quote` o `delivery_note`)
+- estado (`draft`, `sent`, `accepted`, `rejected`, `delivered`, `signed`, `converted`)
+- numeración propia
+- datos fiscales y de cliente
+- líneas, IVA, IRPF y total
+- referencia opcional a la factura generada después
 
 ## `ai_usage`
 

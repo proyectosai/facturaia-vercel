@@ -89,6 +89,7 @@ Ejecuta las migraciones en este orden:
 5. `supabase/migrations/202603200915_add_invoice_sequence_sync_function.sql`
 6. `supabase/migrations/202603201030_add_remote_backup_runs.sql`
 7. `supabase/migrations/202603201200_add_inbound_mail_module.sql`
+8. `supabase/migrations/202603201330_add_commercial_documents_module.sql`
 
 Estas migraciones crean:
 
@@ -102,6 +103,7 @@ Estas migraciones crean:
 - resincronización segura de numeración tras restaurar backups
 - historial de ejecuciones de backups remotos
 - bandeja interna de correo entrante por IMAP
+- flujo de presupuestos y albaranes previo a facturación
 
 ## 4. Configurar correo saliente
 
@@ -208,7 +210,30 @@ La pantalla `/modules` resume:
 - pasos resumidos por módulo
 - documento asociado dentro de `docs/modulos`
 
-## 10. Correo saliente en la app
+## 10. Presupuestos y albaranes
+
+Este módulo añade persistencia propia para documentos previos a la factura.
+
+Qué hace en esta primera entrega:
+
+- crear presupuestos
+- crear albaranes
+- cambiar su estado
+- convertirlos después en factura definitiva
+
+Pasos:
+
+1. aplica la migración `202603201330_add_commercial_documents_module.sql`
+2. reinicia la aplicación
+3. abre `/presupuestos`
+4. crea un presupuesto o albarán de prueba
+5. cambia su estado y conviértelo en factura cuando proceda
+
+Guía completa:
+
+- `docs/modulos/PRESUPUESTOS_ALBARANES.md`
+
+## 11. Correo saliente en la app
 
 La pantalla `/mail` permite:
 
@@ -221,7 +246,7 @@ Guía completa:
 
 - `docs/modulos/CORREO_SALIENTE.md`
 
-## 11. Correo entrante por IMAP
+## 12. Correo entrante por IMAP
 
 Variables mínimas:
 
@@ -249,7 +274,7 @@ Guía completa:
 
 - `docs/modulos/CORREO_ENTRANTE.md`
 
-## 12. Backups remotos por WebDAV / Nextcloud
+## 13. Backups remotos por WebDAV / Nextcloud
 
 Si quieres una copia fuera del equipo o del VPS principal, activa el módulo remoto.
 

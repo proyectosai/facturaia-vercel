@@ -8,6 +8,7 @@ Documentos actuales:
 - `BACKUPS_REMOTOS.md` (WebDAV / Nextcloud ya operativo)
 - `CORREO_SALIENTE.md`
 - `CORREO_ENTRANTE.md` (primera entrega IMAP ya operativa)
+- `PRESUPUESTOS_ALBARANES.md` (primera entrega de pre-facturación ya operativa)
 
 Documento general:
 

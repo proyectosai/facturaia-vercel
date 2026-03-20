@@ -2,6 +2,7 @@ import "server-only";
 
 import {
   demoAiUsage,
+  demoCommercialDocuments,
   demoInvoices,
   demoMailMessages,
   demoMailSyncRuns,
@@ -14,6 +15,7 @@ import {
 } from "@/lib/demo";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import type {
+  CommercialDocumentRecord,
   InvoiceRecord,
   MailMessage,
   MailSyncRun,
@@ -43,6 +45,7 @@ export type FacturaIaBackup = {
   };
   profile: Profile | null;
   invoices: InvoiceRecord[];
+  commercialDocuments: CommercialDocumentRecord[];
   aiUsage: BackupAiUsageRow[];
   messages: {
     connections: MessageConnection[];
@@ -58,6 +61,7 @@ export type FacturaIaBackup = {
 
 export type BackupSummary = {
   invoices: number;
+  commercialDocuments: number;
   aiUsageRows: number;
   messageConnections: number;
   messageThreads: number;
@@ -78,6 +82,7 @@ export async function getBackupSummary(userId: string): Promise<BackupSummary> {
   if (isDemoMode()) {
     return {
       invoices: demoInvoices.length,
+      commercialDocuments: demoCommercialDocuments.length,
       aiUsageRows: 1,
       messageConnections: demoMessageConnections.length,
       messageThreads: demoMessageThreads.length,
@@ -90,6 +95,7 @@ export async function getBackupSummary(userId: string): Promise<BackupSummary> {
   const admin = createAdminSupabaseClient();
   const [
     invoices,
+    commercialDocuments,
     aiUsage,
     connections,
     threads,
@@ -98,6 +104,10 @@ export async function getBackupSummary(userId: string): Promise<BackupSummary> {
     mailMessages,
   ] = await Promise.all([
     admin.from("invoices").select("*", { count: "exact", head: true }).eq("user_id", userId),
+    admin
+      .from("commercial_documents")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", userId),
     admin.from("ai_usage").select("*", { count: "exact", head: true }).eq("user_id", userId),
     admin
       .from("message_connections")
@@ -111,6 +121,7 @@ export async function getBackupSummary(userId: string): Promise<BackupSummary> {
 
   return {
     invoices: invoices.count ?? 0,
+    commercialDocuments: commercialDocuments.count ?? 0,
     aiUsageRows: aiUsage.count ?? 0,
     messageConnections: connections.count ?? 0,
     messageThreads: threads.count ?? 0,
@@ -133,6 +144,7 @@ export async function exportBackupForUser(
       user: { id: userId, email },
       profile: demoProfile,
       invoices: demoInvoices,
+      commercialDocuments: demoCommercialDocuments,
       aiUsage: [
         {
           user_id: userId,
@@ -157,6 +169,7 @@ export async function exportBackupForUser(
   const [
     profile,
     invoices,
+    commercialDocuments,
     aiUsage,
     connections,
     threads,
@@ -167,6 +180,11 @@ export async function exportBackupForUser(
   ] = await Promise.all([
     admin.from("profiles").select("*").eq("id", userId).maybeSingle(),
     admin.from("invoices").select("*").eq("user_id", userId).order("issue_date", { ascending: true }),
+    admin
+      .from("commercial_documents")
+      .select("*")
+      .eq("user_id", userId)
+      .order("issue_date", { ascending: true }),
     admin.from("ai_usage").select("*").eq("user_id", userId).order("date", { ascending: true }),
     admin
       .from("message_connections")
@@ -194,6 +212,7 @@ export async function exportBackupForUser(
 
   if (
     invoices.error ||
+    commercialDocuments.error ||
     aiUsage.error ||
     connections.error ||
     threads.error ||
@@ -213,6 +232,8 @@ export async function exportBackupForUser(
     user: { id: userId, email },
     profile: (profile.data as Profile | null) ?? null,
     invoices: (invoices.data as InvoiceRecord[] | null) ?? [],
+    commercialDocuments:
+      (commercialDocuments.data as CommercialDocumentRecord[] | null) ?? [],
     aiUsage: (aiUsage.data as BackupAiUsageRow[] | null) ?? [],
     messages: {
       connections: (connections.data as MessageConnection[] | null) ?? [],
@@ -258,6 +279,7 @@ export async function restoreBackupForUser(
     admin.from("message_threads").delete().eq("user_id", userId),
     admin.from("message_connections").delete().eq("user_id", userId),
     admin.from("ai_usage").delete().eq("user_id", userId),
+    admin.from("commercial_documents").delete().eq("user_id", userId),
     admin.from("invoices").delete().eq("user_id", userId),
   ];
 
@@ -303,6 +325,19 @@ export async function restoreBackupForUser(
 
     if (aiInsert.error) {
       throw new Error("No se ha podido restaurar el histórico de IA.");
+    }
+  }
+
+  if (backup.commercialDocuments.length > 0) {
+    const documentsInsert = await admin.from("commercial_documents").insert(
+      backup.commercialDocuments.map((row) => ({
+        ...row,
+        user_id: userId,
+      })),
+    );
+
+    if (documentsInsert.error) {
+      throw new Error("No se han podido restaurar los presupuestos y albaranes.");
     }
   }
 
@@ -405,6 +440,7 @@ export async function restoreBackupForUser(
 
   return {
     invoices: backup.invoices.length,
+    commercialDocuments: backup.commercialDocuments.length,
     aiUsageRows: backup.aiUsage.length,
     messageConnections: backup.messages.connections.length,
     messageThreads: backup.messages.threads.length,

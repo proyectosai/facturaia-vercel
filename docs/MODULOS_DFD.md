@@ -84,16 +84,17 @@ flowchart LR
 - Backups remotos: primera entrega operativa con WebDAV / Nextcloud.
 - Correo saliente: envío de facturas y correos de prueba con SMTP o Resend.
 - Correo entrante: primera entrega operativa con importación IMAP manual.
+- Presupuestos y albaranes: primera entrega operativa con persistencia, estados y conversión a factura.
 
 ## Siguiente módulo
 
-### Presupuestos y albaranes
+### OCR de gastos
 
 Motivo de prioridad:
 
-- ya existe estudio documental y núcleo de facturación
-- falta cerrar el flujo previo a la factura
-- encaja con propuestas, cliente y futura firma documental
+- complementa el circuito documental y fiscal con la entrada de gastos
+- encaja con usuarios autónomos que guardan tickets o facturas de proveedor
+- prepara el terreno para conciliación y reporting más completo
 
 ## Documentación asociada
 
@@ -102,3 +103,4 @@ Motivo de prioridad:
 - `docs/modulos/BACKUPS_REMOTOS.md`
 - `docs/modulos/CORREO_SALIENTE.md`
 - `docs/modulos/CORREO_ENTRANTE.md`
+- `docs/modulos/PRESUPUESTOS_ALBARANES.md`

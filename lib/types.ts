@@ -14,6 +14,17 @@ export type MailSource = "imap";
 
 export type MailSortKey = "recent" | "urgency" | "name" | "email";
 
+export type CommercialDocumentType = "quote" | "delivery_note";
+
+export type CommercialDocumentStatus =
+  | "draft"
+  | "sent"
+  | "accepted"
+  | "rejected"
+  | "delivered"
+  | "signed"
+  | "converted";
+
 export type Profile = {
   id: string;
   email: string;
@@ -105,6 +116,36 @@ export type InvoiceMonthGroup = {
   label: string;
   total: number;
   items: InvoiceListItem[];
+};
+
+export type CommercialDocumentRecord = {
+  id: string;
+  user_id: string;
+  document_type: CommercialDocumentType;
+  status: CommercialDocumentStatus;
+  public_id: string;
+  document_number: number;
+  issue_date: string;
+  valid_until: string | null;
+  issuer_name: string;
+  issuer_nif: string;
+  issuer_address: string;
+  issuer_logo_url: string | null;
+  client_name: string;
+  client_nif: string;
+  client_address: string;
+  client_email: string;
+  line_items: InvoiceLineItemStored[];
+  subtotal: NumericLike;
+  vat_total: NumericLike;
+  irpf_rate: NumericLike;
+  irpf_amount: NumericLike;
+  grand_total: NumericLike;
+  vat_breakdown: InvoiceVatBreakdown[];
+  notes: string | null;
+  converted_invoice_id: string | null;
+  created_at: string;
+  updated_at: string;
 };
 
 export type MessageConnection = {

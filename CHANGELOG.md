@@ -16,6 +16,9 @@ El formato está inspirado en Keep a Changelog y el versionado irá madurando co
 - Nueva pantalla `/mail` para comprobar proveedor y enviar correos de prueba.
 - Primera entrega del correo entrante con IMAP manual, bandeja interna e historial de sincronizaciones.
 - Migración `202603201200_add_inbound_mail_module.sql`.
+- Primera entrega del módulo de presupuestos y albaranes con persistencia, estados y conversión a factura.
+- Nueva ruta `/presupuestos`.
+- Migración `202603201330_add_commercial_documents_module.sql`.
 
 ### Mejorado
 
@@ -24,6 +27,7 @@ El formato está inspirado en Keep a Changelog y el versionado irá madurando co
 - Documentación de instalación y despliegue ampliada para usuarios self-hosted.
 - Envío de facturas desacoplado de Resend como único proveedor.
 - Los backups ahora incluyen también el inbox de correo y su historial de sincronización.
+- Los backups incluyen también los documentos de pre-facturación.
 
 ## [0.1.0] - 2026-03-19
 

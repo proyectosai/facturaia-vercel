@@ -11,6 +11,7 @@ FacturaIA es una aplicación Next.js 15 pensada para autónomos y pequeños nego
 - Dashboard protegido con sidebar en español.
 - Gestión de perfil fiscal del emisor.
 - Creación de facturas con IVA, IRPF, numeración automática y PDF profesional.
+- Módulo de presupuestos y albaranes con conversión posterior a factura.
 - Historial de facturas con descarga de PDF y envío por email con SMTP o Resend.
 - Página pública de factura con QR.
 - Estudio documental con IA local vía LM Studio para propuestas, presupuestos, contratos y mensajes.
@@ -50,6 +51,7 @@ FacturaIA es una aplicación Next.js 15 pensada para autónomos y pequeños nego
 - `/login`
 - `/dashboard`
 - `/new-invoice`
+- `/presupuestos`
 - `/invoices`
 - `/documents-ai`
 - `/mail`
@@ -143,12 +145,14 @@ Migraciones incluidas:
 - [`supabase/migrations/202603200915_add_invoice_sequence_sync_function.sql`](./supabase/migrations/202603200915_add_invoice_sequence_sync_function.sql)
 - [`supabase/migrations/202603201030_add_remote_backup_runs.sql`](./supabase/migrations/202603201030_add_remote_backup_runs.sql)
 - [`supabase/migrations/202603201200_add_inbound_mail_module.sql`](./supabase/migrations/202603201200_add_inbound_mail_module.sql)
+- [`supabase/migrations/202603201330_add_commercial_documents_module.sql`](./supabase/migrations/202603201330_add_commercial_documents_module.sql)
 
 Tablas principales activas:
 
 - `users`
 - `profiles`
 - `invoices`
+- `commercial_documents`
 - `ai_usage`
 - `message_connections`
 - `message_threads`
@@ -170,6 +174,7 @@ Tablas principales activas:
 - [Backups remotos](./docs/modulos/BACKUPS_REMOTOS.md)
 - [Correo saliente](./docs/modulos/CORREO_SALIENTE.md)
 - [Correo entrante](./docs/modulos/CORREO_ENTRANTE.md)
+- [Presupuestos y albaranes](./docs/modulos/PRESUPUESTOS_ALBARANES.md)
 - [Hoja de ruta](./docs/ROADMAP.md)
 - [Guía de contribución](./CONTRIBUTING.md)
 - [Código de conducta](./CODE_OF_CONDUCT.md)
@@ -185,6 +190,7 @@ Tablas principales activas:
 - El backup exporta JSON del usuario autenticado, la restauración funciona en modo reemplazo y el primer proveedor remoto soportado es WebDAV / Nextcloud.
 - El correo saliente soporta SMTP y Resend, con pantalla de prueba propia en `/mail`.
 - El correo entrante soporta una primera entrega IMAP con sincronización manual desde `/mail`.
+- El módulo `/presupuestos` cubre la primera fase de pre-facturación: persistencia, estados y conversión a factura.
 - La parte legal y fiscal mostrada en la UI no sustituye asesoramiento profesional.
 
 ## Verificación
