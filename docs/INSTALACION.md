@@ -408,3 +408,33 @@ Pasos:
 Guía completa:
 
 - `docs/modulos/CONCILIACION_BANCARIA.md`
+
+## 18. Facturae / VeriFactu
+
+Este módulo añade una primera salida estructurada desde las facturas ya emitidas.
+
+Qué hace ahora:
+
+- mostrar un panel `/facturae`
+- preparar cada factura para revisión
+- generar un borrador XML Facturae 3.2.2 sin firma
+- enlazar documentación oficial de BOE, Facturae y AEAT
+
+Pasos:
+
+1. reinicia FacturaIA con esta versión
+2. abre `/facturae`
+3. filtra por cliente o número si hace falta
+4. descarga un XML de prueba
+5. revisa los avisos antes de usar el fichero fuera de la app
+
+Notas:
+
+- no requiere migraciones nuevas
+- no firma el XML
+- no remite registros a la AEAT
+- no sustituye una revisión especializada del flujo fiscal
+
+Guía completa:
+
+- `docs/modulos/FACTURAE_VERIFACTU.md`

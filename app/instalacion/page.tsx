@@ -189,6 +189,12 @@ export default function InstalacionPage() {
                   "Carga extractos CSV y cruza cada movimiento con facturas emitidas o gastos ya revisados.",
                 icon: Database,
               },
+              {
+                title: "Facturae / VeriFactu",
+                description:
+                  "Prepara XML Facturae 3.2.2 sin firma y revisa normativa oficial antes de dar un salto mayor en cumplimiento.",
+                icon: LockKeyhole,
+              },
             ].map((item) => {
               const Icon = item.icon;
 
@@ -279,7 +285,14 @@ export default function InstalacionPage() {
                 label: "Abrir firmas",
               },
               {
-                title: "9. Activa documentos o mensajería",
+                title: "9. Revisa el exportador Facturae",
+                description:
+                  "Descarga un XML de prueba y contrástalo con la normativa oficial si vas a trabajar flujos estructurados.",
+                href: "/facturae",
+                label: "Abrir Facturae",
+              },
+              {
+                title: "10. Activa documentos o mensajería",
                 description:
                   "Añade IA local y bandeja de mensajes solo si de verdad te aportan valor.",
                 href: "/documents-ai",

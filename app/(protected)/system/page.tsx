@@ -3,6 +3,7 @@ import {
   Bot,
   Database,
   FileSignature,
+  FileCode2,
   Inbox,
   Mail,
   ArchiveRestore,
@@ -263,6 +264,14 @@ export default function SystemPage() {
             icon: Landmark,
             href: "/banca",
             label: "Abrir banca",
+          },
+          {
+            title: "Facturae",
+            description:
+              "Descarga borradores XML Facturae y revisa normativa oficial antes de automatizar más cumplimiento.",
+            icon: FileCode2,
+            href: "/facturae",
+            label: "Abrir Facturae",
           },
         ].map((item) => {
           const Icon = item.icon;

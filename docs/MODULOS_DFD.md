@@ -89,16 +89,17 @@ flowchart LR
 - CRM ligero: primera entrega operativa con fichas manuales, detección de contactos y timeline básica.
 - Firma documental: primera entrega operativa con enlaces públicos y evidencia básica.
 - Conciliación bancaria: primera entrega operativa con importación CSV, sugerencias y conciliación manual.
+- Facturae / VeriFactu: primera entrega operativa con panel propio y exportación XML Facturae sin firma.
 
-## Siguiente módulo
+## Siguiente foco
 
-### Facturae / VeriFactu
+### Profundizar cumplimiento fiscal
 
 Motivo de prioridad:
 
-- reutiliza el núcleo de facturación ya consolidado
-- encaja con el foco español del proyecto
-- aporta una salida estructurada útil para asesoría y cumplimiento futuro
+- añadir firma y validación más estricta al XML exportado
+- estudiar remisión o preparación técnica más cercana a VeriFactu
+- consolidar un circuito fiscal útil sin convertir FacturaIA en un bloque rígido
 
 ## Documentación asociada
 
@@ -112,3 +113,4 @@ Motivo de prioridad:
 - `docs/modulos/CRM_LIGERO.md`
 - `docs/modulos/FIRMA_DOCUMENTAL.md`
 - `docs/modulos/CONCILIACION_BANCARIA.md`
+- `docs/modulos/FACTURAE_VERIFACTU.md`

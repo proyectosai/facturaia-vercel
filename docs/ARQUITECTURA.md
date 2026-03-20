@@ -20,6 +20,7 @@ FacturaIA está diseñada como una aplicación Next.js 15 con App Router, priori
 - `app/instalacion/page.tsx`
 - `app/factura/[publicId]/page.tsx`
 - `app/firma/[token]/page.tsx`
+- `app/(protected)/facturae/page.tsx`
 - `app/(protected)/dashboard/page.tsx`
 - `app/(protected)/new-invoice/page.tsx`
 - `app/(protected)/presupuestos/page.tsx`
@@ -45,6 +46,7 @@ FacturaIA está diseñada como una aplicación Next.js 15 con App Router, priori
 - `app/api/backups/export/route.ts`
 - `app/api/backups/push/route.ts`
 - `app/api/backups/restore/route.ts`
+- `app/api/invoices/[invoiceId]/facturae/route.ts`
 - `app/api/invoices/[invoiceId]/pdf/route.ts`
 - `app/api/public/invoices/[publicId]/pdf/route.ts`
 - `app/api/integrations/telegram/[inboundKey]/route.ts`
@@ -238,7 +240,23 @@ Funciones:
 - conciliación manual o descarte de movimientos
 - inclusión del histórico bancario en backups y restauración
 
-## 12. Copias de seguridad
+## 12. Facturae / VeriFactu
+
+Archivos clave:
+
+- `app/(protected)/facturae/page.tsx`
+- `app/api/invoices/[invoiceId]/facturae/route.ts`
+- `lib/facturae.ts`
+
+Funciones:
+
+- revisión previa por factura
+- exportación XML Facturae 3.2.2 sin firma
+- avisos sobre direcciones, NIF y retenciones
+- acceso a fuentes oficiales de BOE, Facturae y AEAT
+- punto de partida para cumplimiento más avanzado
+
+## 13. Copias de seguridad
 
 Archivos clave:
 
@@ -262,7 +280,7 @@ Funciones:
 - sincronización manual a WebDAV / Nextcloud
 - historial de últimas ejecuciones remotas
 
-## 13. Mensajería opcional
+## 14. Mensajería opcional
 
 Archivos clave:
 
@@ -458,7 +476,7 @@ En este modo:
 - tests e2e
 - seed de datos
 - README operativo para onboarding de equipo
-- exportación XML VeriFactu
+- firma y validación más estricta del XML fiscal
 - contratos con más parametrización
 - backups programados y snapshots cifrados
 - respuestas salientes y automatizaciones sobre mensajería

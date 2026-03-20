@@ -39,7 +39,8 @@ Este documento resume la dirección prevista para FacturaIA como producto y como
 
 - más ayudas contextuales dentro del flujo
 - revisión de copy legal y fiscal con referencias oficiales
-- evolución futura hacia exportes compatibles con más escenarios reales
+- firma y validación más estricta del XML Facturae
+- acercamiento progresivo a escenarios reales de VeriFactu
 
 ### Gastos y conciliación
 

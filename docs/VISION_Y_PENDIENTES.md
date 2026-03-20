@@ -45,6 +45,7 @@ El foco actual del producto está en:
 - centralizar emisor, cliente, IVA, IRPF y numeración
 - mantener un historial fácil de revisar
 - descargar y enviar documentos sin salir de la app
+- empezar a sacar salidas estructuradas útiles como XML Facturae
 
 ### Documentación comercial
 
@@ -112,6 +113,7 @@ Todavía faltan piezas importantes para considerarlo un producto completamente m
 - backups manuales desde la propia interfaz
 - backups remotos por WebDAV / Nextcloud
 - primera entrega de conciliación bancaria con importación CSV
+- primera entrega del panel Facturae / VeriFactu con exportación XML sin firma
 
 ### IA y documentos
 
@@ -140,7 +142,7 @@ Estas partes existen, pero no están cerradas del todo:
 
 - la experiencia de creación de factura ya es usable, pero todavía admite más refinamiento en velocidad, claridad y reutilización
 - faltan flujos como duplicar factura, guardar borradores en base de datos y plantillas por tipo de servicio
-- el enfoque VeriFactu está reflejado en copy y estructura, pero todavía no existe exportación operativa completa
+- ya existe una primera exportación XML Facturae, pero faltan firma, validación más estricta y pasos más cercanos a VeriFactu
 
 ### Documentos
 
@@ -177,7 +179,7 @@ Esto forma parte de la visión, pero hoy no está implementado o no está comple
 - borradores persistentes de factura
 - duplicación de facturas
 - estados de factura más ricos
-- exportación XML orientada a VeriFactu
+- firma y validación más sólida del XML estructurado
 - más automatizaciones fiscales
 
 ### Documentos avanzados

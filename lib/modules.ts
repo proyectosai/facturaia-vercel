@@ -288,18 +288,23 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
     order: 9,
     title: "Facturae / VeriFactu",
     summary:
-      "Exportación estructurada orientada a cumplimiento fiscal cuando el núcleo de facturación esté más maduro.",
-    status: "planned",
+      "Panel de preparación normativa y exportación inicial a XML Facturae 3.2.2 sin firma, con referencias oficiales de VeriFactu.",
+    status: "partial",
     category: "cumplimiento",
+    routeHref: "/facturae",
+    docsPath: "docs/modulos/FACTURAE_VERIFACTU.md",
     requirements: [
-      "Modelo fiscal estable",
-      "XML validado",
-      "Revisión normativa actualizada",
+      "Facturas emitidas con datos fiscales completos",
+      "NIF y direcciones razonablemente estructurados",
+      "Revisión manual del XML antes de usarlo fuera de FacturaIA",
     ],
     installSteps: [
-      "Definir exportaciones XML.",
-      "Validar contra normativa.",
-      "Conectar con el flujo de emisión.",
+      "Abre /facturae y revisa los avisos por factura.",
+      "Descarga el XML Facturae 3.2.2 como borrador.",
+      "Contrasta el fichero con la normativa y con tu flujo real antes de usarlo fuera de la app.",
+    ],
+    notes: [
+      "Primera entrega sin firma XAdES, sin FACe y sin remisión automática a VeriFactu.",
     ],
   },
 ];
@@ -392,6 +397,11 @@ export function getModuleCatalog(): ModuleRuntimeState[] {
       configured = hasSupabase();
       configuredLabel = configured
         ? "Listo para importar extractos CSV"
+        : "Falta Supabase";
+    } else if (module.id === "facturae-verifactu") {
+      configured = hasSupabase();
+      configuredLabel = configured
+        ? "Listo para exportar borradores XML"
         : "Falta Supabase";
     } else {
       configured = false;
