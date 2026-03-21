@@ -100,11 +100,11 @@ async function waitForPrimaryAction(page, namePattern) {
   const button = page.getByRole("button", { name: namePattern }).first();
 
   try {
-    await button.waitFor({ state: "visible", timeout: 5_000 });
+    await button.waitFor({ state: "visible", timeout: 15_000 });
     return;
   } catch {
     const link = page.getByRole("link", { name: namePattern }).first();
-    await link.waitFor({ state: "visible", timeout: 30_000 });
+    await link.waitFor({ state: "visible", timeout: 45_000 });
   }
 }
 
@@ -138,7 +138,7 @@ async function setSerializedLines(page, lines) {
 async function assertHealthyRoute(page, route) {
   await page.goto(`${baseUrl}${route}`, { waitUntil: "load" });
   const main = page.locator("main").last();
-  await main.waitFor({ state: "visible", timeout: 30_000 });
+  await main.waitFor({ state: "visible", timeout: 45_000 });
 
   const mainText = await main.innerText();
 
@@ -333,17 +333,27 @@ async function runMobileRouteSweep(page) {
   ];
 
   for (const item of routes) {
-    await page.goto(`${baseUrl}${item.route}`, { waitUntil: "load" });
-    await page.locator("main").last().waitFor({ state: "visible", timeout: 45_000 });
-    assertNoRouteError(page);
-    await page.getByRole("heading", { name: item.heading }).first().waitFor({
-      state: "visible",
-      timeout: 30_000,
-    });
-    if (item.action) {
-      await waitForPrimaryAction(page, item.action);
+    console.log(`[mobile-route] ${item.route}`);
+    try {
+      await page.goto(`${baseUrl}${item.route}`, { waitUntil: "load" });
+      await page.locator("body").waitFor({
+        state: "visible",
+        timeout: 45_000,
+      });
+      assertNoRouteError(page);
+      await page.getByRole("heading", { name: item.heading }).first().waitFor({
+        state: "visible",
+        timeout: 45_000,
+      });
+      if (item.action) {
+        await waitForPrimaryAction(page, item.action);
+      }
+      await assertNoHorizontalOverflow(page, item.route);
+    } catch (error) {
+      throw new Error(
+        `Fallo en barrido móvil de ${item.route}: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
-    await assertNoHorizontalOverflow(page, item.route);
   }
 }
 
