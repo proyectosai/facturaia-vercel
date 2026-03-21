@@ -291,16 +291,16 @@ export function InvoiceForm({
         />
 
         <Card className="overflow-hidden border-white/60 bg-[linear-gradient(145deg,rgba(255,255,255,0.95),rgba(233,244,240,0.86))]">
-          <CardContent className="grid gap-4 p-6 sm:grid-cols-2 xl:grid-cols-4">
+          <CardContent className="grid grid-cols-2 gap-3 p-4 sm:gap-4 sm:p-6 xl:grid-cols-4">
             <div className="rounded-[26px] bg-white/82 p-4 shadow-sm">
               <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
                 Conceptos listos
               </p>
-              <p className="mt-3 text-3xl font-semibold text-foreground">
+              <p className="mt-3 text-2xl font-semibold text-foreground sm:text-3xl">
                 {visibleLines.length}
               </p>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                De {lines.length} líneas actuales. La línea activa es la {activeLine + 1}.
+              <p className="mt-2 text-xs leading-5 text-muted-foreground sm:text-sm sm:leading-6">
+                De {lines.length} líneas. Activa: {activeLine + 1}.
               </p>
             </div>
 
@@ -308,11 +308,11 @@ export function InvoiceForm({
               <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
                 Total en vivo
               </p>
-              <p className="mt-3 text-3xl font-semibold text-foreground">
+              <p className="mt-3 text-2xl font-semibold text-foreground sm:text-3xl">
                 {formatCurrency(preview.totals.grandTotal)}
               </p>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                El cálculo ya contempla IVA y la retención IRPF si la aplicas.
+              <p className="mt-2 text-xs leading-5 text-muted-foreground sm:text-sm sm:leading-6">
+                IVA e IRPF incluidos si aplican.
               </p>
             </div>
 
@@ -320,11 +320,11 @@ export function InvoiceForm({
               <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
                 Borrador local
               </p>
-              <p className="mt-3 text-2xl font-semibold text-foreground">
+              <p className="mt-3 text-xl font-semibold text-foreground sm:text-2xl">
                 {isDraftReady ? "Activo" : "Cargando"}
               </p>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                El navegador guarda automáticamente líneas, IRPF y contexto de IA.
+              <p className="mt-2 text-xs leading-5 text-muted-foreground sm:text-sm sm:leading-6">
+                Guarda líneas, IRPF y contexto IA.
               </p>
             </div>
 
@@ -332,11 +332,11 @@ export function InvoiceForm({
               <p className="text-xs uppercase tracking-[0.16em] text-white/70">
                 Estado de emisión
               </p>
-              <p className="mt-3 text-2xl font-semibold text-white">
+              <p className="mt-3 text-xl font-semibold text-white sm:text-2xl">
                 {canCreateInvoice ? "Lista para emitir" : "Revisar formulario"}
               </p>
-              <p className="mt-2 text-sm leading-6 text-white/82">
-                Si tienes dudas fiscales concretas, usa la pestaña de legislación antes de cerrar la factura.
+              <p className="mt-2 text-xs leading-5 text-white/82 sm:text-sm sm:leading-6">
+                Si dudas, revisa la pestaña de legislación antes de cerrar la factura.
               </p>
             </div>
           </CardContent>
@@ -635,6 +635,7 @@ export function InvoiceForm({
               variant="secondary"
               onClick={() => void fillWithAiPrompt()}
               disabled={isAiGenerating}
+              className="w-full sm:w-auto"
             >
               <Sparkles className="h-4 w-4" />
               {isAiGenerating ? "Generando con IA local..." : "Generar con IA"}
@@ -935,11 +936,11 @@ export function InvoiceForm({
 
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex flex-col gap-3 sm:flex-row">
-                <Button type="button" variant="outline" onClick={addLine}>
+                <Button className="w-full sm:w-auto" type="button" variant="outline" onClick={addLine}>
                   <Plus className="h-4 w-4" />
                   Añadir línea
                 </Button>
-                <Button type="button" variant="ghost" onClick={clearDraft}>
+                <Button className="w-full sm:w-auto" type="button" variant="ghost" onClick={clearDraft}>
                   Limpiar borrador local
                 </Button>
               </div>
@@ -947,7 +948,7 @@ export function InvoiceForm({
               {canCreateInvoice ? (
                 <SubmitButton
                   pendingLabel="Generando factura..."
-                  className="sm:min-w-[220px]"
+                  className="w-full sm:min-w-[220px] sm:w-auto"
                 >
                   Generar Factura
                 </SubmitButton>
@@ -955,7 +956,7 @@ export function InvoiceForm({
                 <Button
                   type="button"
                   variant="secondary"
-                  className="sm:min-w-[260px]"
+                  className="w-full sm:min-w-[260px] sm:w-auto"
                   disabled
                 >
                   Generación real desactivada en demo

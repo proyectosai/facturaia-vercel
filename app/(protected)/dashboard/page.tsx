@@ -221,7 +221,7 @@ export default async function DashboardPage() {
               </span>
             </div>
             <div className="space-y-3">
-              <CardTitle className="font-display text-5xl leading-none tracking-tight">
+              <CardTitle className="font-display text-4xl leading-none tracking-tight sm:text-5xl">
                 Hola, {profile.full_name || "autónomo"}.
               </CardTitle>
               <CardDescription className="max-w-2xl text-base leading-7">
@@ -286,26 +286,26 @@ export default async function DashboardPage() {
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-3">
-              <Button asChild>
+            <div className="grid gap-3 sm:flex sm:flex-wrap">
+              <Button className="w-full sm:w-auto" asChild>
                 <Link href="/new-invoice">
                   <FilePlus2 className="h-4 w-4" />
                   Nueva Factura
                 </Link>
               </Button>
-              <Button variant="outline" asChild>
+              <Button className="w-full sm:w-auto" variant="outline" asChild>
                 <Link href="/invoices">
                   <Files className="h-4 w-4" />
                   Ver historial
                 </Link>
               </Button>
-              <Button variant="ghost" asChild>
+              <Button className="w-full sm:w-auto" variant="ghost" asChild>
                 <Link href="/modules">
                   <FileText className="h-4 w-4" />
                   Módulos
                 </Link>
               </Button>
-              <Button variant="ghost" asChild>
+              <Button className="w-full sm:w-auto" variant="ghost" asChild>
                 <Link href="/instalacion">
                   <Sparkles className="h-4 w-4" />
                   Guía privada
@@ -373,7 +373,7 @@ export default async function DashboardPage() {
         </Card>
       </section>
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+      <section className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
         {[
           {
             icon: ReceiptText,
@@ -422,7 +422,7 @@ export default async function DashboardPage() {
               <CardContent className="mt-0 flex items-start justify-between gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground">{item.label}</p>
-                  <p className="mt-2 font-display text-4xl text-foreground">
+                  <p className="mt-2 font-display text-3xl text-foreground sm:text-4xl">
                     {item.value}
                   </p>
                   <p className="mt-2 text-sm text-muted-foreground">{item.foot}</p>
@@ -477,7 +477,7 @@ export default async function DashboardPage() {
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="section-kicker">Ruta recomendada</p>
-            <h2 className="font-display text-4xl text-foreground">
+            <h2 className="font-display text-3xl text-foreground sm:text-4xl">
               Una cuenta operativa en tres pasos claros
             </h2>
           </div>

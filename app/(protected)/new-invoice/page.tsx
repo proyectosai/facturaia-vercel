@@ -54,7 +54,7 @@ export default async function NewInvoicePage({
 
       <div className="max-w-4xl space-y-3">
         <p className="section-kicker">Nueva factura</p>
-        <h1 className="font-display text-5xl leading-none tracking-tight text-foreground">
+        <h1 className="font-display text-4xl leading-none tracking-tight text-foreground sm:text-5xl">
           Emite una factura mejor presentada y con menos dudas en el camino.
         </h1>
         <p className="text-lg leading-8 text-muted-foreground">
@@ -63,14 +63,14 @@ export default async function NewInvoicePage({
       </div>
 
       <Card className="overflow-hidden border-white/60 bg-[radial-gradient(circle_at_top_left,rgba(233,244,240,0.96),rgba(255,255,255,0.93)_40%,rgba(244,233,215,0.76)_100%)]">
-        <CardContent className="grid gap-6 p-6 sm:p-8 xl:grid-cols-[1.08fr_0.92fr]">
+        <CardContent className="grid gap-5 p-5 sm:p-8 xl:grid-cols-[1.08fr_0.92fr]">
           <div className="space-y-4">
             <div className="flex flex-wrap gap-2">
               <Badge>Cabina de emisión</Badge>
               <Badge variant="success">Uso privado</Badge>
               {demoMode ? <Badge variant="secondary">Modo demo</Badge> : null}
             </div>
-            <h2 className="font-display text-4xl leading-none tracking-tight text-foreground">
+            <h2 className="font-display text-3xl leading-none tracking-tight text-foreground sm:text-4xl">
               Un espacio más claro para redactar, revisar y validar antes de enviar.
             </h2>
             <p className="max-w-2xl text-base leading-7 text-muted-foreground">
@@ -119,10 +119,10 @@ export default async function NewInvoicePage({
       </Card>
 
       <Tabs defaultValue="editor" className="space-y-6">
-        <TabsList className="grid w-full max-w-3xl grid-cols-1 gap-1 rounded-[28px] sm:grid-cols-3">
-          <TabsTrigger value="editor">Editor de factura</TabsTrigger>
-          <TabsTrigger value="checklist">Checklist</TabsTrigger>
-          <TabsTrigger value="legal">Legislación oficial</TabsTrigger>
+        <TabsList className="flex w-full max-w-full gap-1 overflow-x-auto rounded-[28px] p-1 sm:grid sm:max-w-3xl sm:grid-cols-3">
+          <TabsTrigger className="min-w-[160px] sm:min-w-0" value="editor">Editor de factura</TabsTrigger>
+          <TabsTrigger className="min-w-[140px] sm:min-w-0" value="checklist">Checklist</TabsTrigger>
+          <TabsTrigger className="min-w-[170px] sm:min-w-0" value="legal">Legislación oficial</TabsTrigger>
         </TabsList>
 
         <TabsContent value="editor" className="space-y-4">
