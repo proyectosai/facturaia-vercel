@@ -27,6 +27,7 @@ Eso te da el contexto correcto:
 ### Resiliencia
 
 - `BACKUPS_REMOTOS.md`
+- `AUDITORIA_LOCAL.md`
 
 ### Documentos y flujo comercial
 

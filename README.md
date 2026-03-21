@@ -31,6 +31,7 @@ La línea principal es reforzar la instalación privada del cliente:
 - Revisión Facturae más estricta con validación básica de NIF y vencimiento, más detalle de pago en el XML.
 - Módulo CRM ligero para centralizar fichas de cliente y proveedor con actividad relacionada.
 - Bandeja interna de feedback para registrar incidencias y peticiones de pilotos o uso interno.
+- Vista de auditoría operativa con filtros y export JSON para revisar cambios locales en facturas, cobros, firmas, banca y restauraciones.
 - Historial de facturas con descarga de PDF y envío por email con SMTP o Resend.
 - Página pública de factura con QR.
 - Estudio documental con IA local vía LM Studio para propuestas, presupuestos, contratos y mensajes.
@@ -45,7 +46,7 @@ La línea principal es reforzar la instalación privada del cliente:
 - Asistente de primeros pasos dentro del panel para instalaciones no técnicas.
 - Script `npm run doctor` para validar la instalación local.
 - Cabeceras de seguridad y validación estricta de uploads en puntos sensibles.
-- Rate limiting en login local, expiración real de sesión y auditoría persistente de accesos y restores.
+- Rate limiting en login local, expiración real de sesión, fail-closed en producción para secretos/cifrado y auditoría persistente de accesos, facturas, cobros, firmas, banca y restores.
 - Suite de tests unitarios para cobros, seguridad, Facturae y firma.
 - Suite unitaria específica para el núcleo local y su persistencia.
 - Suite masiva local para facturación, banca, comunicaciones, cifrado y módulos.
@@ -108,6 +109,8 @@ Si quieres cifrado opcional en reposo y en backups:
 - `FACTURAIA_ENCRYPT_BACKUPS=1`
 - `FACTURAIA_ENCRYPTION_PASSPHRASE=una-passphrase-larga-y-unica`
 
+En producción, si activas cualquiera de los flags de cifrado y no defines la passphrase, FacturaIA entra en modo `fail-closed`: bloquea acceso protegido y operaciones sensibles hasta corregir la configuración.
+
 ### Modo local privado sin magic link
 
 Si el cliente quiere entrar con email y contraseña dentro de su propia instalación, sin depender de Supabase para el núcleo:
@@ -131,6 +134,7 @@ Comportamiento:
 - si aún no existe ningún usuario, la primera sesión crea la cuenta local inicial
 - el perfil fiscal, las facturas, el PDF, la factura pública, los cobros y los recordatorios se guardan en una base SQLite local dentro del equipo
 - el acceso local aplica expiración real de sesión, bloqueo temporal por intentos fallidos y auditoría persistente de eventos sensibles
+- en producción, si falta `FACTURAIA_LOCAL_SESSION_SECRET` o activas cifrado sin `FACTURAIA_ENCRYPTION_PASSPHRASE`, FacturaIA bloquea acceso protegido, exportación y restauración hasta corregir la instalación
 - después conviene poner `FACTURAIA_LOCAL_BOOTSTRAP=0`
 
 Importante:
@@ -161,6 +165,7 @@ Si buscas una guía clara antes de instalar nada:
 - [QA / lectura ISO 25010](./docs/QA_ISO_25010.md)
 - [Plan de VeriFactu y firma digital](./docs/VERIFACTU_Y_FIRMA_DIGITAL.md)
 - [Memoria local para LLM y RAG](./docs/MEMORIA_LOCAL_LLM.md)
+- [Auditoría local operativa](./docs/modulos/AUDITORIA_LOCAL.md)
 
 ## Sistema de módulos
 
@@ -211,6 +216,7 @@ Guías clave:
 - `/documents-ai`
 - `/mail`
 - `/feedback`
+- `/auditoria`
 - `/modules`
 - `/messages`
 - `/system`

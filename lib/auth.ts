@@ -13,6 +13,7 @@ import {
 import {
   getLocalAppUserById,
   getLocalProfile,
+  getLocalSecurityReadiness,
   getLocalSessionCookieName,
   verifyLocalSessionToken,
 } from "@/lib/local-core";
@@ -28,6 +29,12 @@ export const getOptionalUser = cache(async () => {
   }
 
   if (isLocalFileMode()) {
+    const localSecurity = getLocalSecurityReadiness();
+
+    if (process.env.NODE_ENV === "production" && !localSecurity.ready) {
+      return null;
+    }
+
     const cookieStore = await cookies();
     const token = cookieStore.get(getLocalSessionCookieName())?.value;
     const userId = verifyLocalSessionToken(token);
@@ -77,6 +84,19 @@ export const requireUser = cache(async () => {
       id: demoAppUser.id,
       email: demoAppUser.email,
     } as User;
+  }
+
+  if (isLocalFileMode()) {
+    const localSecurity = getLocalSecurityReadiness();
+
+    if (process.env.NODE_ENV === "production" && !localSecurity.ready) {
+      redirect(
+        `/instalacion?error=${encodeURIComponent(
+          localSecurity.issues[0] ??
+            "La instalación local no cumple los requisitos mínimos de seguridad.",
+        )}`,
+      );
+    }
   }
 
   const user = await getOptionalUser();

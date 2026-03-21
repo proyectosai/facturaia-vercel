@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { isRedirectError } from "next/dist/client/components/redirect-error";
 
 import { exportBackupForUser } from "@/lib/backups";
-import { isDemoMode } from "@/lib/demo";
+import { isDemoMode, isLocalFileMode } from "@/lib/demo";
+import { getLocalSecurityReadiness } from "@/lib/local-core";
 import {
   buildRemoteBackupFilename,
   logRemoteBackupRun,
@@ -22,6 +23,21 @@ export async function POST() {
             "El envío remoto está desactivado en modo demo. Activa la instalación real para probarlo.",
         },
         { status: 400 },
+      );
+    }
+
+    if (
+      isLocalFileMode() &&
+      process.env.NODE_ENV === "production" &&
+      !getLocalSecurityReadiness().ready
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            getLocalSecurityReadiness().issues[0] ??
+            "La instalación local no cumple los requisitos mínimos de seguridad.",
+        },
+        { status: 503 },
       );
     }
 

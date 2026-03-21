@@ -296,6 +296,36 @@ export function getLocalSessionMaxAgeSeconds() {
   return getLocalSecurityPolicy().sessionMaxAgeSeconds;
 }
 
+export function getLocalSecurityIssues() {
+  const issues: string[] = [];
+  const configuredSessionSecret = getConfiguredLocalSessionSecret();
+  const encryptionRequested =
+    process.env.FACTURAIA_ENCRYPT_LOCAL_DATA === "1" ||
+    process.env.FACTURAIA_ENCRYPT_BACKUPS === "1";
+  const encryptionPassphrase = process.env.FACTURAIA_ENCRYPTION_PASSPHRASE?.trim();
+
+  if (process.env.NODE_ENV === "production" && !configuredSessionSecret) {
+    issues.push("FACTURAIA_LOCAL_SESSION_SECRET es obligatorio en producción.");
+  }
+
+  if (process.env.NODE_ENV === "production" && encryptionRequested && !encryptionPassphrase) {
+    issues.push(
+      "FACTURAIA_ENCRYPTION_PASSPHRASE es obligatoria en producción cuando activas cifrado local o de backups.",
+    );
+  }
+
+  return issues;
+}
+
+export function getLocalSecurityReadiness() {
+  const issues = getLocalSecurityIssues();
+
+  return {
+    ready: issues.length === 0,
+    issues,
+  };
+}
+
 function getLocalLoginAttemptKey(email: string, ipAddress: string | null) {
   return `${getNormalizedEmail(email)}::${ipAddress?.trim() || "local"}`;
 }
@@ -350,6 +380,70 @@ function createLocalAuditEvent(
   }
 
   return entry;
+}
+
+function buildProfileAuditSnapshot(profile: Profile | null | undefined) {
+  if (!profile) {
+    return null;
+  }
+
+  return {
+    email: profile.email,
+    fullName: profile.full_name,
+    nif: profile.nif,
+    address: profile.address,
+    hasLogo: Boolean(profile.logo_url),
+  };
+}
+
+function buildInvoiceAuditSnapshot(invoice: InvoiceRecord | null | undefined) {
+  if (!invoice) {
+    return null;
+  }
+
+  return {
+    invoiceNumber: invoice.invoice_number,
+    clientName: invoice.client_name,
+    grandTotal: toNumber(invoice.grand_total),
+    dueDate: invoice.due_date,
+    paymentStatus: invoice.payment_status,
+    amountPaid: toNumber(invoice.amount_paid),
+    paidAt: invoice.paid_at,
+  };
+}
+
+function buildSignatureAuditSnapshot(request: DocumentSignatureRequestRecord | null | undefined) {
+  if (!request) {
+    return null;
+  }
+
+  return {
+    documentId: request.document_id,
+    documentType: request.document_type,
+    requestKind: request.request_kind,
+    status: request.status,
+    signerName: request.signer_name,
+    signerEmail: request.signer_email,
+    signerNif: request.signer_nif,
+    respondedAt: request.responded_at,
+  };
+}
+
+function buildBankMovementAuditSnapshot(movement: BankMovementRecord | null | undefined) {
+  if (!movement) {
+    return null;
+  }
+
+  return {
+    bookingDate: movement.booking_date,
+    amount: toNumber(movement.amount),
+    direction: movement.direction,
+    status: movement.status,
+    matchedInvoiceId: movement.matched_invoice_id,
+    matchedExpenseId: movement.matched_expense_id,
+    sourceFileName: movement.source_file_name,
+    notes: movement.notes,
+  };
 }
 
 function hashPassword(password: string, salt = randomBytes(16).toString("hex")) {
@@ -757,6 +851,7 @@ export async function saveLocalProfile({
     const existing = data.profiles.find((candidate) => candidate.id === userId);
 
     if (existing) {
+      const beforeProfile = buildProfileAuditSnapshot(existing);
       existing.email = email;
       existing.full_name = fullName;
       existing.nif = nif;
@@ -764,6 +859,17 @@ export async function saveLocalProfile({
       existing.logo_url = logoUrl;
       existing.logo_path = null;
       existing.updated_at = timestamp;
+      createLocalAuditEvent(data, {
+        userId,
+        actorType: "user",
+        actorId: userId,
+        source: "profile",
+        action: "profile_updated",
+        entityType: "profile",
+        entityId: userId,
+        beforeJson: beforeProfile,
+        afterJson: buildProfileAuditSnapshot(existing),
+      });
       return existing;
     }
 
@@ -779,6 +885,16 @@ export async function saveLocalProfile({
       updated_at: timestamp,
     };
     data.profiles.push(profile);
+    createLocalAuditEvent(data, {
+      userId,
+      actorType: "user",
+      actorId: userId,
+      source: "profile",
+      action: "profile_created",
+      entityType: "profile",
+      entityId: userId,
+      afterJson: buildProfileAuditSnapshot(profile),
+    });
     return profile;
   });
 }
@@ -1060,6 +1176,16 @@ export async function createLocalInvoiceRecord({
     };
 
     data.invoices.push(invoice);
+    createLocalAuditEvent(data, {
+      userId,
+      actorType: "user",
+      actorId: userId,
+      source: "invoices",
+      action: "invoice_created",
+      entityType: "invoice",
+      entityId: invoice.id,
+      afterJson: buildInvoiceAuditSnapshot(invoice),
+    });
     return invoice;
   });
 }
@@ -1300,6 +1426,7 @@ export async function createLocalDocumentSignatureRequest({
 }) {
   return updateLocalCoreData(async (data) => {
     const timestamp = nowIso();
+    const revokedPendingRequestIds: string[] = [];
 
     data.documentSignatureRequests.forEach((request) => {
       if (
@@ -1307,6 +1434,7 @@ export async function createLocalDocumentSignatureRequest({
         request.document_id === documentId &&
         request.status === "pending"
       ) {
+        revokedPendingRequestIds.push(request.id);
         request.status = "revoked";
         request.responded_at = timestamp;
         request.updated_at = timestamp;
@@ -1336,6 +1464,21 @@ export async function createLocalDocumentSignatureRequest({
     };
 
     data.documentSignatureRequests.push(request);
+    createLocalAuditEvent(data, {
+      userId,
+      actorType: "user",
+      actorId: userId,
+      source: "signatures",
+      action: "signature_request_created",
+      entityType: "signature_request",
+      entityId: request.id,
+      afterJson: buildSignatureAuditSnapshot(request),
+      contextJson: {
+        revokedPendingRequestIds,
+        documentId,
+        documentType,
+      },
+    });
     return request;
   });
 }
@@ -1354,9 +1497,21 @@ export async function revokeLocalDocumentSignatureRequest(userId: string, reques
     }
 
     const timestamp = nowIso();
+    const beforeRequest = buildSignatureAuditSnapshot(request);
     request.status = "revoked";
     request.responded_at = timestamp;
     request.updated_at = timestamp;
+    createLocalAuditEvent(data, {
+      userId,
+      actorType: "user",
+      actorId: userId,
+      source: "signatures",
+      action: "signature_request_revoked",
+      entityType: "signature_request",
+      entityId: request.id,
+      beforeJson: beforeRequest,
+      afterJson: buildSignatureAuditSnapshot(request),
+    });
     return request;
   });
 }
@@ -1413,6 +1568,7 @@ export async function respondToLocalDocumentSignatureRequest({
     }
 
     const timestamp = nowIso();
+    const beforeRequest = buildSignatureAuditSnapshot(request);
     request.status = status;
     request.viewed_at = request.viewed_at ?? timestamp;
     request.responded_at = timestamp;
@@ -1446,6 +1602,23 @@ export async function respondToLocalDocumentSignatureRequest({
             : document.status;
       document.updated_at = timestamp;
     }
+
+    createLocalAuditEvent(data, {
+      userId: request.user_id,
+      actorType: "public",
+      actorId: signerEmail ?? signerNif ?? signerName,
+      source: "signatures",
+      action: status === "signed" ? "signature_request_signed" : "signature_request_rejected",
+      entityType: "signature_request",
+      entityId: request.id,
+      beforeJson: beforeRequest,
+      afterJson: buildSignatureAuditSnapshot(request),
+      contextJson: {
+        documentStatus: document?.status ?? null,
+        forwardedFor,
+        acceptedTerms,
+      },
+    });
 
     return request;
   });
@@ -1563,6 +1736,27 @@ export async function createLocalBankMovementRecords({
       existingHashes.add(row.sourceHash);
     }
 
+    if (inserted.length > 0) {
+      createLocalAuditEvent(data, {
+        userId,
+        actorType: "user",
+        actorId: userId,
+        source: "banking",
+        action: "bank_movements_imported",
+        entityType: "bank_movements",
+        entityId: null,
+        afterJson: {
+          inserted: inserted.length,
+        },
+        contextJson: {
+          sourceFiles: Array.from(
+            new Set(inserted.map((movement) => movement.source_file_name).filter(Boolean)),
+          ),
+          sourceHashes: inserted.map((movement) => movement.source_hash),
+        },
+      });
+    }
+
     return inserted;
   });
 }
@@ -1590,6 +1784,7 @@ export async function reconcileLocalBankMovement({
     }
 
     const timestamp = nowIso();
+    const beforeMovement = buildBankMovementAuditSnapshot(movement);
 
     if (actionKind === "match_invoice") {
       movement.status = "reconciled";
@@ -1614,6 +1809,17 @@ export async function reconcileLocalBankMovement({
     }
 
     movement.updated_at = timestamp;
+    createLocalAuditEvent(data, {
+      userId,
+      actorType: "user",
+      actorId: userId,
+      source: "banking",
+      action: `bank_movement_${actionKind}`,
+      entityType: "bank_movement",
+      entityId: movement.id,
+      beforeJson: beforeMovement,
+      afterJson: buildBankMovementAuditSnapshot(movement),
+    });
     return movement;
   });
 }
@@ -1623,7 +1829,42 @@ export async function syncLocalInvoicePaymentStatusFromBankMatches(
   invoiceIds: string[],
 ) {
   return updateLocalCoreData(async (data) => {
-    return syncLocalInvoicePaymentStatusInData(data, userId, invoiceIds);
+    const beforeSnapshots = new Map<string, ReturnType<typeof buildInvoiceAuditSnapshot>>();
+
+    for (const invoiceId of invoiceIds) {
+      const invoice = data.invoices.find(
+        (candidate) => candidate.user_id === userId && candidate.id === invoiceId,
+      );
+
+      if (invoice) {
+        beforeSnapshots.set(invoice.id, buildInvoiceAuditSnapshot(invoice));
+      }
+    }
+
+    const synced = syncLocalInvoicePaymentStatusInData(data, userId, invoiceIds);
+
+    synced.forEach((invoice) => {
+      const beforeSnapshot = beforeSnapshots.get(invoice.id);
+      const afterSnapshot = buildInvoiceAuditSnapshot(invoice);
+
+      if (JSON.stringify(beforeSnapshot) === JSON.stringify(afterSnapshot)) {
+        return;
+      }
+
+      createLocalAuditEvent(data, {
+        userId,
+        actorType: "system",
+        actorId: "banking-sync",
+        source: "collections",
+        action: "invoice_payment_synced_from_banking",
+        entityType: "invoice",
+        entityId: invoice.id,
+        beforeJson: beforeSnapshot ?? null,
+        afterJson: afterSnapshot,
+      });
+    });
+
+    return synced;
   });
 }
 
@@ -1697,6 +1938,7 @@ export async function updateLocalInvoicePaymentStates(
     }
 
     const updated: InvoiceRecord[] = [];
+    const beforeSnapshots = new Map<string, ReturnType<typeof buildInvoiceAuditSnapshot>>();
 
     for (const invoiceId of uniqueInvoiceIds) {
       const invoice = data.invoices.find(
@@ -1707,6 +1949,7 @@ export async function updateLocalInvoicePaymentStates(
         continue;
       }
 
+      beforeSnapshots.set(invoice.id, buildInvoiceAuditSnapshot(invoice));
       invoice.updated_at = nowIso();
 
       if (actionKind === "mark_paid") {
@@ -1723,12 +1966,40 @@ export async function updateLocalInvoicePaymentStates(
     }
 
     if (actionKind === "reopen" && updated.length > 0) {
-      return syncLocalInvoicePaymentStatusInData(
+      const reopened = syncLocalInvoicePaymentStatusInData(
         data,
         userId,
         updated.map((invoice) => invoice.id),
       );
+      reopened.forEach((invoice) => {
+        createLocalAuditEvent(data, {
+          userId,
+          actorType: "user",
+          actorId: userId,
+          source: "collections",
+          action: "invoice_payment_reopened",
+          entityType: "invoice",
+          entityId: invoice.id,
+          beforeJson: beforeSnapshots.get(invoice.id) ?? null,
+          afterJson: buildInvoiceAuditSnapshot(invoice),
+        });
+      });
+      return reopened;
     }
+
+    updated.forEach((invoice) => {
+      createLocalAuditEvent(data, {
+        userId,
+        actorType: "user",
+        actorId: userId,
+        source: "collections",
+        action: "invoice_payment_marked_paid",
+        entityType: "invoice",
+        entityId: invoice.id,
+        beforeJson: beforeSnapshots.get(invoice.id) ?? null,
+        afterJson: buildInvoiceAuditSnapshot(invoice),
+      });
+    });
 
     return updated;
   });

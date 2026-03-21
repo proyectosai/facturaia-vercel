@@ -80,7 +80,8 @@ Estas variables endurecen el acceso privado:
 Además:
 
 - FacturaIA guarda auditoría local de logins correctos, fallos, bloqueos, logout y restauraciones de backup
-- en producción conviene tratar `FACTURAIA_LOCAL_SESSION_SECRET` como obligatorio
+- FacturaIA ya audita también cambios de facturas, cobros, firmas y banca dentro del log local
+- en producción `FACTURAIA_LOCAL_SESSION_SECRET` pasa a ser obligatorio de verdad
 
 ## Cifrado opcional
 
@@ -95,9 +96,18 @@ FACTURAIA_ENCRYPTION_PASSPHRASE=una-passphrase-larga-y-unica
 Notas importantes:
 
 - no se activa por defecto
-- si no defines la passphrase, FacturaIA seguirá funcionando en plano
+- en desarrollo, si no defines la passphrase, FacturaIA seguirá funcionando en plano
+- en producción, si activas cifrado y no defines la passphrase, FacturaIA bloquea acceso protegido, exportación y restauración hasta corregirlo
 - los backups JSON antiguos sin cifrar siguen restaurando
 - si pierdes la passphrase, no podrás descifrar el núcleo local ni los backups cifrados
+
+## Log operativo para despacho
+
+La instalación local incorpora una pantalla `/auditoria` pensada para soporte interno:
+
+- permite revisar eventos por origen: acceso, perfil, facturas, cobros, firmas, banca y backups
+- incluye filtros y búsqueda simple por texto
+- permite descargar el log completo en JSON desde `/api/auditoria/export`
 
 ## Recomendación práctica
 

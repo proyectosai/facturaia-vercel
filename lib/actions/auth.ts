@@ -11,7 +11,7 @@ import { rethrowIfRedirectError } from "@/lib/actions/redirect-error";
 import { getLogoStoragePath } from "@/lib/invoices";
 import {
   getLocalAppUserById,
-  getLocalSecurityPolicy,
+  getLocalSecurityReadiness,
   ensureInitialLocalUser,
   fileToDataUrl,
   getLocalSessionCookieName,
@@ -97,11 +97,14 @@ export async function signInLocalPasswordAction(formData: FormData) {
     const headerStore = await headers();
     const ipAddress = getRequestIpAddress(headerStore);
     const userAgent = headerStore.get("user-agent");
-    const securityPolicy = getLocalSecurityPolicy();
+    const securityReadiness = getLocalSecurityReadiness();
 
-    if (process.env.NODE_ENV === "production" && !securityPolicy.sessionSecretConfigured) {
+    if (process.env.NODE_ENV === "production" && !securityReadiness.ready) {
       redirect(
-        "/login?error=FACTURAIA_LOCAL_SESSION_SECRET%20es%20obligatorio%20en%20producci%C3%B3n%20para%20usar%20el%20acceso%20local.",
+        `/login?error=${encodeURIComponent(
+          securityReadiness.issues[0] ??
+            "La instalación local no cumple los requisitos mínimos de seguridad.",
+        )}`,
       );
     }
 

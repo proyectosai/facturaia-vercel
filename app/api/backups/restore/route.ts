@@ -5,6 +5,8 @@ import { z } from "zod";
 import type { FacturaIaBackup } from "@/lib/backups";
 import { inspectBackupPayload, restoreBackupForUser } from "@/lib/backups";
 import { requireUser } from "@/lib/auth";
+import { isLocalFileMode } from "@/lib/demo";
+import { getLocalSecurityReadiness } from "@/lib/local-core";
 import {
   assertAllowedUpload,
   UploadValidationError,
@@ -70,6 +72,32 @@ const backupSchema = z.object({
         contact_email: z.string().nullable().optional(),
         created_at: z.string().optional(),
         updated_at: z.string().optional(),
+      }),
+    )
+    .default([]),
+  auditEvents: z
+    .array(
+      z.object({
+        id: z.string(),
+        actor_type: z.enum(["user", "anonymous", "system", "public"]),
+        actor_id: z.string().nullable().optional(),
+        source: z.enum([
+          "auth",
+          "backup",
+          "system",
+          "profile",
+          "invoices",
+          "collections",
+          "signatures",
+          "banking",
+        ]),
+        action: z.string(),
+        entity_type: z.string(),
+        entity_id: z.string().nullable().optional(),
+        before_json: z.record(z.string(), z.unknown()).nullable().optional(),
+        after_json: z.record(z.string(), z.unknown()).nullable().optional(),
+        context_json: z.record(z.string(), z.unknown()).default({}),
+        created_at: z.string().optional(),
       }),
     )
     .default([]),
@@ -378,6 +406,21 @@ const backupSchema = z.object({
 
 export async function POST(request: Request) {
   try {
+    if (
+      isLocalFileMode() &&
+      process.env.NODE_ENV === "production" &&
+      !getLocalSecurityReadiness().ready
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            getLocalSecurityReadiness().issues[0] ??
+            "La instalación local no cumple los requisitos mínimos de seguridad.",
+        },
+        { status: 503 },
+      );
+    }
+
     const user = await requireUser();
     const formData = await request.formData();
     const file = formData.get("backup");

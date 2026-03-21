@@ -164,7 +164,8 @@ describe("local backup export and restore", () => {
     expect(inspected.manifest.checksumAlgorithm).toBe("sha256");
     expect(inspected.manifest.modulesIncluded).toContain("core");
     expect(inspected.manifest.modulesIncluded).toContain("security");
-    expect(inspected.manifest.counts.auditEvents).toBe(1);
+    expect(inspected.manifest.counts.auditEvents).toBe(backup.auditEvents.length);
+    expect(inspected.manifest.counts.auditEvents).toBeGreaterThanOrEqual(3);
     expect(inspected.manifest.counts.invoices).toBe(1);
     expect(inspected.checksum).toHaveLength(64);
     expect(parseBackupPayload(serialized).invoices).toHaveLength(1);
@@ -395,7 +396,8 @@ describe("local backup export and restore", () => {
     expect(backup.appUrl).toBe("http://127.0.0.1:3999");
     expect(envelope.manifest.counts.invoices).toBe(1);
     expect(envelope.manifest.counts.feedbackEntries).toBe(1);
-    expect(envelope.manifest.counts.auditEvents).toBe(1);
+    expect(envelope.manifest.counts.auditEvents).toBe(backup.auditEvents.length);
+    expect(envelope.manifest.counts.auditEvents).toBeGreaterThanOrEqual(5);
     expect(envelope.manifest.modulesIncluded).toContain("crm");
     expect(envelope.manifest.modulesIncluded).toContain("commercial-documents");
     expect(envelope.manifest.modulesIncluded).toContain("security");
@@ -413,11 +415,15 @@ describe("local backup export and restore", () => {
       await restoreBackupForUser(userId, email, backup);
 
       const restored = await getLocalCoreSnapshot();
+      const restoredUserAuditEvents = restored.auditEvents.filter((event) => event.user_id === userId);
 
       expect(restored.profiles).toHaveLength(1);
       expect(restored.clients).toHaveLength(1);
       expect(restored.feedbackEntries).toHaveLength(1);
-      expect(restored.auditEvents.filter((event) => event.user_id === userId)).toHaveLength(2);
+      expect(restoredUserAuditEvents).toHaveLength(backup.auditEvents.length + 1);
+      expect(
+        restoredUserAuditEvents.some((event) => event.action === "backup_restore_completed"),
+      ).toBe(true);
       expect(restored.expenses).toHaveLength(1);
       expect(restored.commercialDocuments).toHaveLength(1);
       expect(restored.documentSignatureRequests).toHaveLength(1);

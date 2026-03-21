@@ -72,7 +72,15 @@ export type FeedbackSourceType = "self" | "pilot";
 
 export type LocalAuditActorType = "user" | "anonymous" | "system" | "public";
 
-export type LocalAuditSource = "auth" | "backup" | "system" | "profile";
+export type LocalAuditSource =
+  | "auth"
+  | "backup"
+  | "system"
+  | "profile"
+  | "invoices"
+  | "collections"
+  | "signatures"
+  | "banking";
 
 export type LocalAuthRateLimitScope = "local_login";
 

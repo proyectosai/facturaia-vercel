@@ -9,6 +9,10 @@ import {
   TerminalSquare,
 } from "lucide-react";
 
+import { isLocalMode } from "@/lib/demo";
+import { getLocalSecurityReadiness } from "@/lib/local-core";
+import { RouteToast } from "@/components/route-toast";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -39,9 +43,30 @@ const setupSteps = [
   },
 ];
 
-export default function InstalacionPage() {
+function getSingleSearchParam(value: string | string[] | undefined, fallback = "") {
+  if (Array.isArray(value)) {
+    return value[0] ?? fallback;
+  }
+
+  return value ?? fallback;
+}
+
+export default async function InstalacionPage({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    error?: string | string[];
+  }>;
+}) {
+  const params = await searchParams;
+  const error = getSingleSearchParam(params.error);
+  const localMode = isLocalMode();
+  const localSecurity = localMode ? getLocalSecurityReadiness() : { ready: true, issues: [] };
+
   return (
     <div className="space-y-8">
+      <RouteToast type="error" message={error ? decodeURIComponent(error) : null} />
+
       <section className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr] xl:items-end">
         <div className="max-w-4xl space-y-4">
           <p className="section-kicker">Instalación privada</p>
@@ -95,6 +120,34 @@ export default function InstalacionPage() {
           </CardContent>
         </Card>
       </section>
+
+      {localMode && !localSecurity.ready ? (
+        <Card className="border-[color:rgba(180,68,54,0.24)] bg-[linear-gradient(145deg,rgba(255,249,247,0.98),rgba(255,238,233,0.92))]">
+          <CardHeader>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="secondary">Bloqueo preventivo</Badge>
+              <Badge
+                variant="secondary"
+                className="bg-[color:rgba(180,68,54,0.14)] text-[color:#8f2f2f]"
+              >
+                Seguridad pendiente
+              </Badge>
+            </div>
+            <CardTitle>La instalación local no puede operar cerrada todavía</CardTitle>
+            <CardDescription>
+              FacturaIA ha pasado a fail-closed en producción: si faltan secretos o una
+              passphrase obligatoria para cifrado, la app bloquea acceso protegido hasta corregirlo.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-3 md:grid-cols-2">
+            {localSecurity.issues.map((issue) => (
+              <div key={issue} className="rounded-[24px] bg-white/85 p-4 text-sm leading-7 text-[color:#8f2f2f]">
+                {issue}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      ) : null}
 
       <section className="grid gap-4 xl:grid-cols-3">
         {setupSteps.map((step) => {

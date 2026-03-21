@@ -63,8 +63,10 @@ En el repositorio, `lint`, `typecheck`, `npm test`, `test:massive-local`, build 
 - expiración real del token local
 - bloqueo temporal tras intentos fallidos
 - auditoría persistente de login, logout y restore
+- auditoría transversal de facturas, cobros, firma documental y conciliación bancaria
 - manifest y checksum válidos en el backup
 - restauración rechazada si la copia ha sido manipulada
+- fail-closed real en producción si faltan secretos o passphrase obligatoria
 
 ### UX operativa
 
@@ -156,3 +158,11 @@ Para validar una iteración seria del modo local:
 2. `npm run test:smoke`
 
 Además, queda preparado un harness de navegador en `npm run test:e2e:local` para endurecer el flujo local crítico sobre SQLite temporal. Recorre login, perfil, nueva factura, cobros, backup export y un barrido de rutas protegidas, pero todavía no forma parte del gate principal.
+
+## Operativa de despacho
+
+Una instalación local madura también debe dejar estas tres piezas visibles:
+
+- vista `/auditoria` para consultar eventos recientes y filtros por origen
+- export JSON del log operativo para soporte interno o revisión post-incidencia
+- mensajes claros cuando producción queda bloqueada por fail-closed
