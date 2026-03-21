@@ -3,7 +3,21 @@
 [![CI](https://github.com/proyectosai/facturaia/actions/workflows/ci.yml/badge.svg)](https://github.com/proyectosai/facturaia/actions/workflows/ci.yml)
 [![Licencia: MIT](https://img.shields.io/badge/licencia-MIT-2f7d32.svg)](./LICENSE)
 
-FacturaIA es una aplicación Next.js 15 pensada para autónomos y pequeños negocios españoles que quieren gestionar facturas, documentos y mensajería desde una instalación privada en su propio ordenador o servidor.
+FacturaIA es una aplicación Next.js 15 pensada para autónomos y pequeños negocios españoles que quieren gestionar facturas, PDF, cobros y documentación desde una instalación privada en su propio ordenador o servidor.
+
+Lectura corta y honesta:
+
+- hoy el núcleo local ya sirve para una instalación prudente
+- varios módulos adicionales existen, pero todavía deben activarse por fases
+- la parte de memoria/RAG multi-año sigue documentada, no entregada
+
+Antes de instalar nada:
+
+- [Adopción para clientes](./docs/ADOPCION_CLIENTES.md)
+- [Estado real, módulo por módulo](./docs/ESTADO_REAL.md)
+- [Instalación en Windows](./docs/INSTALACION_WINDOWS.md)
+- [Instalación en macOS](./docs/INSTALACION_MACOS.md)
+- [Instalación en Linux](./docs/INSTALACION_LINUX.md)
 
 ## Prioridad actual del proyecto
 
@@ -29,6 +43,18 @@ Conclusión práctica:
 - si quieres usar FacturaIA hoy, empieza por el núcleo local
 - no actives todos los módulos avanzados el primer día
 - no leas la documentación de memoria/RAG como algo ya implementado
+
+## Recomendación de adopción
+
+Si vas a instalar FacturaIA para un cliente real, esta es la forma correcta de empezar:
+
+- **Usar ya**: perfil fiscal, facturas, PDF, factura pública, correo saliente, backups locales, cobros y auditoría local.
+- **Usar con piloto**: presupuestos, firma documental, CRM ligero, estudio documental local, IMAP, banca CSV, mensajería y backups remotos.
+- **No activar todavía**: OCR de gastos, Facturae / VeriFactu como promesa de cumplimiento cerrado, memoria local LLM multi-año y RAG persistente completo.
+
+Guía detallada:
+
+- [Adopción para clientes](./docs/ADOPCION_CLIENTES.md)
 
 ## Superficie actual del repo
 

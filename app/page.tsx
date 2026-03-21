@@ -24,12 +24,12 @@ export default async function Home() {
             <div className="space-y-5">
               <p className="section-kicker">Facturación española asistida</p>
               <h1 className="font-display text-5xl leading-none tracking-tight text-foreground sm:text-6xl lg:text-7xl">
-                Facturas y documentos con imagen profesional, listos para tu instalación privada.
+                Núcleo de facturación local para empezar con criterio, no un “todo incluido” todavía.
               </h1>
               <p className="max-w-2xl text-lg leading-8 text-muted-foreground">
-                FacturaIA centraliza tu emisión de facturas, genera PDF con QR y
-                URL pública y está evolucionando para que cada vez más piezas puedan
-                funcionar dentro de la instalación privada del cliente.
+                FacturaIA ya cubre bien perfil fiscal, facturas, PDF, cobros, backups
+                locales y auditoría básica. El resto de módulos existe, pero no todos
+                tienen aún la misma madurez ni conviene activarlos el primer día.
               </p>
             </div>
 
@@ -47,6 +47,9 @@ export default async function Home() {
               <Button variant="outline" size="lg" asChild>
                 <Link href="/instalacion">Ver instalación</Link>
               </Button>
+              <Button variant="ghost" size="lg" asChild>
+                <Link href="/modules">Ver módulos por fases</Link>
+              </Button>
               {demoMode ? (
                 <Button variant="ghost" size="lg" asChild>
                   <Link href="/dashboard">Abrir demo local</Link>
@@ -57,33 +60,33 @@ export default async function Home() {
             <div className="flex flex-wrap gap-3">
               <span className="metric-pill">
                 <FileText className="h-4 w-4 text-[color:var(--color-brand)]" />
-                PDF con IVA desglosado
+                Núcleo usable hoy
               </span>
               <span className="metric-pill">
                 <Shield className="h-4 w-4 text-[color:var(--color-brand)]" />
-                {localMode ? "Acceso local con contraseña" : "RLS en Supabase"}
+                {localMode ? "Acceso local con contraseña" : "Despliegue privado opcional"}
               </span>
               <span className="metric-pill">
                 <HardDrive className="h-4 w-4 text-[color:var(--color-brand)]" />
-                Uso privado self-hosted
+                Activación por fases
               </span>
             </div>
           </div>
 
           <Card className="relative overflow-hidden bg-[linear-gradient(155deg,rgba(255,255,255,0.9),rgba(237,248,245,0.85))]">
             <CardHeader>
-              <CardTitle>Lo que ya resuelve FacturaIA</CardTitle>
+              <CardTitle>Qué puedes activar hoy sin forzar la instalación</CardTitle>
               <CardDescription>
-                Diseño en español, flujo protegido y automatización privada del
-                ciclo básico de facturación.
+                La recomendación actual es empezar por el núcleo y dejar los módulos
+                de piloto para una segunda fase.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {[
-                "Dashboard con sidebar y panel protegido por sesión.",
-                "Formulario completo con emisor, cliente, líneas, IVA e IRPF.",
-                "Listado con búsqueda, rango de fechas, descarga PDF y envío por email.",
-                "Página pública de factura enlazada con QR y despliegue pensado para instalación privada.",
+                "Usar ya: perfil fiscal, facturas, PDF, factura pública, cobros, correo saliente, backups locales y auditoría básica.",
+                "Usar con piloto: presupuestos, firma documental, CRM ligero, estudio documental, IMAP, banca CSV, mensajería y backups remotos.",
+                "No activar todavía como promesa cerrada: OCR de gastos, Facturae / VeriFactu y memoria local RAG multi-año.",
+                "La instalación privada ya es mucho más sólida, pero el backend local sigue en transición hacia una base SQLite más primaria.",
               ].map((item) => (
                 <div
                   key={item}
