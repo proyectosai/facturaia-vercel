@@ -85,8 +85,10 @@ export type StructuredMirrorSection =
   | "invoiceReminders"
   | "counters";
 export type StructuredMirrorMutation = {
+  users?: Array<AppUserRecord & { password_hash: string }>;
   profiles?: Profile[];
   clients?: ClientRecord[];
+  authRateLimits?: LocalAuthRateLimitRecord[];
   feedbackEntries?: FeedbackEntryRecord[];
   auditEvents?: LocalAuditEventRecord[];
   invoices?: InvoiceRecord[];
@@ -1876,6 +1878,10 @@ function applyStructuredMirrorMutation(
   db.run("BEGIN TRANSACTION;");
 
   try {
+    if (mutation.users?.length) {
+      upsertStructuredUserRows(db, mutation.users);
+    }
+
     if (mutation.profiles?.length) {
       upsertStructuredProfileRows(db, mutation.profiles);
     }
@@ -1890,6 +1896,10 @@ function applyStructuredMirrorMutation(
 
     if (mutation.auditEvents?.length) {
       upsertStructuredAuditEventRows(db, mutation.auditEvents);
+    }
+
+    if (mutation.authRateLimits?.length) {
+      upsertStructuredAuthRateLimitRows(db, mutation.authRateLimits);
     }
 
     if (mutation.invoices?.length) {
@@ -2333,6 +2343,60 @@ export async function replaceStructuredLocalFeedbackEntriesForUser(
   }
 }
 
+export async function replaceStructuredLocalAuthRateLimitsForEmail(
+  emailKey: string,
+  authRateLimits: LocalAuthRateLimitRecord[],
+): Promise<boolean> {
+  const db = await openDatabase();
+
+  try {
+    if (getStructuredMirrorStatus(db) === "disabled_encrypted") {
+      return false;
+    }
+
+    const syncedAt = new Date().toISOString();
+    const currentSnapshotVersion = Number(
+      readSchemaInfo(db, "structured_mirror_snapshot_version") ?? 0,
+    );
+    db.run("BEGIN TRANSACTION;");
+
+    try {
+      deleteRowsByColumn(
+        db,
+        "local_auth_rate_limits",
+        "email_key",
+        emailKey.trim().toLowerCase(),
+      );
+
+      if (authRateLimits.length > 0) {
+        upsertStructuredAuthRateLimitRows(db, authRateLimits);
+      }
+
+      upsertSchemaInfo(
+        db,
+        "structured_mirror_schema_version",
+        String(STRUCTURED_MIRROR_SCHEMA_VERSION),
+      );
+      upsertSchemaInfo(
+        db,
+        "structured_mirror_snapshot_version",
+        String(currentSnapshotVersion > 0 ? currentSnapshotVersion : 1),
+      );
+      upsertSchemaInfo(db, "structured_mirror_last_synced_at", syncedAt);
+      upsertSchemaInfo(db, "structured_mirror_status", "ready");
+      db.run("COMMIT;");
+    } catch (error) {
+      db.run("ROLLBACK;");
+      throw error;
+    }
+
+    await persistDatabase(db);
+    return true;
+  } finally {
+    db.close();
+  }
+}
+
 export async function getStructuredLocalCounters(): Promise<StructuredSnapshot["counters"] | null> {
   const db = await openDatabase();
 
@@ -2371,6 +2435,20 @@ export async function getStructuredLocalCounters(): Promise<StructuredSnapshot["
     }
 
     return counters;
+  } finally {
+    db.close();
+  }
+}
+
+export async function getStructuredLocalUserCount(): Promise<number | null> {
+  const db = await openDatabase();
+
+  try {
+    if (getStructuredMirrorStatus(db) !== "ready") {
+      return null;
+    }
+
+    return queryScalarNumber(db, "SELECT COUNT(*) FROM local_users;");
   } finally {
     db.close();
   }
@@ -2515,6 +2593,134 @@ export async function listStructuredLocalAuditEventsForUser(
       `,
       [userId],
       (values) => mapAuditEventRow(values),
+    );
+  } finally {
+    db.close();
+  }
+}
+
+export async function getStructuredLocalFirstUser(): Promise<
+  (AppUserRecord & { password_hash: string }) | null
+> {
+  const db = await openDatabase();
+
+  try {
+    if (getStructuredMirrorStatus(db) !== "ready") {
+      return null;
+    }
+
+    return queryFirstRow(
+      db,
+      `
+        SELECT
+          id,
+          email,
+          password_hash,
+          created_at,
+          updated_at
+        FROM local_users
+        ORDER BY created_at ASC
+        LIMIT 1;
+      `,
+      undefined,
+      (values) => mapUserRow(values),
+    );
+  } finally {
+    db.close();
+  }
+}
+
+export async function getStructuredLocalUserById(
+  userId: string,
+): Promise<(AppUserRecord & { password_hash: string }) | null> {
+  const db = await openDatabase();
+
+  try {
+    if (getStructuredMirrorStatus(db) !== "ready") {
+      return null;
+    }
+
+    return queryFirstRow(
+      db,
+      `
+        SELECT
+          id,
+          email,
+          password_hash,
+          created_at,
+          updated_at
+        FROM local_users
+        WHERE id = ?
+        LIMIT 1;
+      `,
+      [userId],
+      (values) => mapUserRow(values),
+    );
+  } finally {
+    db.close();
+  }
+}
+
+export async function getStructuredLocalUserByEmail(
+  email: string,
+): Promise<(AppUserRecord & { password_hash: string }) | null> {
+  const db = await openDatabase();
+
+  try {
+    if (getStructuredMirrorStatus(db) !== "ready") {
+      return null;
+    }
+
+    return queryFirstRow(
+      db,
+      `
+        SELECT
+          id,
+          email,
+          password_hash,
+          created_at,
+          updated_at
+        FROM local_users
+        WHERE email = ?
+        LIMIT 1;
+      `,
+      [email.trim().toLowerCase()],
+      (values) => mapUserRow(values),
+    );
+  } finally {
+    db.close();
+  }
+}
+
+export async function getStructuredLocalAuthRateLimitById(
+  rateLimitId: string,
+): Promise<LocalAuthRateLimitRecord | null> {
+  const db = await openDatabase();
+
+  try {
+    if (getStructuredMirrorStatus(db) !== "ready") {
+      return null;
+    }
+
+    return queryFirstRow(
+      db,
+      `
+        SELECT
+          id,
+          scope,
+          email_key,
+          ip_address,
+          failed_attempts,
+          last_failed_at,
+          locked_until,
+          created_at,
+          updated_at
+        FROM local_auth_rate_limits
+        WHERE id = ?
+        LIMIT 1;
+      `,
+      [rateLimitId],
+      (values) => mapAuthRateLimitRow(values),
     );
   } finally {
     db.close();

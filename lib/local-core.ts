@@ -71,6 +71,15 @@ import {
   saveStructuredFeedbackRepositoryRecord,
 } from "@/lib/local-repositories/feedback";
 import {
+  getStructuredIdentityRepositoryAuthRateLimitById,
+  getStructuredIdentityRepositoryFirstUser,
+  getStructuredIdentityRepositoryUserByEmail,
+  getStructuredIdentityRepositoryUserById,
+  getStructuredIdentityRepositoryUserCount,
+  replaceStructuredIdentityRepositoryAuthRateLimits,
+  saveStructuredIdentityRepositoryState,
+} from "@/lib/local-repositories/identity";
+import {
   getStructuredInvoiceRepositoryCounters,
   getStructuredInvoiceRepositoryRecord,
   getStructuredInvoiceRepositoryRecordByPublicId,
@@ -721,6 +730,14 @@ export async function recordLocalAuditEvent({
 }
 
 export async function getLocalUserCount() {
+  if (canUseStructuredLocalRepositories()) {
+    const structuredCount = await getStructuredIdentityRepositoryUserCount();
+
+    if (structuredCount !== null) {
+      return structuredCount;
+    }
+  }
+
   const data = await readLocalCoreData();
   return data.users.length;
 }
@@ -730,6 +747,60 @@ export async function getLocalCoreSnapshot() {
 }
 
 export async function ensureInitialLocalUser(email: string, password: string) {
+  if (canUseStructuredLocalRepositories()) {
+    const existing = await getStructuredIdentityRepositoryFirstUser();
+
+    if (existing) {
+      return existing;
+    }
+
+    const timestamp = nowIso();
+    const normalizedEmail = getNormalizedEmail(email);
+    const user: LocalCoreAuthUser = {
+      id: randomUUID(),
+      email: normalizedEmail,
+      password_hash: hashPassword(password),
+      created_at: timestamp,
+      updated_at: timestamp,
+    };
+    const profile: Profile = {
+      id: user.id,
+      email: user.email,
+      full_name: null,
+      nif: null,
+      address: null,
+      logo_path: null,
+      logo_url: null,
+      created_at: timestamp,
+      updated_at: timestamp,
+    };
+    const auditEvent = buildLocalAuditEventRecord({
+      userId: user.id,
+      actorType: "system",
+      actorId: "bootstrap",
+      source: "auth",
+      action: "local_user_bootstrapped",
+      entityType: "user",
+      entityId: user.id,
+      afterJson: {
+        email: user.email,
+      },
+      contextJson: {
+        bootstrapEnabled: true,
+      },
+    });
+
+    if (
+      await saveStructuredIdentityRepositoryState({
+        user,
+        profile,
+        auditEvents: [auditEvent],
+      })
+    ) {
+      return user;
+    }
+  }
+
   return updateLocalCoreData(async (data) => {
     if (data.users.length > 0) {
       return data.users[0];
@@ -785,6 +856,168 @@ export async function authenticateLocalUser(
     userAgent?: string | null;
   },
 ): Promise<LocalAuthenticationResult> {
+  if (canUseStructuredLocalRepositories()) {
+    const normalizedEmail = getNormalizedEmail(email);
+    const ipAddress = options?.ipAddress?.trim() || null;
+    const userAgent = options?.userAgent?.trim() || null;
+    const policy = getLocalSecurityPolicy();
+    const attemptKey = getLocalLoginAttemptKey(normalizedEmail, ipAddress);
+    const timestamp = nowIso();
+    const nowMs = Date.now();
+    let rateLimit = await getStructuredIdentityRepositoryAuthRateLimitById(
+      attemptKey,
+    );
+    const user = await getStructuredIdentityRepositoryUserByEmail(normalizedEmail);
+
+    if (!rateLimit) {
+      rateLimit = {
+        id: attemptKey,
+        scope: "local_login",
+        email_key: normalizedEmail,
+        ip_address: ipAddress,
+        failed_attempts: 0,
+        last_failed_at: null,
+        locked_until: null,
+        created_at: timestamp,
+        updated_at: timestamp,
+      };
+    } else if (
+      rateLimit.locked_until &&
+      new Date(rateLimit.locked_until).getTime() <= nowMs
+    ) {
+      rateLimit.failed_attempts = 0;
+      rateLimit.locked_until = null;
+      rateLimit.updated_at = timestamp;
+    }
+
+    if (
+      rateLimit.locked_until &&
+      new Date(rateLimit.locked_until).getTime() > nowMs
+    ) {
+      const auditEvent = buildLocalAuditEventRecord({
+        userId: user?.id ?? null,
+        actorType: user ? "user" : "anonymous",
+        actorId: user?.id ?? normalizedEmail,
+        source: "auth",
+        action: "local_login_blocked",
+        entityType: "session",
+        entityId: user?.id ?? null,
+        beforeJson: {
+          failedAttempts: rateLimit.failed_attempts,
+        },
+        afterJson: {
+          lockedUntil: rateLimit.locked_until,
+        },
+        contextJson: {
+          email: normalizedEmail,
+          ipAddress,
+          userAgent,
+        },
+      });
+
+      await saveStructuredIdentityRepositoryState({
+        authRateLimit: rateLimit,
+        auditEvents: [auditEvent],
+      });
+
+      return {
+        status: "locked",
+        remainingAttempts: 0,
+        lockedUntil: rateLimit.locked_until,
+      };
+    }
+
+    if (!user || !verifyPassword(password, user.password_hash)) {
+      const beforeAttempts = rateLimit.failed_attempts;
+      rateLimit.failed_attempts += 1;
+      rateLimit.last_failed_at = timestamp;
+      rateLimit.updated_at = timestamp;
+
+      if (rateLimit.failed_attempts >= policy.loginMaxAttempts) {
+        rateLimit.locked_until = new Date(
+          nowMs + policy.loginLockoutMinutes * 60 * 1000,
+        ).toISOString();
+      }
+
+      const auditEvent = buildLocalAuditEventRecord({
+        userId: user?.id ?? null,
+        actorType: user ? "user" : "anonymous",
+        actorId: user?.id ?? normalizedEmail,
+        source: "auth",
+        action: rateLimit.locked_until ? "local_login_locked" : "local_login_failed",
+        entityType: "session",
+        entityId: user?.id ?? null,
+        beforeJson: {
+          failedAttempts: beforeAttempts,
+          lockedUntil: null,
+        },
+        afterJson: {
+          failedAttempts: rateLimit.failed_attempts,
+          lockedUntil: rateLimit.locked_until,
+        },
+        contextJson: {
+          email: normalizedEmail,
+          ipAddress,
+          userAgent,
+        },
+      });
+
+      await saveStructuredIdentityRepositoryState({
+        authRateLimit: rateLimit,
+        auditEvents: [auditEvent],
+      });
+
+      if (rateLimit.locked_until) {
+        return {
+          status: "locked",
+          remainingAttempts: 0,
+          lockedUntil: rateLimit.locked_until,
+        };
+      }
+
+      return {
+        status: "invalid",
+        remainingAttempts: Math.max(
+          0,
+          policy.loginMaxAttempts - rateLimit.failed_attempts,
+        ),
+        lockedUntil: null,
+      };
+    }
+
+    await replaceStructuredIdentityRepositoryAuthRateLimits(normalizedEmail, []);
+    await saveStructuredIdentityRepositoryState({
+      auditEvents: [
+        buildLocalAuditEventRecord({
+          userId: user.id,
+          actorType: "user",
+          actorId: user.id,
+          source: "auth",
+          action: "local_login_succeeded",
+          entityType: "session",
+          entityId: user.id,
+          afterJson: {
+            email: user.email,
+          },
+          contextJson: {
+            ipAddress,
+            userAgent,
+          },
+        }),
+      ],
+    });
+
+    return {
+      status: "success",
+      user: {
+        id: user.id,
+        email: user.email,
+        created_at: user.created_at,
+        updated_at: user.updated_at,
+      } satisfies AppUserRecord,
+    };
+  }
+
   return updateLocalCoreData(async (data) => {
     const normalizedEmail = getNormalizedEmail(email);
     const ipAddress = options?.ipAddress?.trim() || null;
@@ -940,6 +1173,19 @@ export async function authenticateLocalUser(
 }
 
 export async function getLocalAppUserById(userId: string) {
+  if (canUseStructuredLocalRepositories()) {
+    const user = await getStructuredIdentityRepositoryUserById(userId);
+
+    if (user) {
+      return {
+        id: user.id,
+        email: user.email,
+        created_at: user.created_at,
+        updated_at: user.updated_at,
+      } satisfies AppUserRecord;
+    }
+  }
+
   const data = await readLocalCoreData();
   const user = data.users.find((candidate) => candidate.id === userId);
 
