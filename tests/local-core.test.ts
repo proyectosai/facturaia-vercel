@@ -40,6 +40,7 @@ import {
   listStructuredLocalAuditEventsForUser,
   getLocalDatabaseFilePath,
   inspectLocalStructuredMirror,
+  readLocalStateText,
   writeLocalStateText,
 } from "@/lib/local-db";
 import type {
@@ -550,6 +551,74 @@ describe("local core persistence", () => {
     expect(entries).toHaveLength(1);
     expect(entries[0]?.title).toBe("Error en bandeja local");
     expect(snapshot.feedbackEntries[0]?.contact_email).toBe("asesor@despacho.local");
+  });
+
+  test("keeps the compatibility snapshot aligned after sqlite-first mutations", async () => {
+    const client = await saveLocalClientRecord({
+      userId,
+      relationKind: "client",
+      status: "active",
+      priority: "medium",
+      displayName: "Empresa Snapshot S.L.",
+      firstName: null,
+      lastName: null,
+      companyName: "Empresa Snapshot S.L.",
+      email: "admin@snapshot.es",
+      phone: null,
+      nif: "B99887766",
+      address: "Gran Via 1, Madrid",
+      notes: "Cliente para snapshot compatible",
+      tags: ["snapshot"],
+    });
+
+    const invoice = await createLocalInvoiceRecord({
+      userId,
+      payload: {
+        issueDate: "2026-03-20",
+        dueDate: "2026-03-27",
+        issuerName: "Asesoria Martin Fiscal",
+        issuerNif: "B12345678",
+        issuerAddress: "Calle Alcala 100, Madrid",
+        clientName: client.display_name,
+        clientNif: client.nif ?? "",
+        clientAddress: client.address ?? "",
+        clientEmail: client.email ?? "",
+      },
+      lineItems: buildLineItems(),
+      totals: buildTotals(),
+      issuerLogoUrl: null,
+    });
+
+    const document = await createLocalCommercialDocumentRecord({
+      userId,
+      input: buildCommercialDocumentInput("quote"),
+    });
+
+    await incrementLocalDailyAiUsage(userId, "2026-03-22", null);
+
+    const rawSnapshot = await readLocalStateText();
+    expect(rawSnapshot).toBeTruthy();
+    const parsed = JSON.parse(rawSnapshot ?? "{}") as {
+      clients: Array<{ id: string }>;
+      invoices: Array<{ id: string }>;
+      commercialDocuments: Array<{ id: string }>;
+      aiUsage: Array<{ user_id: string; date: string; calls_count: number }>;
+      counters: {
+        invoice_number: number;
+        quote_number: number;
+      };
+    };
+
+    expect(parsed.clients.some((entry) => entry.id === client.id)).toBe(true);
+    expect(parsed.invoices.some((entry) => entry.id === invoice.id)).toBe(true);
+    expect(parsed.commercialDocuments.some((entry) => entry.id === document.id)).toBe(true);
+    expect(parsed.aiUsage).toContainEqual({
+      user_id: userId,
+      date: "2026-03-22",
+      calls_count: 1,
+    });
+    expect(parsed.counters.invoice_number).toBeGreaterThanOrEqual(1);
+    expect(parsed.counters.quote_number).toBeGreaterThanOrEqual(1);
   });
 
   test("recovers users, profiles, feedback and auth limits from sqlite when snapshot degrades", async () => {

@@ -721,6 +721,223 @@ function normalizeStructuredSnapshot(parsed: unknown): StructuredSnapshot {
   };
 }
 
+function toStructuredSnapshotRecord(value: unknown) {
+  return JSON.parse(JSON.stringify(value ?? null)) as Record<string, unknown>;
+}
+
+function mergeStructuredSnapshotRows(
+  existing: Record<string, unknown>[],
+  incoming: unknown[],
+  getKey: (value: Record<string, unknown>) => string,
+) {
+  const next = [...existing];
+  const indexByKey = new Map<string, number>();
+
+  next.forEach((row, index) => {
+    indexByKey.set(getKey(row), index);
+  });
+
+  for (const value of incoming) {
+    const row = toStructuredSnapshotRecord(value);
+    const key = getKey(row);
+    const existingIndex = indexByKey.get(key);
+
+    if (existingIndex === undefined) {
+      indexByKey.set(key, next.length);
+      next.push(row);
+    } else {
+      next[existingIndex] = row;
+    }
+  }
+
+  return next;
+}
+
+function applyMutationToStructuredSnapshot(
+  snapshot: StructuredSnapshot,
+  mutation: StructuredMirrorMutation,
+) {
+  if (mutation.users?.length) {
+    snapshot.users = mergeStructuredSnapshotRows(
+      snapshot.users,
+      mutation.users,
+      (row) => String(row.id ?? ""),
+    );
+  }
+
+  if (mutation.profiles?.length) {
+    snapshot.profiles = mergeStructuredSnapshotRows(
+      snapshot.profiles,
+      mutation.profiles,
+      (row) => String(row.id ?? ""),
+    );
+  }
+
+  if (mutation.clients?.length) {
+    snapshot.clients = mergeStructuredSnapshotRows(
+      snapshot.clients,
+      mutation.clients,
+      (row) => String(row.id ?? ""),
+    );
+  }
+
+  if (mutation.feedbackEntries?.length) {
+    snapshot.feedbackEntries = mergeStructuredSnapshotRows(
+      snapshot.feedbackEntries,
+      mutation.feedbackEntries,
+      (row) => String(row.id ?? ""),
+    );
+  }
+
+  if (mutation.auditEvents?.length) {
+    snapshot.auditEvents = mergeStructuredSnapshotRows(
+      snapshot.auditEvents,
+      mutation.auditEvents,
+      (row) => String(row.id ?? ""),
+    );
+  }
+
+  if (mutation.authRateLimits?.length) {
+    snapshot.authRateLimits = mergeStructuredSnapshotRows(
+      snapshot.authRateLimits,
+      mutation.authRateLimits,
+      (row) => String(row.id ?? ""),
+    );
+  }
+
+  if (mutation.invoices?.length) {
+    snapshot.invoices = mergeStructuredSnapshotRows(
+      snapshot.invoices,
+      mutation.invoices,
+      (row) => String(row.id ?? ""),
+    );
+  }
+
+  if (mutation.invoiceReminders?.length) {
+    snapshot.invoiceReminders = mergeStructuredSnapshotRows(
+      snapshot.invoiceReminders,
+      mutation.invoiceReminders,
+      (row) => String(row.id ?? ""),
+    );
+  }
+
+  if (mutation.bankMovements?.length) {
+    snapshot.bankMovements = mergeStructuredSnapshotRows(
+      snapshot.bankMovements,
+      mutation.bankMovements,
+      (row) => String(row.id ?? ""),
+    );
+  }
+
+  if (mutation.messageConnections?.length) {
+    snapshot.messageConnections = mergeStructuredSnapshotRows(
+      snapshot.messageConnections,
+      mutation.messageConnections,
+      (row) => String(row.id ?? ""),
+    );
+  }
+
+  if (mutation.messageThreads?.length) {
+    snapshot.messageThreads = mergeStructuredSnapshotRows(
+      snapshot.messageThreads,
+      mutation.messageThreads,
+      (row) => String(row.id ?? ""),
+    );
+  }
+
+  if (mutation.messageRecords?.length) {
+    snapshot.messageRecords = mergeStructuredSnapshotRows(
+      snapshot.messageRecords,
+      mutation.messageRecords,
+      (row) => String(row.id ?? ""),
+    );
+  }
+
+  if (mutation.mailThreads?.length) {
+    snapshot.mailThreads = mergeStructuredSnapshotRows(
+      snapshot.mailThreads,
+      mutation.mailThreads,
+      (row) => String(row.id ?? ""),
+    );
+  }
+
+  if (mutation.mailMessages?.length) {
+    snapshot.mailMessages = mergeStructuredSnapshotRows(
+      snapshot.mailMessages,
+      mutation.mailMessages,
+      (row) => String(row.id ?? ""),
+    );
+  }
+
+  if (mutation.mailSyncRuns?.length) {
+    snapshot.mailSyncRuns = mergeStructuredSnapshotRows(
+      snapshot.mailSyncRuns,
+      mutation.mailSyncRuns,
+      (row) => String(row.id ?? ""),
+    );
+  }
+
+  if (mutation.commercialDocuments?.length) {
+    snapshot.commercialDocuments = mergeStructuredSnapshotRows(
+      snapshot.commercialDocuments,
+      mutation.commercialDocuments,
+      (row) => String(row.id ?? ""),
+    );
+  }
+
+  if (mutation.documentSignatureRequests?.length) {
+    snapshot.documentSignatureRequests = mergeStructuredSnapshotRows(
+      snapshot.documentSignatureRequests,
+      mutation.documentSignatureRequests,
+      (row) => String(row.id ?? ""),
+    );
+  }
+
+  if (mutation.expenses?.length) {
+    snapshot.expenses = mergeStructuredSnapshotRows(
+      snapshot.expenses,
+      mutation.expenses,
+      (row) => String(row.id ?? ""),
+    );
+  }
+
+  if (mutation.aiUsage?.length) {
+    snapshot.aiUsage = mergeStructuredSnapshotRows(
+      snapshot.aiUsage,
+      mutation.aiUsage,
+      (row) => `${String(row.user_id ?? "")}:${String(row.date ?? "")}`,
+    );
+  }
+
+  if (mutation.counters) {
+    snapshot.counters = {
+      ...snapshot.counters,
+      ...JSON.parse(JSON.stringify(mutation.counters)),
+    };
+  }
+
+  return snapshot;
+}
+
+function patchCompatibilitySnapshotFromMutation(
+  db: Database,
+  mutation: StructuredMirrorMutation,
+) {
+  const currentPayload = readPayloadFromDatabase(db);
+  let parsed = normalizeStructuredSnapshot(null);
+
+  if (currentPayload) {
+    try {
+      parsed = normalizeStructuredSnapshot(JSON.parse(currentPayload));
+    } catch {
+      parsed = normalizeStructuredSnapshot(null);
+    }
+  }
+
+  const nextSnapshot = applyMutationToStructuredSnapshot(parsed, mutation);
+  writePayloadToDatabase(db, JSON.stringify(nextSnapshot, null, 2));
+}
+
 function readPayloadFromDatabase(db: Database) {
   const result = db.exec(
     "SELECT payload_text FROM local_state WHERE state_key = 'core' LIMIT 1;",
@@ -2743,6 +2960,7 @@ export async function persistStructuredLocalMutation(
       }
 
       applyStructuredMirrorMutation(db, mutation);
+      patchCompatibilitySnapshotFromMutation(db, mutation);
       await persistDatabase(db);
       return true;
     } finally {
