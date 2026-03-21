@@ -57,6 +57,7 @@ import {
   listStructuredLocalAuditEventsForUser,
   listStructuredLocalInvoicesForUser,
   listStructuredLocalInvoiceRemindersForUser,
+  persistStructuredLocalMutation,
   readStructuredLocalCoreSlices,
   getLocalDataDir as getLocalDataDirFromDb,
   readLocalStateText,
@@ -233,6 +234,7 @@ async function writeLocalCoreData(
   options?: {
     structuredSections?: StructuredMirrorSection[];
     structuredMutation?: StructuredMirrorMutation;
+    skipStructuredMirrorSync?: boolean;
   },
 ) {
   const serialized = JSON.stringify(data, null, 2);
@@ -264,9 +266,13 @@ async function updateLocalCoreData<T>(
       typeof options?.structuredMutation === "function"
         ? (options.structuredMutation(data, result) ?? undefined)
         : options?.structuredMutation;
+    const skipStructuredMirrorSync = structuredMutation
+      ? await persistStructuredLocalMutation(structuredMutation)
+      : false;
     await writeLocalCoreData(data, {
       structuredSections: options?.structuredSections,
-      structuredMutation,
+      structuredMutation: skipStructuredMirrorSync ? undefined : structuredMutation,
+      skipStructuredMirrorSync,
     });
     return result;
   });

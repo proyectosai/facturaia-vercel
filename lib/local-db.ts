@@ -1757,13 +1757,17 @@ export async function writeLocalStateText(
   options?: {
     structuredSections?: StructuredMirrorSection[];
     structuredMutation?: StructuredMirrorMutation;
+    skipStructuredMirrorSync?: boolean;
   },
 ) {
   const db = await openDatabase();
 
   try {
     writePayloadToDatabase(db, payloadText);
-    if (isStructuredMirrorEnabled()) {
+    if (options?.skipStructuredMirrorSync) {
+      // The caller already persisted the targeted structured mutation and only needs to
+      // keep the compatibility snapshot aligned.
+    } else if (isStructuredMirrorEnabled()) {
       const structuredSections = options?.structuredSections;
       const structuredMutation = options?.structuredMutation;
 
@@ -1785,6 +1789,24 @@ export async function writeLocalStateText(
       resetStructuredMirror(db, "disabled_encrypted", 1);
     }
     await persistDatabase(db);
+  } finally {
+    db.close();
+  }
+}
+
+export async function persistStructuredLocalMutation(
+  mutation: StructuredMirrorMutation,
+): Promise<boolean> {
+  const db = await openDatabase();
+
+  try {
+    if (getStructuredMirrorStatus(db) !== "ready") {
+      return false;
+    }
+
+    applyStructuredMirrorMutation(db, mutation);
+    await persistDatabase(db);
+    return true;
   } finally {
     db.close();
   }
