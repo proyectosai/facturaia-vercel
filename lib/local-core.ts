@@ -1087,29 +1087,8 @@ export async function updateLocalInvoicePaymentState(
   invoiceId: string,
   actionKind: "mark_paid" | "reopen",
 ) {
-  return updateLocalCoreData(async (data) => {
-    const invoice = data.invoices.find(
-      (candidate) => candidate.user_id === userId && candidate.id === invoiceId,
-    );
-
-    if (!invoice) {
-      return null;
-    }
-
-    invoice.updated_at = nowIso();
-
-    if (actionKind === "mark_paid") {
-      invoice.payment_status = "paid";
-      invoice.amount_paid = roundCurrency(toNumber(invoice.grand_total));
-      invoice.paid_at = invoice.updated_at;
-      return invoice;
-    }
-
-    invoice.payment_status = "pending";
-    invoice.amount_paid = 0;
-    invoice.paid_at = null;
-    return invoice;
-  });
+  const [invoice] = await updateLocalInvoicePaymentStates(userId, [invoiceId], actionKind);
+  return invoice ?? null;
 }
 
 function resolveLocalSyncedPaymentStatus(amountPaid: number, grandTotal: number) {
@@ -1275,6 +1254,71 @@ export async function syncLocalInvoicePaymentStatusFromBankMatches(
   invoiceIds: string[],
 ) {
   return updateLocalCoreData(async (data) => {
+    return syncLocalInvoicePaymentStatusInData(data, userId, invoiceIds);
+  });
+}
+
+function syncLocalInvoicePaymentStatusInData(
+  data: LocalCoreData,
+  userId: string,
+  invoiceIds: string[],
+) {
+  const uniqueInvoiceIds = Array.from(
+    new Set(invoiceIds.map((invoiceId) => invoiceId.trim()).filter(Boolean)),
+  );
+
+  if (uniqueInvoiceIds.length === 0) {
+    return [];
+  }
+
+  const synced: InvoiceRecord[] = [];
+
+  for (const invoiceId of uniqueInvoiceIds) {
+    const invoice = data.invoices.find(
+      (candidate) => candidate.user_id === userId && candidate.id === invoiceId,
+    );
+
+    if (!invoice) {
+      continue;
+    }
+
+    const matchedMovements = data.bankMovements.filter(
+      (movement) =>
+        movement.user_id === userId &&
+        movement.status === "reconciled" &&
+        movement.direction === "credit" &&
+        movement.matched_invoice_id === invoiceId,
+    );
+
+    const amountPaid = roundCurrency(
+      matchedMovements.reduce((sum, movement) => sum + Math.abs(toNumber(movement.amount)), 0),
+    );
+    const latestBookingDate =
+      matchedMovements
+        .map((movement) => movement.booking_date)
+        .filter(Boolean)
+        .sort()
+        .at(-1) ?? null;
+
+    invoice.amount_paid = amountPaid;
+    invoice.payment_status = resolveLocalSyncedPaymentStatus(
+      amountPaid,
+      roundCurrency(toNumber(invoice.grand_total)),
+    );
+    invoice.paid_at = invoice.payment_status === "paid" ? toPaidAtIso(latestBookingDate) : null;
+    invoice.updated_at = nowIso();
+    synced.push(invoice);
+  }
+
+  return synced;
+}
+
+export async function updateLocalInvoicePaymentStates(
+  userId: string,
+  invoiceIds: string[],
+  actionKind: "mark_paid" | "reopen",
+) {
+  return updateLocalCoreData(async (data) => {
     const uniqueInvoiceIds = Array.from(
       new Set(invoiceIds.map((invoiceId) => invoiceId.trim()).filter(Boolean)),
     );
@@ -1283,7 +1327,7 @@ export async function syncLocalInvoicePaymentStatusFromBankMatches(
       return [];
     }
 
-    const synced: InvoiceRecord[] = [];
+    const updated: InvoiceRecord[] = [];
 
     for (const invoiceId of uniqueInvoiceIds) {
       const invoice = data.invoices.find(
@@ -1294,35 +1338,30 @@ export async function syncLocalInvoicePaymentStatusFromBankMatches(
         continue;
       }
 
-      const matchedMovements = data.bankMovements.filter(
-        (movement) =>
-          movement.user_id === userId &&
-          movement.status === "reconciled" &&
-          movement.direction === "credit" &&
-          movement.matched_invoice_id === invoiceId,
-      );
-
-      const amountPaid = roundCurrency(
-        matchedMovements.reduce((sum, movement) => sum + Math.abs(toNumber(movement.amount)), 0),
-      );
-      const latestBookingDate =
-        matchedMovements
-          .map((movement) => movement.booking_date)
-          .filter(Boolean)
-          .sort()
-          .at(-1) ?? null;
-
-      invoice.amount_paid = amountPaid;
-      invoice.payment_status = resolveLocalSyncedPaymentStatus(
-        amountPaid,
-        roundCurrency(toNumber(invoice.grand_total)),
-      );
-      invoice.paid_at = invoice.payment_status === "paid" ? toPaidAtIso(latestBookingDate) : null;
       invoice.updated_at = nowIso();
-      synced.push(invoice);
+
+      if (actionKind === "mark_paid") {
+        invoice.payment_status = "paid";
+        invoice.amount_paid = roundCurrency(toNumber(invoice.grand_total));
+        invoice.paid_at = invoice.updated_at;
+      } else {
+        invoice.payment_status = "pending";
+        invoice.amount_paid = 0;
+        invoice.paid_at = null;
+      }
+
+      updated.push(invoice);
     }
 
-    return synced;
+    if (actionKind === "reopen" && updated.length > 0) {
+      return syncLocalInvoicePaymentStatusInData(
+        data,
+        userId,
+        updated.map((invoice) => invoice.id),
+      );
+    }
+
+    return updated;
   });
 }
 

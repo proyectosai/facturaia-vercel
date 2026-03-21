@@ -5,11 +5,15 @@ import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
 import { exportBackupForUser, restoreBackupForUser } from "@/lib/backups";
 import {
+  createLocalBankMovementRecords,
   createLocalInvoiceRecord,
   getLocalCoreSnapshot,
   listLocalInvoicesForUser,
+  reconcileLocalBankMovement,
   recordLocalInvoiceReminder,
+  syncLocalInvoicePaymentStatusFromBankMatches,
   updateLocalInvoicePaymentState,
+  updateLocalInvoicePaymentStates,
 } from "@/lib/local-core";
 import {
   getInvoiceCollectionSummary,
@@ -211,5 +215,97 @@ describe("local billing qa", () => {
       await rm(restoreDir, { recursive: true, force: true });
       process.env.FACTURAIA_DATA_DIR = localDataDir;
     }
+  });
+
+  test("supports batch collection updates and bank-aware reopen locally", async () => {
+    const created: InvoiceRecord[] = [];
+
+    for (let index = 1; index <= 6; index += 1) {
+      created.push(
+        await createLocalInvoiceRecord({
+          userId,
+          payload: {
+            issueDate: `2026-04-${String(index).padStart(2, "0")}`,
+            dueDate: `2026-04-${String(10 + index).padStart(2, "0")}`,
+            issuerName: "Asesoria Martin Fiscal",
+            issuerNif: "B12345678",
+            issuerAddress: "Calle Alcala 100, Madrid",
+            clientName: `Empresa Lote ${index} S.L.`,
+            clientNif: `B55555${String(index).padStart(3, "0")}`,
+            clientAddress: `Avenida Lote ${index}, Madrid`,
+            clientEmail: `lote${index}@empresa.test`,
+          },
+          lineItems: buildLineItems(index),
+          totals: buildTotals(index),
+          issuerLogoUrl: null,
+        }),
+      );
+    }
+
+    const [movement] = await createLocalBankMovementRecords({
+      userId,
+      rows: [
+        {
+          accountLabel: "Cuenta cobros",
+          bookingDate: "2026-04-18",
+          valueDate: "2026-04-18",
+          description: "Ingreso parcial Empresa Lote 3",
+          counterpartyName: "Empresa Lote 3 S.L.",
+          amount: Number((buildTotals(3).grandTotal / 2).toFixed(2)),
+          currency: "EUR",
+          direction: "credit",
+          balance: 5200,
+          sourceFileName: "lote-cobros.csv",
+          sourceHash: "lote-cobro-3",
+          rawRow: { row: 1 },
+        },
+      ],
+    });
+
+    await reconcileLocalBankMovement({
+      userId,
+      movementId: movement!.id,
+      actionKind: "match_invoice",
+      targetId: created[2]!.id,
+      notes: "Cobro parcial para lote",
+    });
+    await syncLocalInvoicePaymentStatusFromBankMatches(userId, [created[2]!.id]);
+
+    const batchMarked = await updateLocalInvoicePaymentStates(
+      userId,
+      [created[0]!.id, created[1]!.id, created[2]!.id, created[2]!.id],
+      "mark_paid",
+    );
+    const afterMarkPaid = await listLocalInvoicesForUser(userId);
+    const summaryAfterMarkPaid = getInvoiceCollectionSummary(
+      afterMarkPaid,
+      new Date("2026-04-19T09:00:00.000Z"),
+    );
+
+    expect(batchMarked).toHaveLength(3);
+    expect(summaryAfterMarkPaid.paid).toBe(3);
+    expect(summaryAfterMarkPaid.overdue).toBe(3);
+
+    const batchReopened = await updateLocalInvoicePaymentStates(
+      userId,
+      [created[1]!.id, created[2]!.id],
+      "reopen",
+    );
+    const afterReopen = await listLocalInvoicesForUser(userId);
+    const invoiceTwo = afterReopen.find((invoice) => invoice.id === created[1]!.id);
+    const invoiceThree = afterReopen.find((invoice) => invoice.id === created[2]!.id);
+    const queuesAfterReopen = getInvoiceReminderQueues(
+      afterReopen,
+      new Date("2026-04-12T09:00:00.000Z"),
+    );
+
+    expect(batchReopened).toHaveLength(2);
+    expect(invoiceTwo?.payment_status).toBe("pending");
+    expect(invoiceTwo?.amount_paid).toBe(0);
+    expect(invoiceThree?.payment_status).toBe("partial");
+    expect(Number(invoiceThree?.amount_paid)).toBeGreaterThan(0);
+    expect(
+      queuesAfterReopen.find((queue) => queue.key === "partial_due")?.count,
+    ).toBeGreaterThanOrEqual(1);
   });
 });

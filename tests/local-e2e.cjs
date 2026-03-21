@@ -149,8 +149,13 @@ async function exportBackupSnapshot(page) {
   });
 
   assert(response.ok, `El export de backups devolvió ${response.status}.`);
+  const parsed = JSON.parse(response.text);
 
-  return JSON.parse(response.text);
+  if (parsed?.payload && typeof parsed.payload === "object") {
+    return parsed.payload;
+  }
+
+  return parsed;
 }
 
 async function waitForPaidInvoice(page, invoiceId, timeoutMs = 30_000) {
@@ -270,8 +275,8 @@ async function main() {
 	            expenses: (backup.expenses ?? []).length,
 	            commercialDocuments: (backup.commercialDocuments ?? []).length,
 	            signatures: (backup.documentSignatureRequests ?? []).length,
-	            messages: (backup.messageThreads ?? []).length,
-	            mail: (backup.mailThreads ?? []).length,
+	            messages: (backup.messages?.threads ?? []).length,
+	            mail: (backup.mail?.threads ?? []).length,
 	            bankMovements: (backup.bankMovements ?? []).length,
 	            feedback: (backup.feedbackEntries ?? []).length,
 	          },

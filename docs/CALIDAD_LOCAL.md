@@ -33,6 +33,7 @@ Antes de dar por buena una iteración del modo local, deben pasar estos gates:
    - export de backup
 7. prueba de desastre:
    - exportar
+   - validar la copia en `dry-run`
    - restaurar en instalación vacía
    - reexportar
    - comparar contenido

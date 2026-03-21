@@ -34,6 +34,7 @@ import {
   recordLocalInvoiceReminder,
   saveLocalProfile,
   updateLocalInvoicePaymentState,
+  updateLocalInvoicePaymentStates,
 } from "@/lib/local-core";
 import { sendTransactionalEmail } from "@/lib/mail";
 import { hasLocalAiEnv } from "@/lib/env";
@@ -322,6 +323,11 @@ const updateInvoicePaymentStateSchema = z.object({
   actionKind: z.enum(["mark_paid", "reopen"]),
 });
 
+const updateInvoiceBatchPaymentStateSchema = z.object({
+  invoiceIds: z.array(z.string().uuid("Factura no válida.")).min(1, "Selecciona al menos una factura."),
+  actionKind: z.enum(["mark_paid", "reopen"]),
+});
+
 export async function updateInvoicePaymentStateAction(formData: FormData) {
   try {
     if (isDemoMode()) {
@@ -405,6 +411,127 @@ export async function updateInvoicePaymentStateAction(formData: FormData) {
     revalidateAppPath("/clientes");
     revalidateAppPath("/banca");
     redirect("/cobros?updated=1");
+  } catch (error) {
+    rethrowIfRedirectError(error);
+    redirect(`/cobros?error=${encodeURIComponent(getFirstErrorMessage(error))}`);
+  }
+}
+
+export async function updateInvoiceBatchPaymentStateAction(formData: FormData) {
+  try {
+    if (isDemoMode()) {
+      redirect(
+        "/cobros?error=Modo%20demo:%20la%20actualizaci%C3%B3n%20por%20lote%20est%C3%A1%20desactivada.",
+      );
+    }
+
+    const user = await requireUser();
+    const payload = updateInvoiceBatchPaymentStateSchema.parse({
+      invoiceIds: formData.getAll("invoiceId").map((value) => String(value ?? "")),
+      actionKind: String(formData.get("actionKind") ?? ""),
+    });
+
+    if (isLocalFileMode()) {
+      const updatedInvoices = await updateLocalInvoicePaymentStates(
+        user.id,
+        payload.invoiceIds,
+        payload.actionKind,
+      );
+
+      if (updatedInvoices.length === 0) {
+        throw new Error("No se ha podido actualizar ninguna factura.");
+      }
+
+      revalidateAppPath("/dashboard");
+      revalidateAppPath("/invoices");
+      revalidateAppPath("/cobros");
+      revalidateAppPath("/clientes");
+      revalidateAppPath("/banca");
+
+      const message =
+        payload.actionKind === "mark_paid"
+          ? `Se han marcado ${updatedInvoices.length} factura(s) como cobradas.`
+          : `Se han reabierto ${updatedInvoices.length} factura(s).`;
+
+      redirect(`/cobros?batchMessage=${encodeURIComponent(message)}`);
+    }
+
+    const supabase = await createServerSupabaseClient();
+    const { data: invoices, error: invoiceError } = await supabase
+      .from("invoices")
+      .select("id, grand_total")
+      .in("id", payload.invoiceIds)
+      .eq("user_id", user.id);
+
+    if (invoiceError) {
+      throw new Error("No se han podido cargar las facturas seleccionadas.");
+    }
+
+    const invoiceRows = (invoices as Array<Pick<InvoiceRecord, "id" | "grand_total">> | null) ?? [];
+
+    if (invoiceRows.length === 0) {
+      throw new Error("No se ha podido cargar ninguna factura.");
+    }
+
+    const targetIds = invoiceRows.map((invoice) => invoice.id);
+
+    if (payload.actionKind === "mark_paid") {
+      const { error } = await supabase
+        .from("invoices")
+        .update({
+          payment_status: "paid",
+          paid_at: new Date().toISOString(),
+        })
+        .in("id", targetIds)
+        .eq("user_id", user.id);
+
+      if (error) {
+        throw new Error("No se han podido marcar las facturas como cobradas.");
+      }
+
+      for (const invoice of invoiceRows) {
+        const { error: amountError } = await supabase
+          .from("invoices")
+          .update({
+            amount_paid: invoice.grand_total,
+          })
+          .eq("id", invoice.id)
+          .eq("user_id", user.id);
+
+        if (amountError) {
+          throw new Error("No se ha podido actualizar el importe cobrado de una factura.");
+        }
+      }
+    } else {
+      const { error } = await supabase
+        .from("invoices")
+        .update({
+          payment_status: "pending",
+          amount_paid: 0,
+          paid_at: null,
+        })
+        .in("id", targetIds)
+        .eq("user_id", user.id);
+
+      if (error) {
+        throw new Error("No se ha podido reabrir el seguimiento de cobro por lote.");
+      }
+
+      await syncInvoicePaymentStatusFromBankMatches(user.id, targetIds);
+    }
+
+    revalidateAppPath("/dashboard");
+    revalidateAppPath("/invoices");
+    revalidateAppPath("/cobros");
+    revalidateAppPath("/clientes");
+    revalidateAppPath("/banca");
+
+    const message =
+      payload.actionKind === "mark_paid"
+        ? `Se han marcado ${targetIds.length} factura(s) como cobradas.`
+        : `Se han reabierto ${targetIds.length} factura(s).`;
+
+    redirect(`/cobros?batchMessage=${encodeURIComponent(message)}`);
   } catch (error) {
     rethrowIfRedirectError(error);
     redirect(`/cobros?error=${encodeURIComponent(getFirstErrorMessage(error))}`);

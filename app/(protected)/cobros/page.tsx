@@ -21,6 +21,7 @@ import {
 import {
   sendInvoiceBatchReminderAction,
   sendInvoiceReminderAction,
+  updateInvoiceBatchPaymentStateAction,
   updateInvoicePaymentStateAction,
 } from "@/lib/actions/invoices";
 import { demoInvoiceReminders, demoInvoices, isDemoMode, isLocalFileMode } from "@/lib/demo";
@@ -215,6 +216,12 @@ export default async function CobrosPage({
   });
   const summary = getInvoiceCollectionSummary(sortedInvoices);
   const reminderQueues = getInvoiceReminderQueues(sortedInvoices);
+  const payableInvoices = filteredInvoices.filter(
+    (invoice) => getInvoiceCollectionState(invoice) !== "paid",
+  );
+  const reopenableInvoices = filteredInvoices.filter(
+    (invoice) => getInvoiceCollectionState(invoice) === "paid",
+  );
   const reminderHistory = demoMode
     ? [...demoInvoiceReminders]
         .sort((left, right) => right.sent_at.localeCompare(left.sent_at))
@@ -483,6 +490,84 @@ export default async function CobrosPage({
                 </Link>
               </Button>
             ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Acciones por lote sobre el filtro actual</CardTitle>
+          <CardDescription>
+            Aplica un cambio de cobro sobre las facturas visibles en esta cola. Úsalo cuando cierres un bloque de trabajo completo y no factura a factura.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4 xl:grid-cols-2">
+          <div className="rounded-[24px] border border-white/60 bg-[linear-gradient(145deg,rgba(255,255,255,0.94),rgba(238,247,244,0.88))] p-5">
+            <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
+              Pendientes, parciales o vencidas
+            </p>
+            <p className="mt-3 font-display text-4xl text-foreground">
+              {payableInvoices.length}
+            </p>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              Marca como cobradas todas las facturas visibles que todavía tienen saldo pendiente.
+            </p>
+            <form
+              action={
+                demoMode || payableInvoices.length === 0
+                  ? undefined
+                  : updateInvoiceBatchPaymentStateAction
+              }
+              className="mt-5"
+            >
+              <input type="hidden" name="actionKind" value="mark_paid" />
+              {payableInvoices.map((invoice) => (
+                <input key={invoice.id} type="hidden" name="invoiceId" value={invoice.id} />
+              ))}
+              <SubmitButton
+                variant="outline"
+                pendingLabel="Marcando lote..."
+                className="w-full justify-center"
+                disabled={demoMode || payableInvoices.length === 0}
+              >
+                <Wallet className="h-4 w-4" />
+                {payableInvoices.length === 0 ? "Sin candidatas" : "Marcar lote como cobrado"}
+              </SubmitButton>
+            </form>
+          </div>
+
+          <div className="rounded-[24px] border border-white/60 bg-[linear-gradient(145deg,rgba(255,255,255,0.94),rgba(238,247,244,0.88))] p-5">
+            <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
+              Cobradas visibles
+            </p>
+            <p className="mt-3 font-display text-4xl text-foreground">
+              {reopenableInvoices.length}
+            </p>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              Reabre el seguimiento de cobro sobre las facturas visibles. Si tienen movimientos conciliados, FacturaIA recalculará el estado desde banca.
+            </p>
+            <form
+              action={
+                demoMode || reopenableInvoices.length === 0
+                  ? undefined
+                  : updateInvoiceBatchPaymentStateAction
+              }
+              className="mt-5"
+            >
+              <input type="hidden" name="actionKind" value="reopen" />
+              {reopenableInvoices.map((invoice) => (
+                <input key={invoice.id} type="hidden" name="invoiceId" value={invoice.id} />
+              ))}
+              <SubmitButton
+                variant="outline"
+                pendingLabel="Reabriendo lote..."
+                className="w-full justify-center"
+                disabled={demoMode || reopenableInvoices.length === 0}
+              >
+                <RotateCcw className="h-4 w-4" />
+                {reopenableInvoices.length === 0 ? "Sin cobradas" : "Reabrir lote"}
+              </SubmitButton>
+            </form>
           </div>
         </CardContent>
       </Card>

@@ -80,6 +80,17 @@ Desde `/cobros` puedes:
 
 Esto sirve cuando el cobro no entra por conciliación bancaria o todavía no has importado el extracto.
 
+Además, la pantalla incorpora acciones por lote sobre el filtro visible:
+
+- marcar como cobradas todas las facturas filtradas que sigan pendientes o parciales
+- reabrir todas las facturas filtradas que figuren como cobradas
+
+La reapertura por lote es consciente de la banca:
+
+- si una factura reabierta no tiene movimientos conciliados, vuelve a `pending`
+- si una factura reabierta mantiene un cobro bancario parcial conciliado, vuelve a `partial`
+- si tras reabrir sigue completamente cubierta por banca conciliada, recupera `paid`
+
 ## Recordatorios de cobro
 
 Desde `/cobros` puedes enviar un recordatorio real por email.
@@ -125,6 +136,11 @@ El envío por lote reutiliza exactamente la misma lógica que el recordatorio in
 - mismo incremento de `reminder_count`
 - mismo guardado en el historial persistente de recordatorios
 
+Las acciones de cobro por lote y los recordatorios por lote están separadas:
+
+- las acciones de cobro cambian el estado económico de las facturas visibles
+- los recordatorios solo envían seguimiento comercial, sin modificar por sí solos el saldo pendiente
+
 ## Instalación
 
 1. aplica la migración `202603201900_add_invoice_collection_tracking.sql`
@@ -135,7 +151,7 @@ El envío por lote reutiliza exactamente la misma lógica que el recordatorio in
 6. revisa el panel resumen
 7. emite una factura nueva con vencimiento
 8. concilia un ingreso en `/banca`, usa el marcado manual o envía un recordatorio
-9. prueba también la cola de lotes recomendados
+9. prueba también las acciones por lote del filtro actual y la cola de recordatorios recomendados
 10. confirma que la actividad reciente aparece en la propia pantalla y que el historial entra en `/backups`
 
 ## Limitaciones actuales
@@ -145,6 +161,7 @@ El envío por lote reutiliza exactamente la misma lógica que el recordatorio in
 - no hay reglas configurables por el usuario para redefinir lotes o ventanas de espera
 - no hay conciliación OFX
 - no se distingue todavía entre cobro manual y cobro bancario como fuentes separadas
+- las acciones por lote todavía no permiten selección manual arbitraria; operan sobre el filtro actual de la pantalla
 
 ## Archivos clave
 

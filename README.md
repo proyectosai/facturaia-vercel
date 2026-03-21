@@ -25,7 +25,7 @@ La línea principal es reforzar la instalación privada del cliente:
 - Evidencia de firma reforzada con hash de integridad del documento y validación de cambios posteriores al enlace.
 - Módulo de gastos con importación de justificantes, extracción de texto y revisión.
 - Módulo de conciliación bancaria con importación CSV y enlace manual de movimientos con facturas o gastos.
-- Seguimiento de cobros y vencimientos con centro dedicado, marcado manual, recordatorios individuales y por lote, historial de avisos y sincronización básica con banca.
+- Seguimiento de cobros y vencimientos con centro dedicado, marcado manual y acciones por lote, recordatorios individuales y por lote, historial de avisos y sincronización básica con banca.
 - Módulo Facturae / VeriFactu con panel de preparación y exportación inicial XML Facturae 3.2.2 sin firma.
 - Revisión Facturae más estricta con validación básica de NIF y vencimiento, más detalle de pago en el XML.
 - Módulo CRM ligero para centralizar fichas de cliente y proveedor con actividad relacionada.
@@ -38,7 +38,7 @@ La línea principal es reforzar la instalación privada del cliente:
 - Módulo de correo saliente con pantalla de prueba y soporte SMTP / Resend.
 - Módulo de correo entrante con importación IMAP manual y bandeja interna.
 - Módulo opcional de mensajería unificada para WhatsApp Business y Telegram por webhook.
-- Centro de backups para exportar, restaurar y sincronizar copias remotas por WebDAV / Nextcloud, con manifest y checksum de integridad en el JSON.
+- Centro de backups para exportar, restaurar y sincronizar copias remotas por WebDAV / Nextcloud, con manifest y checksum de integridad en el JSON y validación `dry-run` antes de restaurar.
 - Catálogo de módulos opcionales con estado e instalación en `/modules`.
 - Guía de instalación privada dentro de la propia app.
 - Asistente de primeros pasos dentro del panel para instalaciones no técnicas.

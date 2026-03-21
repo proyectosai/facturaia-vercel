@@ -223,6 +223,23 @@ function normalizeBackupForComparison(backup: FacturaIaBackup) {
   };
 }
 
+function pushEntityMismatch(
+  mismatches: BackupContentMismatch[],
+  field: string,
+  expected: string | number | boolean | null | undefined,
+  actual: string | number | boolean | null | undefined,
+) {
+  if (expected === actual) {
+    return;
+  }
+
+  mismatches.push({
+    field,
+    expected: expected ?? false,
+    actual: actual ?? false,
+  });
+}
+
 export function compareBackupContents(
   expected: FacturaIaBackup,
   actual: FacturaIaBackup,
@@ -285,6 +302,92 @@ export function compareBackupContents(
       expected: expected.user.email,
       actual: actual.user.email,
     });
+  }
+
+  const expectedInvoices = new Map(expected.invoices.map((invoice) => [invoice.id, invoice]));
+  const actualInvoices = new Map(actual.invoices.map((invoice) => [invoice.id, invoice]));
+
+  for (const [invoiceId, expectedInvoice] of expectedInvoices) {
+    const actualInvoice = actualInvoices.get(invoiceId);
+
+    if (!actualInvoice) {
+      mismatches.push({
+        field: `invoices.${invoiceId}`,
+        expected: "present",
+        actual: "missing",
+      });
+      continue;
+    }
+
+    pushEntityMismatch(
+      mismatches,
+      `invoices.${invoiceId}.payment_status`,
+      expectedInvoice.payment_status,
+      actualInvoice.payment_status,
+    );
+    pushEntityMismatch(
+      mismatches,
+      `invoices.${invoiceId}.amount_paid`,
+      expectedInvoice.amount_paid,
+      actualInvoice.amount_paid,
+    );
+    pushEntityMismatch(
+      mismatches,
+      `invoices.${invoiceId}.invoice_number`,
+      expectedInvoice.invoice_number,
+      actualInvoice.invoice_number,
+    );
+    pushEntityMismatch(
+      mismatches,
+      `invoices.${invoiceId}.reminder_count`,
+      expectedInvoice.reminder_count,
+      actualInvoice.reminder_count,
+    );
+    pushEntityMismatch(
+      mismatches,
+      `invoices.${invoiceId}.due_date`,
+      expectedInvoice.due_date,
+      actualInvoice.due_date,
+    );
+  }
+
+  const expectedReminders = new Map(
+    expected.invoiceReminders.map((reminder) => [reminder.id, reminder]),
+  );
+  const actualReminders = new Map(
+    actual.invoiceReminders.map((reminder) => [reminder.id, reminder]),
+  );
+
+  for (const [reminderId, expectedReminder] of expectedReminders) {
+    const actualReminder = actualReminders.get(reminderId);
+
+    if (!actualReminder) {
+      mismatches.push({
+        field: `invoiceReminders.${reminderId}`,
+        expected: "present",
+        actual: "missing",
+      });
+      continue;
+    }
+
+    pushEntityMismatch(
+      mismatches,
+      `invoiceReminders.${reminderId}.trigger_mode`,
+      expectedReminder.trigger_mode,
+      actualReminder.trigger_mode,
+    );
+    pushEntityMismatch(
+      mismatches,
+      `invoiceReminders.${reminderId}.batch_key`,
+      expectedReminder.batch_key,
+      actualReminder.batch_key,
+    );
+    pushEntityMismatch(
+      mismatches,
+      `invoiceReminders.${reminderId}.recipient_email`,
+      expectedReminder.recipient_email,
+      actualReminder.recipient_email,
+    );
   }
 
   if (mismatches.length === 0) {

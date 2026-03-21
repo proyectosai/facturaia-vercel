@@ -183,6 +183,46 @@ describe("local backup export and restore", () => {
     );
   });
 
+  test("reports invoice state mismatches with semantic detail", async () => {
+    await createLocalInvoiceRecord({
+      userId,
+      payload: {
+        issueDate: "2026-03-20",
+        dueDate: "2026-03-30",
+        issuerName: "Asesoria Martin Fiscal",
+        issuerNif: "B12345678",
+        issuerAddress: "Calle Alcala 100, Madrid",
+        clientName: "Empresa Norte S.L.",
+        clientNif: "B76543210",
+        clientAddress: "Avenida de Europa 15, Pozuelo",
+        clientEmail: "admin@empresanorte.es",
+      },
+      lineItems: buildLineItems(),
+      totals: buildTotals(),
+      issuerLogoUrl: null,
+    });
+
+    const backup = await exportBackupForUser(userId, email);
+    const changedInvoice = {
+      ...backup,
+      invoices: [
+        {
+          ...backup.invoices[0],
+          payment_status: "paid" as const,
+          amount_paid: 999,
+          reminder_count: 3,
+        },
+      ],
+    };
+
+    const comparison = compareBackupContents(backup, changedInvoice);
+
+    expect(comparison.matches).toBe(false);
+    expect(comparison.mismatches.some((item) => item.field.endsWith(".payment_status"))).toBe(true);
+    expect(comparison.mismatches.some((item) => item.field.endsWith(".amount_paid"))).toBe(true);
+    expect(comparison.mismatches.some((item) => item.field.endsWith(".reminder_count"))).toBe(true);
+  });
+
   test("exports local data and restores it into a fresh local directory", async () => {
     await saveLocalProfile({
       userId,

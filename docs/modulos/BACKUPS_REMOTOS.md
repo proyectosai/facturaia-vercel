@@ -8,6 +8,7 @@ Qué incluye hoy:
 
 - exportación local JSON desde `/backups`
 - manifest de exportación con conteos y checksum de integridad
+- validación previa `dry-run` antes de restaurar una copia
 - envío manual de esa copia a un destino remoto WebDAV
 - historial de últimas ejecuciones remotas dentro de la app
 - soporte para instalaciones privadas en portátil, sobremesa, VPS o NAS
@@ -175,6 +176,7 @@ Además, el fichero exportado ya lleva:
 - `manifest` con fecha, versión y módulos incluidos
 - `counts` por tipo de dato
 - `checksum` SHA-256 para detectar copias dañadas o manipuladas antes de restaurar
+- posibilidad de inspección y validación previa sin escribir datos (`dry-run` backend)
 
 No incluye:
 
@@ -192,7 +194,7 @@ El logo se conserva como:
 - solo está implementado WebDAV / Nextcloud
 - no hay limpieza automática de snapshots antiguos
 - no hay cifrado adicional del JSON más allá del canal HTTPS que use el proveedor
-- todavía no hay interfaz de `dry-run` previa a restauración, aunque el backend ya soporta validación previa del fichero
+- todavía no hay una interfaz completa paso a paso para `dry-run`, aunque el backend ya soporta validación previa del fichero antes de escribir
 
 ## Recomendaciones de seguridad
 
