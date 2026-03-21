@@ -66,6 +66,17 @@ import {
   saveStructuredClientRepositoryRecord,
 } from "@/lib/local-repositories/clients";
 import {
+  getStructuredCommercialRepositoryRecord,
+  getStructuredSignatureRepositoryRecordByAnyId,
+  getStructuredSignatureRepositoryPublicRecord,
+  getStructuredSignatureRepositoryRecord,
+  listStructuredCommercialRepositoryRecords,
+  listStructuredSignatureRepositoryRecords,
+  replaceStructuredCommercialRepositoryStateForUser,
+  saveStructuredCommercialRepositoryRecord,
+  saveStructuredSignatureRepositoryState,
+} from "@/lib/local-repositories/commercial";
+import {
   listStructuredFeedbackRepositoryRecords,
   replaceStructuredFeedbackRepositoryRecords,
   saveStructuredFeedbackRepositoryRecord,
@@ -250,6 +261,8 @@ async function readLocalCoreData(): Promise<LocalCoreData> {
       authRateLimits: structuredSlices.authRateLimits,
       invoices: structuredSlices.invoices,
       invoiceReminders: structuredSlices.invoiceReminders,
+      commercialDocuments: structuredSlices.commercialDocuments,
+      documentSignatureRequests: structuredSlices.documentSignatureRequests,
       counters: {
         ...baseData.counters,
         ...structuredSlices.counters,
@@ -1856,6 +1869,12 @@ export async function createLocalInvoiceRecord({
 }
 
 export async function listLocalCommercialDocumentsForUser(userId: string) {
+  const structuredDocuments = await listStructuredCommercialRepositoryRecords(userId);
+
+  if (structuredDocuments) {
+    return sortByPrimaryDateDescending(structuredDocuments, (document) => document.issue_date);
+  }
+
   const data = await readLocalCoreData();
   return sortByPrimaryDateDescending(
     data.commercialDocuments.filter((document) => document.user_id === userId),
@@ -1864,6 +1883,15 @@ export async function listLocalCommercialDocumentsForUser(userId: string) {
 }
 
 export async function getLocalCommercialDocumentById(userId: string, documentId: string) {
+  const structuredDocument = await getStructuredCommercialRepositoryRecord(
+    userId,
+    documentId,
+  );
+
+  if (structuredDocument) {
+    return structuredDocument;
+  }
+
   const documents = await listLocalCommercialDocumentsForUser(userId);
   return documents.find((document) => document.id === documentId) ?? null;
 }
@@ -1878,6 +1906,35 @@ export async function createLocalCommercialDocumentRecord({
     "id" | "user_id" | "public_id" | "document_number" | "created_at" | "updated_at"
   >;
 }) {
+  if (canUseStructuredLocalRepositories()) {
+    const timestamp = nowIso();
+    const counterKey =
+      input.document_type === "quote" ? "quote_number" : "delivery_note_number";
+    const counters =
+      (await getStructuredCounterRepositoryState()) ?? getDefaultLocalData().counters;
+    const nextCounters = {
+      ...counters,
+      [counterKey]: counters[counterKey] + 1,
+    };
+    const document: CommercialDocumentRecord = {
+      id: randomUUID(),
+      user_id: userId,
+      public_id: randomUUID(),
+      document_number: nextCounters[counterKey],
+      created_at: timestamp,
+      updated_at: timestamp,
+      ...input,
+    };
+    const saved = await saveStructuredCommercialRepositoryRecord({
+      document,
+      counters: nextCounters,
+    });
+
+    if (saved) {
+      return saved;
+    }
+  }
+
   return updateLocalCoreData(async (data) => {
     const timestamp = nowIso();
     const counterKey =
@@ -1911,6 +1968,21 @@ export async function updateLocalCommercialDocumentStatus(
   documentId: string,
   status: CommercialDocumentStatus,
 ) {
+  if (canUseStructuredLocalRepositories()) {
+    const document = await getStructuredCommercialRepositoryRecord(userId, documentId);
+
+    if (document) {
+      document.status = status;
+      document.updated_at = nowIso();
+
+      const saved = await saveStructuredCommercialRepositoryRecord({ document });
+
+      if (saved) {
+        return saved;
+      }
+    }
+  }
+
   return updateLocalCoreData(async (data) => {
     const document = data.commercialDocuments.find(
       (candidate) => candidate.user_id === userId && candidate.id === documentId,
@@ -1935,6 +2007,22 @@ export async function linkLocalCommercialDocumentToInvoice({
   documentId: string;
   invoiceId: string;
 }) {
+  if (canUseStructuredLocalRepositories()) {
+    const document = await getStructuredCommercialRepositoryRecord(userId, documentId);
+
+    if (document) {
+      document.status = "converted";
+      document.converted_invoice_id = invoiceId;
+      document.updated_at = nowIso();
+
+      const saved = await saveStructuredCommercialRepositoryRecord({ document });
+
+      if (saved) {
+        return saved;
+      }
+    }
+  }
+
   return updateLocalCoreData(async (data) => {
     const document = data.commercialDocuments.find(
       (candidate) => candidate.user_id === userId && candidate.id === documentId,
@@ -2073,6 +2161,12 @@ export async function toggleLocalExpenseReview(userId: string, expenseId: string
 }
 
 export async function listLocalDocumentSignatureRequestsForUser(userId: string) {
+  const structuredRequests = await listStructuredSignatureRepositoryRecords(userId);
+
+  if (structuredRequests) {
+    return sortByPrimaryDateDescending(structuredRequests, (request) => request.requested_at);
+  }
+
   const data = await readLocalCoreData();
   return sortByPrimaryDateDescending(
     data.documentSignatureRequests.filter((request) => request.user_id === userId),
@@ -2081,11 +2175,35 @@ export async function listLocalDocumentSignatureRequestsForUser(userId: string) 
 }
 
 export async function getLocalDocumentSignatureRequestById(userId: string, requestId: string) {
+  const structuredRequest = await getStructuredSignatureRepositoryRecord(
+    userId,
+    requestId,
+  );
+
+  if (structuredRequest) {
+    return structuredRequest;
+  }
+
   const requests = await listLocalDocumentSignatureRequestsForUser(userId);
   return requests.find((request) => request.id === requestId) ?? null;
 }
 
 export async function expireLocalDocumentSignatureRequest(requestId: string) {
+  if (canUseStructuredLocalRepositories()) {
+    const request = await getStructuredSignatureRepositoryRecordByAnyId(requestId);
+
+    if (request && request.status === "pending") {
+      request.status = "expired";
+      request.updated_at = nowIso();
+
+      if (await saveStructuredSignatureRepositoryState({ requests: [request] })) {
+        return request;
+      }
+    } else if (request) {
+      return request;
+    }
+  }
+
   return updateLocalCoreData(async (data) => {
     const request = data.documentSignatureRequests.find((candidate) => candidate.id === requestId);
 
@@ -2120,6 +2238,81 @@ export async function createLocalDocumentSignatureRequest({
   expiresAt: string | null;
   evidence: Record<string, unknown>;
 }) {
+  if (canUseStructuredLocalRepositories()) {
+    const timestamp = nowIso();
+    const existingRequests =
+      (await listStructuredSignatureRepositoryRecords(userId)) ?? [];
+    const revokedPendingRequestIds: string[] = [];
+
+    const updatedRequests = existingRequests.map((request) => {
+      if (
+        request.document_id === documentId &&
+        request.status === "pending"
+      ) {
+        revokedPendingRequestIds.push(request.id);
+        return {
+          ...request,
+          status: "revoked" as const,
+          responded_at: timestamp,
+          updated_at: timestamp,
+          evidence: {
+            ...(typeof request.evidence === "object" && request.evidence
+              ? request.evidence
+              : {}),
+          },
+        };
+      }
+
+      return request;
+    });
+
+    const request: DocumentSignatureRequestRecord = {
+      id: randomUUID(),
+      user_id: userId,
+      document_id: documentId,
+      document_type: documentType,
+      request_kind: requestKind,
+      status: "pending",
+      public_token: publicToken,
+      request_note: requestNote,
+      requested_at: requestedAt,
+      expires_at: expiresAt,
+      viewed_at: null,
+      responded_at: null,
+      signer_name: null,
+      signer_email: null,
+      signer_nif: null,
+      signer_message: null,
+      evidence,
+      created_at: timestamp,
+      updated_at: timestamp,
+    };
+    const auditEvent = buildLocalAuditEventRecord({
+      userId,
+      actorType: "user",
+      actorId: userId,
+      source: "signatures",
+      action: "signature_request_created",
+      entityType: "signature_request",
+      entityId: request.id,
+      afterJson: buildSignatureAuditSnapshot(request),
+      contextJson: {
+        revokedPendingRequestIds,
+        documentId,
+        documentType,
+      },
+    });
+
+    if (
+      await saveStructuredSignatureRepositoryState({
+        requests: [...updatedRequests, request],
+        auditEvent,
+      })
+    ) {
+      return request;
+    }
+  }
+
   return updateLocalCoreData(async (data) => {
     const timestamp = nowIso();
     const revokedPendingRequestIds: string[] = [];
@@ -2180,6 +2373,40 @@ export async function createLocalDocumentSignatureRequest({
 }
 
 export async function revokeLocalDocumentSignatureRequest(userId: string, requestId: string) {
+  if (canUseStructuredLocalRepositories()) {
+    const request = await getStructuredSignatureRepositoryRecord(userId, requestId);
+
+    if (request && request.status === "pending") {
+      const timestamp = nowIso();
+      const beforeRequest = buildSignatureAuditSnapshot(request);
+      request.status = "revoked";
+      request.responded_at = timestamp;
+      request.updated_at = timestamp;
+      const auditEvent = buildLocalAuditEventRecord({
+        userId,
+        actorType: "user",
+        actorId: userId,
+        source: "signatures",
+        action: "signature_request_revoked",
+        entityType: "signature_request",
+        entityId: request.id,
+        beforeJson: beforeRequest,
+        afterJson: buildSignatureAuditSnapshot(request),
+      });
+
+      if (
+        await saveStructuredSignatureRepositoryState({
+          requests: [request],
+          auditEvent,
+        })
+      ) {
+        return request;
+      }
+    } else if (request) {
+      return null;
+    }
+  }
+
   return updateLocalCoreData(async (data) => {
     const request = data.documentSignatureRequests.find(
       (candidate) =>
@@ -2213,11 +2440,32 @@ export async function revokeLocalDocumentSignatureRequest(userId: string, reques
 }
 
 export async function getLocalPublicSignatureRequestByToken(token: string) {
+  const structuredRequest = await getStructuredSignatureRepositoryPublicRecord(token);
+
+  if (structuredRequest) {
+    return structuredRequest;
+  }
+
   const data = await readLocalCoreData();
   return data.documentSignatureRequests.find((request) => request.public_token === token) ?? null;
 }
 
 export async function markLocalSignatureRequestViewed(token: string) {
+  if (canUseStructuredLocalRepositories()) {
+    const request = await getStructuredSignatureRepositoryPublicRecord(token);
+
+    if (request && request.status === "pending" && !request.viewed_at) {
+      request.viewed_at = nowIso();
+      request.updated_at = request.viewed_at;
+
+      if (await saveStructuredSignatureRepositoryState({ requests: [request] })) {
+        return request;
+      }
+    } else if (request) {
+      return request;
+    }
+  }
+
   return updateLocalCoreData(async (data) => {
     const request = data.documentSignatureRequests.find(
       (candidate) => candidate.public_token === token,
@@ -2254,6 +2502,77 @@ export async function respondToLocalDocumentSignatureRequest({
   forwardedFor: string | null;
   userAgent: string | null;
 }) {
+  if (canUseStructuredLocalRepositories()) {
+    const request = await getStructuredSignatureRepositoryPublicRecord(token);
+
+    if (request && request.status === "pending") {
+      const timestamp = nowIso();
+      const beforeRequest = buildSignatureAuditSnapshot(request);
+      request.status = status;
+      request.viewed_at = request.viewed_at ?? timestamp;
+      request.responded_at = timestamp;
+      request.signer_name = signerName;
+      request.signer_email = signerEmail;
+      request.signer_nif = signerNif;
+      request.signer_message = signerMessage;
+      request.evidence = {
+        ...(typeof request.evidence === "object" && request.evidence ? request.evidence : {}),
+        forwardedFor,
+        userAgent,
+        acceptedTerms,
+        decision: status === "signed" ? "accept" : "reject",
+        respondedAt: timestamp,
+      };
+      request.updated_at = timestamp;
+
+      const document = await getStructuredCommercialRepositoryRecord(
+        request.user_id,
+        request.document_id,
+      );
+
+      if (document) {
+        document.status =
+          status === "signed"
+            ? document.document_type === "quote"
+              ? "accepted"
+              : "signed"
+            : document.document_type === "quote"
+              ? "rejected"
+              : document.status;
+        document.updated_at = timestamp;
+      }
+
+      const auditEvent = buildLocalAuditEventRecord({
+        userId: request.user_id,
+        actorType: "public",
+        actorId: signerEmail ?? signerNif ?? signerName,
+        source: "signatures",
+        action: status === "signed" ? "signature_request_signed" : "signature_request_rejected",
+        entityType: "signature_request",
+        entityId: request.id,
+        beforeJson: beforeRequest,
+        afterJson: buildSignatureAuditSnapshot(request),
+        contextJson: {
+          documentStatus: document?.status ?? null,
+          forwardedFor,
+          acceptedTerms,
+        },
+      });
+
+      if (
+        await saveStructuredSignatureRepositoryState({
+          requests: [request],
+          documents: document ? [document] : [],
+          auditEvent,
+        })
+      ) {
+        return request;
+      }
+    } else if (request) {
+      return null;
+    }
+  }
+
   return updateLocalCoreData(async (data) => {
     const request = data.documentSignatureRequests.find(
       (candidate) => candidate.public_token === token,
@@ -3702,6 +4021,15 @@ export async function replaceLocalUserData({
         userId,
         data.feedbackEntries.filter((candidate) => candidate.user_id === userId),
       )) &&
+      (await replaceStructuredCommercialRepositoryStateForUser({
+        userId,
+        commercialDocuments: data.commercialDocuments.filter(
+          (candidate) => candidate.user_id === userId,
+        ),
+        documentSignatureRequests: data.documentSignatureRequests.filter(
+          (candidate) => candidate.user_id === userId,
+        ),
+      })) &&
       (await replaceStructuredAuditRepositoryRecords(
         userId,
         data.auditEvents.filter((candidate) => candidate.user_id === userId),

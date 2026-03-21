@@ -7,6 +7,8 @@ import initSqlJs, { type Database, type SqlJsStatic } from "sql.js";
 import type {
   AppUserRecord,
   ClientRecord,
+  CommercialDocumentRecord,
+  DocumentSignatureRequestRecord,
   FeedbackEntryRecord,
   InvoiceRecord,
   InvoiceReminderRecord,
@@ -93,6 +95,8 @@ export type StructuredMirrorMutation = {
   auditEvents?: LocalAuditEventRecord[];
   invoices?: InvoiceRecord[];
   invoiceReminders?: InvoiceReminderRecord[];
+  commercialDocuments?: CommercialDocumentRecord[];
+  documentSignatureRequests?: DocumentSignatureRequestRecord[];
   counters?: StructuredSnapshot["counters"];
 };
 
@@ -105,6 +109,8 @@ export type StructuredLocalCoreSlices = {
   authRateLimits: LocalAuthRateLimitRecord[];
   invoices: InvoiceRecord[];
   invoiceReminders: InvoiceReminderRecord[];
+  commercialDocuments: CommercialDocumentRecord[];
+  documentSignatureRequests: DocumentSignatureRequestRecord[];
   counters: StructuredSnapshot["counters"];
 };
 
@@ -1127,6 +1133,98 @@ function upsertStructuredInvoiceReminderRows(db: Database, rows: InvoiceReminder
   }
 }
 
+function upsertStructuredCommercialDocumentRows(
+  db: Database,
+  rows: CommercialDocumentRecord[],
+) {
+  for (const row of rows) {
+    upsertTableRow(
+      db,
+      "local_commercial_documents",
+      [
+        "id",
+        "user_id",
+        "document_type",
+        "status",
+        "public_id",
+        "document_number",
+        "issue_date",
+        "valid_until",
+        "issuer_name",
+        "issuer_nif",
+        "issuer_address",
+        "issuer_logo_url",
+        "client_name",
+        "client_nif",
+        "client_address",
+        "client_email",
+        "line_items_json",
+        "vat_breakdown_json",
+        "subtotal",
+        "vat_total",
+        "irpf_rate",
+        "irpf_amount",
+        "grand_total",
+        "notes",
+        "converted_invoice_id",
+        "created_at",
+        "updated_at",
+      ],
+      "id",
+      {
+        ...row,
+        line_items_json: toJsonText(row.line_items),
+        vat_breakdown_json: toJsonText(row.vat_breakdown),
+      },
+    );
+  }
+}
+
+function upsertStructuredDocumentSignatureRequestRows(
+  db: Database,
+  rows: DocumentSignatureRequestRecord[],
+) {
+  for (const row of rows) {
+    upsertTableRow(
+      db,
+      "local_document_signature_requests",
+      [
+        "id",
+        "user_id",
+        "document_id",
+        "document_type",
+        "request_kind",
+        "public_token",
+        "status",
+        "request_note",
+        "requested_at",
+        "expires_at",
+        "responded_at",
+        "viewed_at",
+        "revoked_at",
+        "signer_name",
+        "signer_email",
+        "signer_nif",
+        "signer_message",
+        "accepted_terms",
+        "evidence_json",
+        "created_at",
+        "updated_at",
+      ],
+      "id",
+      {
+        ...row,
+        revoked_at: row.status === "revoked" ? row.responded_at : null,
+        accepted_terms:
+          typeof row.evidence?.acceptedTerms === "boolean" && row.evidence.acceptedTerms
+            ? 1
+            : 0,
+        evidence_json: toJsonText(row.evidence),
+      },
+    );
+  }
+}
+
 function upsertStructuredCounters(db: Database, counters: StructuredSnapshot["counters"]) {
   upsertTableRow(
     db,
@@ -1283,6 +1381,64 @@ function mapAuthRateLimitRow(values: unknown[]): LocalAuthRateLimitRecord {
     locked_until: values[6] === null ? null : String(values[6] ?? ""),
     created_at: String(values[7] ?? ""),
     updated_at: String(values[8] ?? ""),
+  };
+}
+
+function mapCommercialDocumentRow(values: unknown[]): CommercialDocumentRecord {
+  return {
+    id: String(values[0] ?? ""),
+    user_id: String(values[1] ?? ""),
+    document_type: String(values[2] ?? "quote") as CommercialDocumentRecord["document_type"],
+    status: String(values[3] ?? "draft") as CommercialDocumentRecord["status"],
+    public_id: String(values[4] ?? ""),
+    document_number: Number(values[5] ?? 0),
+    issue_date: String(values[6] ?? ""),
+    valid_until: values[7] === null ? null : String(values[7] ?? ""),
+    issuer_name: String(values[8] ?? ""),
+    issuer_nif: String(values[9] ?? ""),
+    issuer_address: String(values[10] ?? ""),
+    issuer_logo_url: values[11] === null ? null : String(values[11] ?? ""),
+    client_name: String(values[12] ?? ""),
+    client_nif: String(values[13] ?? ""),
+    client_address: String(values[14] ?? ""),
+    client_email: String(values[15] ?? ""),
+    line_items: parseJsonArrayField(values[16]),
+    vat_breakdown: parseJsonArrayField(values[17]),
+    subtotal: Number(values[18] ?? 0),
+    vat_total: Number(values[19] ?? 0),
+    irpf_rate: Number(values[20] ?? 0),
+    irpf_amount: Number(values[21] ?? 0),
+    grand_total: Number(values[22] ?? 0),
+    notes: values[23] === null ? null : String(values[23] ?? ""),
+    converted_invoice_id: values[24] === null ? null : String(values[24] ?? ""),
+    created_at: String(values[25] ?? ""),
+    updated_at: String(values[26] ?? ""),
+  };
+}
+
+function mapDocumentSignatureRequestRow(
+  values: unknown[],
+): DocumentSignatureRequestRecord {
+  return {
+    id: String(values[0] ?? ""),
+    user_id: String(values[1] ?? ""),
+    document_id: String(values[2] ?? ""),
+    document_type: String(values[3] ?? "quote") as DocumentSignatureRequestRecord["document_type"],
+    request_kind: String(values[4] ?? "quote_acceptance") as DocumentSignatureRequestRecord["request_kind"],
+    public_token: String(values[5] ?? ""),
+    status: String(values[6] ?? "pending") as DocumentSignatureRequestRecord["status"],
+    request_note: values[7] === null ? null : String(values[7] ?? ""),
+    requested_at: String(values[8] ?? ""),
+    expires_at: values[9] === null ? null : String(values[9] ?? ""),
+    responded_at: values[10] === null ? null : String(values[10] ?? ""),
+    viewed_at: values[11] === null ? null : String(values[11] ?? ""),
+    signer_name: values[13] === null ? null : String(values[13] ?? ""),
+    signer_email: values[14] === null ? null : String(values[14] ?? ""),
+    signer_nif: values[15] === null ? null : String(values[15] ?? ""),
+    signer_message: values[16] === null ? null : String(values[16] ?? ""),
+    evidence: parseJsonObjectField(values[18]) ?? {},
+    created_at: String(values[19] ?? ""),
+    updated_at: String(values[20] ?? ""),
   };
 }
 
@@ -1910,6 +2066,17 @@ function applyStructuredMirrorMutation(
       upsertStructuredInvoiceReminderRows(db, mutation.invoiceReminders);
     }
 
+    if (mutation.commercialDocuments?.length) {
+      upsertStructuredCommercialDocumentRows(db, mutation.commercialDocuments);
+    }
+
+    if (mutation.documentSignatureRequests?.length) {
+      upsertStructuredDocumentSignatureRequestRows(
+        db,
+        mutation.documentSignatureRequests,
+      );
+    }
+
     if (mutation.counters) {
       upsertStructuredCounters(db, mutation.counters);
     }
@@ -2316,6 +2483,68 @@ export async function replaceStructuredLocalFeedbackEntriesForUser(
 
       if (feedbackEntries.length > 0) {
         upsertStructuredFeedbackRows(db, feedbackEntries);
+      }
+
+      upsertSchemaInfo(
+        db,
+        "structured_mirror_schema_version",
+        String(STRUCTURED_MIRROR_SCHEMA_VERSION),
+      );
+      upsertSchemaInfo(
+        db,
+        "structured_mirror_snapshot_version",
+        String(currentSnapshotVersion > 0 ? currentSnapshotVersion : 1),
+      );
+      upsertSchemaInfo(db, "structured_mirror_last_synced_at", syncedAt);
+      upsertSchemaInfo(db, "structured_mirror_status", "ready");
+      db.run("COMMIT;");
+    } catch (error) {
+      db.run("ROLLBACK;");
+      throw error;
+    }
+
+    await persistDatabase(db);
+    return true;
+  } finally {
+    db.close();
+  }
+}
+
+export async function replaceStructuredLocalCommercialStateForUser({
+  userId,
+  commercialDocuments,
+  documentSignatureRequests,
+}: {
+  userId: string;
+  commercialDocuments: CommercialDocumentRecord[];
+  documentSignatureRequests: DocumentSignatureRequestRecord[];
+}): Promise<boolean> {
+  const db = await openDatabase();
+
+  try {
+    if (getStructuredMirrorStatus(db) === "disabled_encrypted") {
+      return false;
+    }
+
+    const syncedAt = new Date().toISOString();
+    const currentSnapshotVersion = Number(
+      readSchemaInfo(db, "structured_mirror_snapshot_version") ?? 0,
+    );
+    db.run("BEGIN TRANSACTION;");
+
+    try {
+      deleteRowsByUserId(db, "local_commercial_documents", userId);
+      deleteRowsByUserId(db, "local_document_signature_requests", userId);
+
+      if (commercialDocuments.length > 0) {
+        upsertStructuredCommercialDocumentRows(db, commercialDocuments);
+      }
+
+      if (documentSignatureRequests.length > 0) {
+        upsertStructuredDocumentSignatureRequestRows(
+          db,
+          documentSignatureRequests,
+        );
       }
 
       upsertSchemaInfo(
@@ -2764,6 +2993,302 @@ export async function listStructuredLocalClientsForUser(
       `,
       [userId],
       (values) => mapClientRow(values),
+    );
+  } finally {
+    db.close();
+  }
+}
+
+export async function listStructuredLocalCommercialDocumentsForUser(
+  userId: string,
+): Promise<CommercialDocumentRecord[] | null> {
+  const db = await openDatabase();
+
+  try {
+    if (getStructuredMirrorStatus(db) !== "ready") {
+      return null;
+    }
+
+    return queryRows(
+      db,
+      `
+        SELECT
+          id,
+          user_id,
+          document_type,
+          status,
+          public_id,
+          document_number,
+          issue_date,
+          valid_until,
+          issuer_name,
+          issuer_nif,
+          issuer_address,
+          issuer_logo_url,
+          client_name,
+          client_nif,
+          client_address,
+          client_email,
+          line_items_json,
+          vat_breakdown_json,
+          subtotal,
+          vat_total,
+          irpf_rate,
+          irpf_amount,
+          grand_total,
+          notes,
+          converted_invoice_id,
+          created_at,
+          updated_at
+        FROM local_commercial_documents
+        WHERE user_id = ?
+        ORDER BY issue_date DESC, created_at DESC;
+      `,
+      [userId],
+      (values) => mapCommercialDocumentRow(values),
+    );
+  } finally {
+    db.close();
+  }
+}
+
+export async function getStructuredLocalCommercialDocumentById(
+  userId: string,
+  documentId: string,
+): Promise<CommercialDocumentRecord | null> {
+  const db = await openDatabase();
+
+  try {
+    if (getStructuredMirrorStatus(db) !== "ready") {
+      return null;
+    }
+
+    return queryFirstRow(
+      db,
+      `
+        SELECT
+          id,
+          user_id,
+          document_type,
+          status,
+          public_id,
+          document_number,
+          issue_date,
+          valid_until,
+          issuer_name,
+          issuer_nif,
+          issuer_address,
+          issuer_logo_url,
+          client_name,
+          client_nif,
+          client_address,
+          client_email,
+          line_items_json,
+          vat_breakdown_json,
+          subtotal,
+          vat_total,
+          irpf_rate,
+          irpf_amount,
+          grand_total,
+          notes,
+          converted_invoice_id,
+          created_at,
+          updated_at
+        FROM local_commercial_documents
+        WHERE user_id = ? AND id = ?
+        LIMIT 1;
+      `,
+      [userId, documentId],
+      (values) => mapCommercialDocumentRow(values),
+    );
+  } finally {
+    db.close();
+  }
+}
+
+export async function listStructuredLocalDocumentSignatureRequestsForUser(
+  userId: string,
+): Promise<DocumentSignatureRequestRecord[] | null> {
+  const db = await openDatabase();
+
+  try {
+    if (getStructuredMirrorStatus(db) !== "ready") {
+      return null;
+    }
+
+    return queryRows(
+      db,
+      `
+        SELECT
+          id,
+          user_id,
+          document_id,
+          document_type,
+          request_kind,
+          public_token,
+          status,
+          request_note,
+          requested_at,
+          expires_at,
+          responded_at,
+          viewed_at,
+          revoked_at,
+          signer_name,
+          signer_email,
+          signer_nif,
+          signer_message,
+          accepted_terms,
+          evidence_json,
+          created_at,
+          updated_at
+        FROM local_document_signature_requests
+        WHERE user_id = ?
+        ORDER BY requested_at DESC, created_at DESC;
+      `,
+      [userId],
+      (values) => mapDocumentSignatureRequestRow(values),
+    );
+  } finally {
+    db.close();
+  }
+}
+
+export async function getStructuredLocalDocumentSignatureRequestById(
+  userId: string,
+  requestId: string,
+): Promise<DocumentSignatureRequestRecord | null> {
+  const db = await openDatabase();
+
+  try {
+    if (getStructuredMirrorStatus(db) !== "ready") {
+      return null;
+    }
+
+    return queryFirstRow(
+      db,
+      `
+        SELECT
+          id,
+          user_id,
+          document_id,
+          document_type,
+          request_kind,
+          public_token,
+          status,
+          request_note,
+          requested_at,
+          expires_at,
+          responded_at,
+          viewed_at,
+          revoked_at,
+          signer_name,
+          signer_email,
+          signer_nif,
+          signer_message,
+          accepted_terms,
+          evidence_json,
+          created_at,
+          updated_at
+        FROM local_document_signature_requests
+        WHERE user_id = ? AND id = ?
+        LIMIT 1;
+      `,
+      [userId, requestId],
+      (values) => mapDocumentSignatureRequestRow(values),
+    );
+  } finally {
+    db.close();
+  }
+}
+
+export async function getStructuredLocalDocumentSignatureRequestByAnyId(
+  requestId: string,
+): Promise<DocumentSignatureRequestRecord | null> {
+  const db = await openDatabase();
+
+  try {
+    if (getStructuredMirrorStatus(db) !== "ready") {
+      return null;
+    }
+
+    return queryFirstRow(
+      db,
+      `
+        SELECT
+          id,
+          user_id,
+          document_id,
+          document_type,
+          request_kind,
+          public_token,
+          status,
+          request_note,
+          requested_at,
+          expires_at,
+          responded_at,
+          viewed_at,
+          revoked_at,
+          signer_name,
+          signer_email,
+          signer_nif,
+          signer_message,
+          accepted_terms,
+          evidence_json,
+          created_at,
+          updated_at
+        FROM local_document_signature_requests
+        WHERE id = ?
+        LIMIT 1;
+      `,
+      [requestId],
+      (values) => mapDocumentSignatureRequestRow(values),
+    );
+  } finally {
+    db.close();
+  }
+}
+
+export async function getStructuredLocalPublicSignatureRequestByToken(
+  token: string,
+): Promise<DocumentSignatureRequestRecord | null> {
+  const db = await openDatabase();
+
+  try {
+    if (getStructuredMirrorStatus(db) !== "ready") {
+      return null;
+    }
+
+    return queryFirstRow(
+      db,
+      `
+        SELECT
+          id,
+          user_id,
+          document_id,
+          document_type,
+          request_kind,
+          public_token,
+          status,
+          request_note,
+          requested_at,
+          expires_at,
+          responded_at,
+          viewed_at,
+          revoked_at,
+          signer_name,
+          signer_email,
+          signer_nif,
+          signer_message,
+          accepted_terms,
+          evidence_json,
+          created_at,
+          updated_at
+        FROM local_document_signature_requests
+        WHERE public_token = ?
+        LIMIT 1;
+      `,
+      [token],
+      (values) => mapDocumentSignatureRequestRow(values),
     );
   } finally {
     db.close();
@@ -3292,6 +3817,76 @@ export async function readStructuredLocalCoreSlices(): Promise<StructuredLocalCo
       (values) => mapInvoiceReminderRow(values),
     );
 
+    const commercialDocuments = queryRows(
+      db,
+      `
+        SELECT
+          id,
+          user_id,
+          document_type,
+          status,
+          public_id,
+          document_number,
+          issue_date,
+          valid_until,
+          issuer_name,
+          issuer_nif,
+          issuer_address,
+          issuer_logo_url,
+          client_name,
+          client_nif,
+          client_address,
+          client_email,
+          line_items_json,
+          vat_breakdown_json,
+          subtotal,
+          vat_total,
+          irpf_rate,
+          irpf_amount,
+          grand_total,
+          notes,
+          converted_invoice_id,
+          created_at,
+          updated_at
+        FROM local_commercial_documents
+        ORDER BY issue_date ASC, created_at ASC;
+      `,
+      undefined,
+      (values) => mapCommercialDocumentRow(values),
+    );
+
+    const documentSignatureRequests = queryRows(
+      db,
+      `
+        SELECT
+          id,
+          user_id,
+          document_id,
+          document_type,
+          request_kind,
+          public_token,
+          status,
+          request_note,
+          requested_at,
+          expires_at,
+          responded_at,
+          viewed_at,
+          revoked_at,
+          signer_name,
+          signer_email,
+          signer_nif,
+          signer_message,
+          accepted_terms,
+          evidence_json,
+          created_at,
+          updated_at
+        FROM local_document_signature_requests
+        ORDER BY requested_at ASC, created_at ASC;
+      `,
+      undefined,
+      (values) => mapDocumentSignatureRequestRow(values),
+    );
+
     const counterRows = queryRows(
       db,
       `
@@ -3333,6 +3928,8 @@ export async function readStructuredLocalCoreSlices(): Promise<StructuredLocalCo
       authRateLimits,
       invoices,
       invoiceReminders,
+      commercialDocuments,
+      documentSignatureRequests,
       counters,
     };
   } finally {

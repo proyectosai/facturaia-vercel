@@ -136,8 +136,9 @@ Comportamiento:
 - el perfil fiscal, las facturas, el PDF, la factura pública, los cobros y los recordatorios se guardan en una base SQLite local dentro del equipo
 - `core.sqlite` mantiene ahora dos capas: snapshot compatible y mirror relacional interno como puente hacia una base local más madura
 - el mirror ya alimenta lecturas reales de auditoría, uso, clientes y facturas cuando está disponible
-- las mutaciones locales de bootstrap/login, perfil, feedback, clientes, facturas, cobros y recordatorios ya actualizan el mirror SQLite con upserts dirigidos, sin resincronizarlo completo en cada cambio
+- las mutaciones locales de bootstrap/login, perfil, feedback, clientes, facturas, cobros, presupuestos/albaranes y recordatorios ya actualizan el mirror SQLite con upserts dirigidos, sin resincronizarlo completo en cada cambio
 - `clientes`, `facturas`, `recordatorios`, `auditoría` y `contadores` ya se recuperan desde SQLite como fuente principal en modo local; el snapshot queda como compatibilidad, backup y restore
+- `presupuestos/albaranes` y `firmas` ya leen y persisten primero sobre SQLite cuando el mirror está activo
 - restore y export de backups ya reconstruyen identidad, feedback, clientes, facturas, recordatorios y auditoría priorizando SQLite cuando el mirror está activo
 - esas mutaciones ya intentan persistirse primero en SQLite y solo después consolidan el snapshot compatible
 - el acceso local aplica expiración real de sesión, bloqueo temporal por intentos fallidos y auditoría persistente de eventos sensibles
