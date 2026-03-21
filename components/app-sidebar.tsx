@@ -28,6 +28,7 @@ import {
   Scale,
   Wallet,
   Wrench,
+  type LucideIcon,
 } from "lucide-react";
 
 import { signOutAction } from "@/lib/actions/auth";
@@ -38,31 +39,72 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 
-const navigation = [
-  { href: "/dashboard", label: "Inicio", icon: Home },
-  { href: "/primeros-pasos", label: "Primeros pasos", icon: ClipboardList },
-  { href: "/new-invoice", label: "Nueva Factura", icon: FilePlus2 },
-  { href: "/presupuestos", label: "Presupuestos", icon: ReceiptText },
-  { href: "/firmas", label: "Firmas", icon: FileSignature },
-  { href: "/gastos", label: "Gastos", icon: Wallet },
-  { href: "/cobros", label: "Cobros", icon: CircleDollarSign },
-  { href: "/banca", label: "Banca", icon: Landmark },
-  { href: "/clientes", label: "Clientes", icon: ContactRound },
-  { href: "/invoices", label: "Mis Facturas", icon: Files },
-  { href: "/facturae", label: "Facturae", icon: FileCode2 },
-  { href: "/renta", label: "IRPF / Renta", icon: Scale },
-  { href: "/messages", label: "Mensajes", icon: MessageSquareText },
-  { href: "/documents-ai", label: "Documentos", icon: FileText },
-  { href: "/estudio-ia", label: "Estudio IA", icon: Search },
-  { href: "/mail", label: "Correo", icon: Mail },
-  { href: "/feedback", label: "Feedback", icon: Lightbulb },
-  { href: "/auditoria", label: "Auditoría", icon: ScrollText },
-  { href: "/modules", label: "Módulos", icon: Blocks },
-  { href: "/system", label: "Sistema", icon: Wrench },
-  { href: "/backups", label: "Backups", icon: ArchiveRestore },
-  { href: "/instalacion", label: "Instalación", icon: ShieldCheck },
-  { href: "/profile", label: "Mi Perfil", icon: Settings2 },
+type NavigationItem = {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+};
+
+type NavigationSection = {
+  title: string;
+  hint: string;
+  items: NavigationItem[];
+};
+
+const navigationSections: NavigationSection[] = [
+  {
+    title: "Núcleo",
+    hint: "Usar ya",
+    items: [
+      { href: "/dashboard", label: "Inicio", icon: Home },
+      { href: "/primeros-pasos", label: "Primeros pasos", icon: ClipboardList },
+      { href: "/new-invoice", label: "Nueva factura", icon: FilePlus2 },
+      { href: "/invoices", label: "Mis facturas", icon: Files },
+      { href: "/cobros", label: "Cobros", icon: CircleDollarSign },
+      { href: "/mail", label: "Correo", icon: Mail },
+      { href: "/backups", label: "Backups", icon: ArchiveRestore },
+      { href: "/profile", label: "Mi perfil", icon: Settings2 },
+    ],
+  },
+  {
+    title: "Por fases",
+    hint: "Piloto o activación gradual",
+    items: [
+      { href: "/presupuestos", label: "Presupuestos", icon: ReceiptText },
+      { href: "/firmas", label: "Firmas", icon: FileSignature },
+      { href: "/clientes", label: "Clientes", icon: ContactRound },
+      { href: "/gastos", label: "Gastos", icon: Wallet },
+      { href: "/banca", label: "Banca", icon: Landmark },
+      { href: "/messages", label: "Mensajes", icon: MessageSquareText },
+      { href: "/documents-ai", label: "Documentos", icon: FileText },
+      { href: "/estudio-ia", label: "Estudio IA", icon: Search },
+      { href: "/facturae", label: "Facturae", icon: FileCode2 },
+      { href: "/renta", label: "IRPF / Renta", icon: Scale },
+    ],
+  },
+  {
+    title: "Control",
+    hint: "Sistema y soporte",
+    items: [
+      { href: "/modules", label: "Módulos", icon: Blocks },
+      { href: "/instalacion", label: "Instalación", icon: ShieldCheck },
+      { href: "/auditoria", label: "Auditoría", icon: ScrollText },
+      { href: "/feedback", label: "Feedback", icon: Lightbulb },
+      { href: "/system", label: "Sistema", icon: Wrench },
+    ],
+  },
 ];
+
+const mobileNavigation = [
+  { href: "/dashboard", label: "Inicio", icon: Home },
+  { href: "/new-invoice", label: "Factura", icon: FilePlus2 },
+  { href: "/invoices", label: "Historial", icon: Files },
+  { href: "/cobros", label: "Cobros", icon: CircleDollarSign },
+  { href: "/modules", label: "Módulos", icon: Blocks },
+  { href: "/profile", label: "Perfil", icon: Settings2 },
+];
+
+const allNavigationItems = navigationSections.flatMap((section) => section.items);
 
 export function AppSidebar({
   children,
@@ -74,6 +116,15 @@ export function AppSidebar({
   demoMode?: boolean;
 }) {
   const pathname = usePathname();
+  const activeHiddenMobileItem =
+    allNavigationItems.find((item) => pathname === item.href || pathname.startsWith(`${item.href}/`)) ?? null;
+  const visibleMobileItems = mobileNavigation.some(
+    (item) => item.href === activeHiddenMobileItem?.href,
+  )
+    ? mobileNavigation
+    : activeHiddenMobileItem
+      ? [...mobileNavigation, activeHiddenMobileItem]
+      : mobileNavigation;
   const initials =
     profile.full_name
       ?.split(" ")
@@ -98,28 +149,38 @@ export function AppSidebar({
             </div>
           </Link>
 
-          <nav className="space-y-1.5">
-            {navigation.map((item) => {
-              const Icon = item.icon;
-              const active =
-                pathname === item.href || pathname.startsWith(`${item.href}/`);
+          <nav className="space-y-5">
+            {navigationSections.map((section) => (
+              <div key={section.title} className="space-y-1.5">
+                <div className="px-3 pb-1">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-foreground/70">
+                    {section.title}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">{section.hint}</p>
+                </div>
+                {section.items.map((item) => {
+                  const Icon = item.icon;
+                  const active =
+                    pathname === item.href || pathname.startsWith(`${item.href}/`);
 
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    "flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition",
-                    active
-                      ? "bg-[color:var(--color-brand)] text-[color:var(--color-brand-foreground)] shadow-lg shadow-[color:color-mix(in_oklab,var(--color-brand)_18%,transparent)]"
-                      : "text-muted-foreground hover:bg-white/70 hover:text-foreground",
-                  )}
-                >
-                  <Icon className="h-4 w-4" />
-                  {item.label}
-                </Link>
-              );
-            })}
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={cn(
+                        "flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition",
+                        active
+                          ? "bg-[color:var(--color-brand)] text-[color:var(--color-brand-foreground)] shadow-lg shadow-[color:color-mix(in_oklab,var(--color-brand)_18%,transparent)]"
+                          : "text-muted-foreground hover:bg-white/70 hover:text-foreground",
+                      )}
+                    >
+                      <Icon className="h-4 w-4" />
+                      {item.label}
+                    </Link>
+                  );
+                })}
+              </div>
+            ))}
           </nav>
 
           <Card className="mt-auto rounded-[30px] bg-[color:rgba(255,255,255,0.82)] p-5">
@@ -173,7 +234,7 @@ export function AppSidebar({
               </div>
               <div>
                 <p className="font-display text-xl text-foreground">FacturaIA</p>
-                <p className="text-xs text-muted-foreground">Panel de control</p>
+                <p className="text-xs text-muted-foreground">Núcleo primero</p>
               </div>
             </Link>
             <Badge
@@ -184,7 +245,7 @@ export function AppSidebar({
           </div>
 
           <div className="flex gap-2 overflow-x-auto pb-1">
-            {navigation.map((item) => {
+            {visibleMobileItems.map((item) => {
               const active =
                 pathname === item.href || pathname.startsWith(`${item.href}/`);
 
