@@ -68,6 +68,12 @@ export type LocalStructuredMirrorSummary = {
 };
 
 type StructuredMirrorStatus = "ready" | "disabled_encrypted" | "empty";
+export type StructuredMirrorSection =
+  | "clients"
+  | "auditEvents"
+  | "invoices"
+  | "invoiceReminders"
+  | "counters";
 
 const STRUCTURED_MIRROR_TABLES = [
   "local_users",
@@ -641,6 +647,141 @@ function upsertSchemaInfo(db: Database, key: string, value: string) {
         updated_at = excluded.updated_at;
     `,
     [key, value, new Date().toISOString()],
+  );
+}
+
+function replaceStructuredClients(db: Database, parsed: StructuredSnapshot) {
+  replaceTableRows(
+    db,
+    "local_clients",
+    [
+      "id",
+      "user_id",
+      "relation_kind",
+      "status",
+      "priority",
+      "display_name",
+      "first_name",
+      "last_name",
+      "company_name",
+      "email",
+      "phone",
+      "nif",
+      "address",
+      "notes",
+      "tags_json",
+      "created_at",
+      "updated_at",
+    ],
+    parsed.clients.map((row) => ({
+      ...row,
+      tags_json: toJsonText(row.tags),
+    })),
+  );
+}
+
+function replaceStructuredAuditEvents(db: Database, parsed: StructuredSnapshot) {
+  replaceTableRows(
+    db,
+    "local_audit_events",
+    [
+      "id",
+      "user_id",
+      "actor_type",
+      "actor_id",
+      "source",
+      "action",
+      "entity_type",
+      "entity_id",
+      "before_json",
+      "after_json",
+      "context_json",
+      "created_at",
+    ],
+    parsed.auditEvents.map((row) => ({
+      ...row,
+      before_json: toJsonText(row.before_json),
+      after_json: toJsonText(row.after_json),
+      context_json: toJsonText(row.context_json),
+    })),
+  );
+}
+
+function replaceStructuredInvoices(db: Database, parsed: StructuredSnapshot) {
+  replaceTableRows(
+    db,
+    "local_invoices",
+    [
+      "id",
+      "user_id",
+      "public_id",
+      "invoice_number",
+      "issue_date",
+      "due_date",
+      "issuer_name",
+      "issuer_nif",
+      "issuer_address",
+      "issuer_logo_url",
+      "client_name",
+      "client_nif",
+      "client_address",
+      "client_email",
+      "line_items_json",
+      "subtotal",
+      "vat_total",
+      "irpf_rate",
+      "irpf_amount",
+      "grand_total",
+      "amount_paid",
+      "payment_status",
+      "paid_at",
+      "last_reminder_at",
+      "reminder_count",
+      "collection_notes",
+      "vat_breakdown_json",
+      "created_at",
+      "updated_at",
+    ],
+    parsed.invoices.map((row) => ({
+      ...row,
+      line_items_json: toJsonText(row.line_items),
+      vat_breakdown_json: toJsonText(row.vat_breakdown),
+    })),
+  );
+}
+
+function replaceStructuredInvoiceReminders(db: Database, parsed: StructuredSnapshot) {
+  replaceTableRows(
+    db,
+    "local_invoice_reminders",
+    [
+      "id",
+      "user_id",
+      "invoice_id",
+      "delivery_channel",
+      "trigger_mode",
+      "batch_key",
+      "recipient_email",
+      "subject",
+      "status",
+      "error_message",
+      "sent_at",
+      "created_at",
+    ],
+    parsed.invoiceReminders,
+  );
+}
+
+function replaceStructuredCounters(db: Database, parsed: StructuredSnapshot) {
+  replaceTableRows(
+    db,
+    "local_counters",
+    ["counter_key", "counter_value"],
+    [
+      { counter_key: "invoice_number", counter_value: parsed.counters.invoice_number },
+      { counter_key: "quote_number", counter_value: parsed.counters.quote_number },
+      { counter_key: "delivery_note_number", counter_value: parsed.counters.delivery_note_number },
+    ],
   );
 }
 
@@ -1240,6 +1381,42 @@ function syncStructuredMirror(db: Database, snapshotText: string) {
   }
 }
 
+function syncStructuredMirrorSections(
+  db: Database,
+  snapshotText: string,
+  sections: StructuredMirrorSection[],
+) {
+  const parsed = normalizeStructuredSnapshot(JSON.parse(snapshotText));
+  const syncedAt = new Date().toISOString();
+
+  db.run("BEGIN TRANSACTION;");
+
+  try {
+    for (const section of sections) {
+      if (section === "clients") {
+        replaceStructuredClients(db, parsed);
+      } else if (section === "auditEvents") {
+        replaceStructuredAuditEvents(db, parsed);
+      } else if (section === "invoices") {
+        replaceStructuredInvoices(db, parsed);
+      } else if (section === "invoiceReminders") {
+        replaceStructuredInvoiceReminders(db, parsed);
+      } else if (section === "counters") {
+        replaceStructuredCounters(db, parsed);
+      }
+    }
+
+    upsertSchemaInfo(db, "structured_mirror_schema_version", String(STRUCTURED_MIRROR_SCHEMA_VERSION));
+    upsertSchemaInfo(db, "structured_mirror_snapshot_version", String(parsed.version));
+    upsertSchemaInfo(db, "structured_mirror_last_synced_at", syncedAt);
+    upsertSchemaInfo(db, "structured_mirror_status", "ready");
+    db.run("COMMIT;");
+  } catch (error) {
+    db.run("ROLLBACK;");
+    throw error;
+  }
+}
+
 async function persistDatabase(db: Database) {
   await ensureLocalDataDir();
   const filePath = getLocalDatabaseFilePath();
@@ -1316,13 +1493,29 @@ export async function readLocalStateText() {
   }
 }
 
-export async function writeLocalStateText(payloadText: string, snapshotText = payloadText) {
+export async function writeLocalStateText(
+  payloadText: string,
+  snapshotText = payloadText,
+  options?: {
+    structuredSections?: StructuredMirrorSection[];
+  },
+) {
   const db = await openDatabase();
 
   try {
     writePayloadToDatabase(db, payloadText);
     if (isStructuredMirrorEnabled()) {
-      syncStructuredMirror(db, snapshotText);
+      const structuredSections = options?.structuredSections;
+
+      if (
+        Array.isArray(structuredSections) &&
+        structuredSections.length > 0 &&
+        getStructuredMirrorStatus(db) === "ready"
+      ) {
+        syncStructuredMirrorSections(db, snapshotText, structuredSections);
+      } else {
+        syncStructuredMirror(db, snapshotText);
+      }
     } else {
       resetStructuredMirror(db, "disabled_encrypted", 1);
     }

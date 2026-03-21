@@ -26,6 +26,7 @@ import {
   respondToLocalDocumentSignatureRequest,
   saveLocalClientRecord,
   toggleLocalExpenseReview,
+  updateLocalInvoicePaymentStates,
   updateLocalFeedbackStatus,
   updateLocalInvoicePaymentState,
 } from "@/lib/local-core";
@@ -370,6 +371,49 @@ describe("local core persistence", () => {
     expect(invoices[0]?.line_items[0]?.description).toContain("Servicio mensual");
     expect(byInvoiceId?.invoice_number).toBe(1);
     expect(byPublicId?.client_name).toBe("Empresa Mirror S.L.");
+  });
+
+  test("keeps invoice payment and reminder writes in sync through selective mirror updates", async () => {
+    const invoice = await createLocalInvoiceRecord({
+      userId,
+      payload: {
+        issueDate: "2026-03-23",
+        dueDate: "2026-03-30",
+        issuerName: "Asesoria Martin Fiscal",
+        issuerNif: "B12345678",
+        issuerAddress: "Calle Alcala 100, Madrid",
+        clientName: "Empresa Cobros S.L.",
+        clientNif: "B99999999",
+        clientAddress: "Calle Cobros 9, Madrid",
+        clientEmail: "admin@cobros.es",
+      },
+      lineItems: buildLineItems(),
+      totals: buildTotals(),
+      issuerLogoUrl: null,
+    });
+
+    const paid = await updateLocalInvoicePaymentState(userId, invoice.id, "mark_paid");
+    const reopened = await updateLocalInvoicePaymentStates(userId, [invoice.id], "reopen");
+    const reminder = await recordLocalInvoiceReminder({
+      userId,
+      invoiceId: invoice.id,
+      recipientEmail: "admin@cobros.es",
+      subject: "Recordatorio de vencimiento",
+      triggerMode: "manual",
+      batchKey: null,
+    });
+
+    const fromMirror = await getLocalInvoiceById(userId, invoice.id);
+    const mirror = await inspectLocalStructuredMirror();
+
+    expect(paid?.payment_status).toBe("paid");
+    expect(reopened[0]?.payment_status).toBe("pending");
+    expect(reminder?.invoice_id).toBe(invoice.id);
+    expect(fromMirror?.payment_status).toBe("pending");
+    expect(fromMirror?.reminder_count).toBe(1);
+    expect(fromMirror?.last_reminder_at).toBeTruthy();
+    expect(mirror.counts.invoices).toBe(1);
+    expect(mirror.counts.invoiceReminders).toBe(1);
   });
 
   test("stores feedback entries locally and updates their status", async () => {

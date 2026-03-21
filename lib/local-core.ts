@@ -58,6 +58,7 @@ import {
   listStructuredLocalInvoicesForUser,
   getLocalDataDir as getLocalDataDirFromDb,
   readLocalStateText,
+  type StructuredMirrorSection,
   writeLocalStateText,
 } from "@/lib/local-db";
 import { roundCurrency, toNumber } from "@/lib/utils";
@@ -208,12 +209,17 @@ async function readLocalCoreData(): Promise<LocalCoreData> {
   }
 }
 
-async function writeLocalCoreData(data: LocalCoreData) {
+async function writeLocalCoreData(
+  data: LocalCoreData,
+  options?: {
+    structuredSections?: StructuredMirrorSection[];
+  },
+) {
   const serialized = JSON.stringify(data, null, 2);
   const payload = isLocalDataEncryptionRequested()
     ? JSON.stringify(encryptTextForScope(serialized, "local-core"), null, 2)
     : serialized;
-  await writeLocalStateText(payload, serialized);
+  await writeLocalStateText(payload, serialized, options);
 }
 
 async function runLocalCoreMutation<T>(task: () => Promise<T>) {
@@ -222,11 +228,16 @@ async function runLocalCoreMutation<T>(task: () => Promise<T>) {
   return pending;
 }
 
-async function updateLocalCoreData<T>(updater: (data: LocalCoreData) => T | Promise<T>) {
+async function updateLocalCoreData<T>(
+  updater: (data: LocalCoreData) => T | Promise<T>,
+  options?: {
+    structuredSections?: StructuredMirrorSection[];
+  },
+) {
   return runLocalCoreMutation(async () => {
     const data = await readLocalCoreData();
     const result = await updater(data);
-    await writeLocalCoreData(data);
+    await writeLocalCoreData(data, options);
     return result;
   });
 }
@@ -1202,6 +1213,8 @@ export async function saveLocalClientRecord({
       afterJson: buildClientAuditSnapshot(client),
     });
     return client;
+  }, {
+    structuredSections: ["clients", "auditEvents"],
   });
 }
 
@@ -1315,6 +1328,8 @@ export async function createLocalInvoiceRecord({
       afterJson: buildInvoiceAuditSnapshot(invoice),
     });
     return invoice;
+  }, {
+    structuredSections: ["invoices", "auditEvents", "counters"],
   });
 }
 
@@ -2155,6 +2170,8 @@ export async function updateLocalInvoicePaymentStates(
     });
 
     return updated;
+  }, {
+    structuredSections: ["invoices", "auditEvents"],
   });
 }
 
@@ -2753,6 +2770,8 @@ export async function recordLocalInvoiceReminder({
 
     data.invoiceReminders.push(reminder);
     return reminder;
+  }, {
+    structuredSections: ["invoices", "invoiceReminders"],
   });
 }
 
