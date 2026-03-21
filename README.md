@@ -133,6 +133,7 @@ Comportamiento:
 - el login cambia a email + contraseña
 - si aún no existe ningún usuario, la primera sesión crea la cuenta local inicial
 - el perfil fiscal, las facturas, el PDF, la factura pública, los cobros y los recordatorios se guardan en una base SQLite local dentro del equipo
+- `core.sqlite` mantiene ahora dos capas: snapshot compatible y mirror relacional interno como puente hacia una base local más madura
 - el acceso local aplica expiración real de sesión, bloqueo temporal por intentos fallidos y auditoría persistente de eventos sensibles
 - en producción, si falta `FACTURAIA_LOCAL_SESSION_SECRET` o activas cifrado sin `FACTURAIA_ENCRYPTION_PASSPHRASE`, FacturaIA bloquea acceso protegido, exportación y restauración hasta corregir la instalación
 - después conviene poner `FACTURAIA_LOCAL_BOOTSTRAP=0`
@@ -143,6 +144,7 @@ Importante:
 - los módulos más avanzados siguen necesitando más trabajo para vivir completamente en local
 - conviene guardar `FACTURAIA_DATA_DIR` en una carpeta incluida en tu estrategia de backup
 - el cifrado local y el cifrado de backups son **opcionales** y se activan solo si defines las variables anteriores
+- si activas `FACTURAIA_ENCRYPT_LOCAL_DATA=1`, FacturaIA desactiva el mirror relacional interno para no duplicar datos sensibles en claro dentro de SQLite
 - si vienes de una instalación antigua con `core.json`, la migración a `core.sqlite` es automática en el primer arranque local
 
 ## Estado real del producto

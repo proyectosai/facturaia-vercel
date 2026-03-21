@@ -205,7 +205,7 @@ async function writeLocalCoreData(data: LocalCoreData) {
   const payload = isLocalDataEncryptionRequested()
     ? JSON.stringify(encryptTextForScope(serialized, "local-core"), null, 2)
     : serialized;
-  await writeLocalStateText(payload);
+  await writeLocalStateText(payload, serialized);
 }
 
 async function runLocalCoreMutation<T>(task: () => Promise<T>) {

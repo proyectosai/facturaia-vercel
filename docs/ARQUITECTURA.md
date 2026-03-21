@@ -6,7 +6,7 @@ FacturaIA está diseñada como una aplicación Next.js 15 con App Router, priori
 
 - Server Components por defecto
 - Server Actions para operaciones críticas
-- persistencia en Supabase
+- persistencia local privada en SQLite y persistencia opcional en Supabase
 - UI en español
 - separación entre facturación, documentos, mensajería e identidad fiscal
 
@@ -60,6 +60,8 @@ FacturaIA está diseñada como una aplicación Next.js 15 con App Router, priori
 Archivos clave:
 
 - `lib/auth.ts`
+- `lib/local-core.ts`
+- `lib/local-db.ts`
 - `lib/supabase/server.ts`
 - `lib/supabase/client.ts`
 - `middleware.ts`
@@ -70,6 +72,25 @@ Funciones:
 - exigir usuario autenticado
 - hidratar perfil y registro de usuario
 - soporte de modo demo
+- acceso local con sesión propia, bloqueo temporal y expiración
+
+## 1.1. Núcleo local
+
+Archivos clave:
+
+- `lib/local-core.ts`
+- `lib/local-db.ts`
+
+Responsabilidades:
+
+- mantener el snapshot funcional del modo local
+- poblar un mirror relacional dentro de `core.sqlite` como puente hacia un esquema SQLite real
+- recalcular contadores y estado base del usuario local
+- preservar compatibilidad con instalaciones antiguas que todavía arranquen desde `core.json`
+
+Nota:
+
+- si `FACTURAIA_ENCRYPT_LOCAL_DATA=1`, el mirror relacional se desactiva para no duplicar datos sensibles en claro dentro de SQLite
 
 ## 2. Facturación
 

@@ -22,7 +22,11 @@ import {
   updateLocalFeedbackStatus,
   updateLocalInvoicePaymentState,
 } from "@/lib/local-core";
-import { getLegacyLocalJsonFilePath, getLocalDatabaseFilePath } from "@/lib/local-db";
+import {
+  getLegacyLocalJsonFilePath,
+  getLocalDatabaseFilePath,
+  inspectLocalStructuredMirror,
+} from "@/lib/local-db";
 import type {
   CommercialDocumentRecord,
   InvoiceRecord,
@@ -214,6 +218,52 @@ describe("local core persistence", () => {
     expect(reopened?.review_status).toBe("draft");
     expect(snapshot.expenses).toHaveLength(1);
     expect(snapshot.expenses[0]?.vendor_name).toBe("Gestoria Externa SL");
+  });
+
+  test("keeps a relational SQLite mirror in sync with local snapshot writes", async () => {
+    await saveLocalClientRecord({
+      userId,
+      relationKind: "client",
+      status: "active",
+      priority: "medium",
+      displayName: "Empresa SQLite S.L.",
+      firstName: null,
+      lastName: null,
+      companyName: "Empresa SQLite S.L.",
+      email: "admin@sqlite.es",
+      phone: "+34 600000000",
+      nif: "B11111111",
+      address: "Calle Mayor 1, Madrid",
+      notes: "Cliente espejo",
+      tags: ["sqlite"],
+    });
+
+    await createLocalInvoiceRecord({
+      userId,
+      payload: {
+        issueDate: "2026-03-21",
+        dueDate: "2026-03-28",
+        issuerName: "Asesoria Martin Fiscal",
+        issuerNif: "B12345678",
+        issuerAddress: "Calle Alcala 100, Madrid",
+        clientName: "Empresa SQLite S.L.",
+        clientNif: "B11111111",
+        clientAddress: "Calle Mayor 1, Madrid",
+        clientEmail: "admin@sqlite.es",
+      },
+      lineItems: buildLineItems(),
+      totals: buildTotals(),
+      issuerLogoUrl: null,
+    });
+
+    const mirror = await inspectLocalStructuredMirror();
+
+    expect(mirror.schemaVersion).toBe(1);
+    expect(mirror.snapshotVersion).toBe(1);
+    expect(mirror.lastSyncedAt).toBeTruthy();
+    expect(mirror.counts.clients).toBe(1);
+    expect(mirror.counts.invoices).toBe(1);
+    expect(mirror.counts.counters).toBe(3);
   });
 
   test("stores feedback entries locally and updates their status", async () => {
@@ -502,5 +552,10 @@ describe("local core persistence", () => {
 
     const sqliteBuffer = await readFile(getLocalDatabaseFilePath());
     expect(sqliteBuffer.toString("utf8")).toContain("SQLite format 3");
+
+    const mirror = await inspectLocalStructuredMirror();
+    expect(mirror.counts.clients).toBe(1);
+    expect(mirror.counts.profiles).toBe(0);
+    expect(mirror.counts.counters).toBe(3);
   });
 });

@@ -15,7 +15,7 @@ import {
   saveLocalClientRecord,
   saveLocalProfile,
 } from "@/lib/local-core";
-import { getLocalDatabaseFilePath } from "@/lib/local-db";
+import { getLocalDatabaseFilePath, inspectLocalStructuredMirror } from "@/lib/local-db";
 
 const userId = "user-local-encryption";
 const email = "asesor@despacho.local";
@@ -96,11 +96,14 @@ describe("optional local encryption", () => {
     const raw = await readFile(filePath);
     const rawText = raw.toString("utf8");
     const snapshot = await getLocalCoreSnapshot();
+    const mirror = await inspectLocalStructuredMirror();
 
     expect(rawText).toContain("SQLite format 3");
     expect(rawText).not.toContain("Empresa Cifrada S.L.");
     expect(snapshot.clients).toHaveLength(1);
     expect(snapshot.clients[0]?.display_name).toBe("Empresa Cifrada S.L.");
+    expect(mirror.status).toBe("disabled_encrypted");
+    expect(mirror.counts.clients).toBe(0);
   });
 
   test("encrypts backups only when requested and restores them correctly", async () => {
