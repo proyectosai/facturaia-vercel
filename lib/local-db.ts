@@ -9,6 +9,7 @@ import type {
   ClientRecord,
   CommercialDocumentRecord,
   DocumentSignatureRequestRecord,
+  ExpenseRecord,
   FeedbackEntryRecord,
   InvoiceRecord,
   InvoiceReminderRecord,
@@ -85,6 +86,7 @@ export type StructuredMirrorSection =
   | "auditEvents"
   | "invoices"
   | "invoiceReminders"
+  | "expenses"
   | "counters";
 export type StructuredMirrorMutation = {
   users?: Array<AppUserRecord & { password_hash: string }>;
@@ -97,6 +99,7 @@ export type StructuredMirrorMutation = {
   invoiceReminders?: InvoiceReminderRecord[];
   commercialDocuments?: CommercialDocumentRecord[];
   documentSignatureRequests?: DocumentSignatureRequestRecord[];
+  expenses?: ExpenseRecord[];
   counters?: StructuredSnapshot["counters"];
 };
 
@@ -111,6 +114,7 @@ export type StructuredLocalCoreSlices = {
   invoiceReminders: InvoiceReminderRecord[];
   commercialDocuments: CommercialDocumentRecord[];
   documentSignatureRequests: DocumentSignatureRequestRecord[];
+  expenses: ExpenseRecord[];
   counters: StructuredSnapshot["counters"];
 };
 
@@ -1225,6 +1229,42 @@ function upsertStructuredDocumentSignatureRequestRows(
   }
 }
 
+function upsertStructuredExpenseRows(db: Database, rows: ExpenseRecord[]) {
+  for (const row of rows) {
+    upsertTableRow(
+      db,
+      "local_expenses",
+      [
+        "id",
+        "user_id",
+        "expense_kind",
+        "review_status",
+        "vendor_name",
+        "vendor_nif",
+        "expense_date",
+        "currency",
+        "base_amount",
+        "vat_amount",
+        "total_amount",
+        "notes",
+        "source_file_name",
+        "source_file_path",
+        "source_file_mime_type",
+        "text_extraction_method",
+        "raw_text",
+        "extracted_payload_json",
+        "created_at",
+        "updated_at",
+      ],
+      "id",
+      {
+        ...row,
+        extracted_payload_json: toJsonText(row.extracted_payload),
+      },
+    );
+  }
+}
+
 function upsertStructuredCounters(db: Database, counters: StructuredSnapshot["counters"]) {
   upsertTableRow(
     db,
@@ -1439,6 +1479,31 @@ function mapDocumentSignatureRequestRow(
     evidence: parseJsonObjectField(values[18]) ?? {},
     created_at: String(values[19] ?? ""),
     updated_at: String(values[20] ?? ""),
+  };
+}
+
+function mapExpenseRow(values: unknown[]): ExpenseRecord {
+  return {
+    id: String(values[0] ?? ""),
+    user_id: String(values[1] ?? ""),
+    expense_kind: String(values[2] ?? "ticket") as ExpenseRecord["expense_kind"],
+    review_status: String(values[3] ?? "draft") as ExpenseRecord["review_status"],
+    vendor_name: values[4] === null ? null : String(values[4] ?? ""),
+    vendor_nif: values[5] === null ? null : String(values[5] ?? ""),
+    expense_date: values[6] === null ? null : String(values[6] ?? ""),
+    currency: String(values[7] ?? "EUR"),
+    base_amount: values[8] === null ? null : Number(values[8] ?? 0),
+    vat_amount: values[9] === null ? null : Number(values[9] ?? 0),
+    total_amount: values[10] === null ? null : Number(values[10] ?? 0),
+    notes: values[11] === null ? null : String(values[11] ?? ""),
+    source_file_name: values[12] === null ? null : String(values[12] ?? ""),
+    source_file_path: values[13] === null ? null : String(values[13] ?? ""),
+    source_file_mime_type: values[14] === null ? null : String(values[14] ?? ""),
+    text_extraction_method: String(values[15] ?? "manual") as ExpenseRecord["text_extraction_method"],
+    raw_text: values[16] === null ? null : String(values[16] ?? ""),
+    extracted_payload: parseJsonObjectField(values[17]) ?? {},
+    created_at: String(values[18] ?? ""),
+    updated_at: String(values[19] ?? ""),
   };
 }
 
@@ -2077,6 +2142,10 @@ function applyStructuredMirrorMutation(
       );
     }
 
+    if (mutation.expenses?.length) {
+      upsertStructuredExpenseRows(db, mutation.expenses);
+    }
+
     if (mutation.counters) {
       upsertStructuredCounters(db, mutation.counters);
     }
@@ -2545,6 +2614,55 @@ export async function replaceStructuredLocalCommercialStateForUser({
           db,
           documentSignatureRequests,
         );
+      }
+
+      upsertSchemaInfo(
+        db,
+        "structured_mirror_schema_version",
+        String(STRUCTURED_MIRROR_SCHEMA_VERSION),
+      );
+      upsertSchemaInfo(
+        db,
+        "structured_mirror_snapshot_version",
+        String(currentSnapshotVersion > 0 ? currentSnapshotVersion : 1),
+      );
+      upsertSchemaInfo(db, "structured_mirror_last_synced_at", syncedAt);
+      upsertSchemaInfo(db, "structured_mirror_status", "ready");
+      db.run("COMMIT;");
+    } catch (error) {
+      db.run("ROLLBACK;");
+      throw error;
+    }
+
+    await persistDatabase(db);
+    return true;
+  } finally {
+    db.close();
+  }
+}
+
+export async function replaceStructuredLocalExpensesForUser(
+  userId: string,
+  expenses: ExpenseRecord[],
+): Promise<boolean> {
+  const db = await openDatabase();
+
+  try {
+    if (getStructuredMirrorStatus(db) === "disabled_encrypted") {
+      return false;
+    }
+
+    const syncedAt = new Date().toISOString();
+    const currentSnapshotVersion = Number(
+      readSchemaInfo(db, "structured_mirror_snapshot_version") ?? 0,
+    );
+    db.run("BEGIN TRANSACTION;");
+
+    try {
+      deleteRowsByUserId(db, "local_expenses", userId);
+
+      if (expenses.length > 0) {
+        upsertStructuredExpenseRows(db, expenses);
       }
 
       upsertSchemaInfo(
@@ -3046,6 +3164,99 @@ export async function listStructuredLocalCommercialDocumentsForUser(
       `,
       [userId],
       (values) => mapCommercialDocumentRow(values),
+    );
+  } finally {
+    db.close();
+  }
+}
+
+export async function listStructuredLocalExpensesForUser(
+  userId: string,
+): Promise<ExpenseRecord[] | null> {
+  const db = await openDatabase();
+
+  try {
+    if (getStructuredMirrorStatus(db) !== "ready") {
+      return null;
+    }
+
+    return queryRows(
+      db,
+      `
+        SELECT
+          id,
+          user_id,
+          expense_kind,
+          review_status,
+          vendor_name,
+          vendor_nif,
+          expense_date,
+          currency,
+          base_amount,
+          vat_amount,
+          total_amount,
+          notes,
+          source_file_name,
+          source_file_path,
+          source_file_mime_type,
+          text_extraction_method,
+          raw_text,
+          extracted_payload_json,
+          created_at,
+          updated_at
+        FROM local_expenses
+        WHERE user_id = ?
+        ORDER BY expense_date DESC, created_at DESC;
+      `,
+      [userId],
+      (values) => mapExpenseRow(values),
+    );
+  } finally {
+    db.close();
+  }
+}
+
+export async function getStructuredLocalExpenseById(
+  userId: string,
+  expenseId: string,
+): Promise<ExpenseRecord | null> {
+  const db = await openDatabase();
+
+  try {
+    if (getStructuredMirrorStatus(db) !== "ready") {
+      return null;
+    }
+
+    return queryFirstRow(
+      db,
+      `
+        SELECT
+          id,
+          user_id,
+          expense_kind,
+          review_status,
+          vendor_name,
+          vendor_nif,
+          expense_date,
+          currency,
+          base_amount,
+          vat_amount,
+          total_amount,
+          notes,
+          source_file_name,
+          source_file_path,
+          source_file_mime_type,
+          text_extraction_method,
+          raw_text,
+          extracted_payload_json,
+          created_at,
+          updated_at
+        FROM local_expenses
+        WHERE user_id = ? AND id = ?
+        LIMIT 1;
+      `,
+      [userId, expenseId],
+      (values) => mapExpenseRow(values),
     );
   } finally {
     db.close();
@@ -3887,6 +4098,37 @@ export async function readStructuredLocalCoreSlices(): Promise<StructuredLocalCo
       (values) => mapDocumentSignatureRequestRow(values),
     );
 
+    const expenses = queryRows(
+      db,
+      `
+        SELECT
+          id,
+          user_id,
+          expense_kind,
+          review_status,
+          vendor_name,
+          vendor_nif,
+          expense_date,
+          currency,
+          base_amount,
+          vat_amount,
+          total_amount,
+          notes,
+          source_file_name,
+          source_file_path,
+          source_file_mime_type,
+          text_extraction_method,
+          raw_text,
+          extracted_payload_json,
+          created_at,
+          updated_at
+        FROM local_expenses
+        ORDER BY expense_date ASC, created_at ASC;
+      `,
+      undefined,
+      (values) => mapExpenseRow(values),
+    );
+
     const counterRows = queryRows(
       db,
       `
@@ -3930,6 +4172,7 @@ export async function readStructuredLocalCoreSlices(): Promise<StructuredLocalCo
       invoiceReminders,
       commercialDocuments,
       documentSignatureRequests,
+      expenses,
       counters,
     };
   } finally {

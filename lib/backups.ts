@@ -211,6 +211,9 @@ async function getLocalBackupView(userId: string) {
       structured?.invoiceReminders.filter(
         (candidate) => candidate.user_id === userId,
       ) ?? snapshot.invoiceReminders.filter((candidate) => candidate.user_id === userId),
+    expenses:
+      structured?.expenses.filter((candidate) => candidate.user_id === userId) ??
+      snapshot.expenses.filter((candidate) => candidate.user_id === userId),
     snapshotOnly: {
       bankMovements: snapshot.bankMovements.filter(
         (candidate) => candidate.user_id === userId,
@@ -221,7 +224,6 @@ async function getLocalBackupView(userId: string) {
       documentSignatureRequests: snapshot.documentSignatureRequests.filter(
         (candidate) => candidate.user_id === userId,
       ),
-      expenses: snapshot.expenses.filter((candidate) => candidate.user_id === userId),
       aiUsage: snapshot.aiUsage.filter((candidate) => candidate.user_id === userId),
       messageConnections: snapshot.messageConnections.filter(
         (candidate) => candidate.user_id === userId,
@@ -594,7 +596,7 @@ export async function getBackupSummary(userId: string): Promise<BackupSummary> {
       commercialDocuments: localView.snapshotOnly.commercialDocuments.length,
       documentSignatureRequests: localView.snapshotOnly.documentSignatureRequests.length,
       studyDocuments: (await exportStudyDocumentsForUser(userId)).length,
-      expenses: localView.snapshotOnly.expenses.length,
+      expenses: localView.expenses.length,
       aiUsageRows: localView.snapshotOnly.aiUsage.length,
       messageConnections: localView.snapshotOnly.messageConnections.length,
       messageThreads: localView.snapshotOnly.messageThreads.length,
@@ -741,7 +743,7 @@ export async function exportBackupForUser(
       commercialDocuments: localView.snapshotOnly.commercialDocuments,
       documentSignatureRequests: localView.snapshotOnly.documentSignatureRequests,
       studyDocuments,
-      expenses: localView.snapshotOnly.expenses,
+      expenses: localView.expenses,
       aiUsage,
       messages: {
         connections: localView.snapshotOnly.messageConnections,

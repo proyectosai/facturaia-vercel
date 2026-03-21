@@ -568,6 +568,27 @@ describe("local core persistence", () => {
       reporterName: "Asesoria Martin Fiscal",
       contactEmail: userEmail,
     });
+    await createLocalExpenseRecord({
+      userId: bootstrappedUser.id,
+      expenseKind: "supplier_invoice",
+      reviewStatus: "draft",
+      vendorName: "Proveedor Persistente SL",
+      vendorNif: "B12312312",
+      expenseDate: "2026-03-21",
+      currency: "EUR",
+      baseAmount: 80,
+      vatAmount: 16.8,
+      totalAmount: 96.8,
+      notes: "Debe sobrevivir al snapshot degradado.",
+      sourceFileName: "proveedor.txt",
+      sourceFilePath: "data:text/plain;base64,cHJ1ZWJh",
+      sourceFileMimeType: "text/plain",
+      extractionMethod: "manual",
+      rawText: "Proveedor Persistente SL",
+      extractedPayload: {
+        confidence: 1,
+      },
+    });
 
     const failedLogin = await authenticateLocalUser(
       userEmail,
@@ -586,6 +607,7 @@ describe("local core persistence", () => {
     staleSnapshot.feedbackEntries = [];
     staleSnapshot.authRateLimits = [];
     staleSnapshot.auditEvents = [];
+    staleSnapshot.expenses = [];
 
     await writeLocalStateText(
       JSON.stringify(staleSnapshot, null, 2),
@@ -603,6 +625,8 @@ describe("local core persistence", () => {
     expect(recovered.feedbackEntries[0]?.title).toBe("Feedback persistente");
     expect(recovered.authRateLimits).toHaveLength(1);
     expect(recovered.authRateLimits[0]?.failed_attempts).toBe(1);
+    expect(recovered.expenses).toHaveLength(1);
+    expect(recovered.expenses[0]?.vendor_name).toBe("Proveedor Persistente SL");
     expect(recovered.auditEvents.length).toBeGreaterThan(0);
   });
 

@@ -82,6 +82,12 @@ import {
   saveStructuredFeedbackRepositoryRecord,
 } from "@/lib/local-repositories/feedback";
 import {
+  getStructuredExpenseRepositoryRecord,
+  listStructuredExpenseRepositoryRecords,
+  replaceStructuredExpenseRepositoryRecords,
+  saveStructuredExpenseRepositoryRecord,
+} from "@/lib/local-repositories/expenses";
+import {
   getStructuredIdentityRepositoryAuthRateLimitById,
   getStructuredIdentityRepositoryFirstUser,
   getStructuredIdentityRepositoryUserByEmail,
@@ -263,6 +269,7 @@ async function readLocalCoreData(): Promise<LocalCoreData> {
       invoiceReminders: structuredSlices.invoiceReminders,
       commercialDocuments: structuredSlices.commercialDocuments,
       documentSignatureRequests: structuredSlices.documentSignatureRequests,
+      expenses: structuredSlices.expenses,
       counters: {
         ...baseData.counters,
         ...structuredSlices.counters,
@@ -2040,6 +2047,12 @@ export async function linkLocalCommercialDocumentToInvoice({
 }
 
 export async function listLocalExpensesForUser(userId: string) {
+  const structuredExpenses = await listStructuredExpenseRepositoryRecords(userId);
+
+  if (structuredExpenses) {
+    return sortByPrimaryDateDescending(structuredExpenses, (expense) => expense.expense_date);
+  }
+
   const data = await readLocalCoreData();
   return sortByPrimaryDateDescending(
     data.expenses.filter((expense) => expense.user_id === userId),
@@ -2048,6 +2061,12 @@ export async function listLocalExpensesForUser(userId: string) {
 }
 
 export async function getLocalExpenseById(userId: string, expenseId: string) {
+  const structuredExpense = await getStructuredExpenseRepositoryRecord(userId, expenseId);
+
+  if (structuredExpense) {
+    return structuredExpense;
+  }
+
   const expenses = await listLocalExpensesForUser(userId);
   return expenses.find((expense) => expense.id === expenseId) ?? null;
 }
@@ -2089,6 +2108,50 @@ export async function createLocalExpenseRecord({
   rawText: string | null;
   extractedPayload: Record<string, unknown>;
 }) {
+  if (canUseStructuredLocalRepositories()) {
+    const timestamp = nowIso();
+    const expense: ExpenseRecord = {
+      id: randomUUID(),
+      user_id: userId,
+      expense_kind: expenseKind,
+      review_status: reviewStatus,
+      vendor_name: vendorName,
+      vendor_nif: vendorNif,
+      expense_date: expenseDate,
+      currency,
+      base_amount: baseAmount,
+      vat_amount: vatAmount,
+      total_amount: totalAmount,
+      notes,
+      source_file_name: sourceFileName,
+      source_file_path: sourceFilePath,
+      source_file_mime_type: sourceFileMimeType,
+      text_extraction_method: extractionMethod,
+      raw_text: rawText,
+      extracted_payload: extractedPayload,
+      created_at: timestamp,
+      updated_at: timestamp,
+    };
+    const auditEvent = buildLocalAuditEventRecord({
+      userId,
+      actorType: "user",
+      actorId: userId,
+      source: "expenses",
+      action: "expense_created",
+      entityType: "expense",
+      entityId: expense.id,
+      afterJson: buildExpenseAuditSnapshot(expense),
+    });
+    const saved = await saveStructuredExpenseRepositoryRecord({
+      expense,
+      auditEvent,
+    });
+
+    if (saved) {
+      return saved;
+    }
+  }
+
   return updateLocalCoreData(async (data) => {
     const timestamp = nowIso();
     const expense: ExpenseRecord = {
@@ -2130,6 +2193,38 @@ export async function createLocalExpenseRecord({
 }
 
 export async function toggleLocalExpenseReview(userId: string, expenseId: string) {
+  if (canUseStructuredLocalRepositories()) {
+    const expense = await getStructuredExpenseRepositoryRecord(userId, expenseId);
+
+    if (expense) {
+      const beforeExpense = buildExpenseAuditSnapshot(expense);
+      expense.review_status = expense.review_status === "draft" ? "reviewed" : "draft";
+      expense.updated_at = nowIso();
+      const auditEvent = buildLocalAuditEventRecord({
+        userId,
+        actorType: "user",
+        actorId: userId,
+        source: "expenses",
+        action:
+          expense.review_status === "reviewed"
+            ? "expense_marked_reviewed"
+            : "expense_reopened",
+        entityType: "expense",
+        entityId: expense.id,
+        beforeJson: beforeExpense,
+        afterJson: buildExpenseAuditSnapshot(expense),
+      });
+      const saved = await saveStructuredExpenseRepositoryRecord({
+        expense,
+        auditEvent,
+      });
+
+      if (saved) {
+        return saved;
+      }
+    }
+  }
+
   return updateLocalCoreData(async (data) => {
     const expense = data.expenses.find(
       (candidate) => candidate.user_id === userId && candidate.id === expenseId,
@@ -4030,6 +4125,10 @@ export async function replaceLocalUserData({
           (candidate) => candidate.user_id === userId,
         ),
       })) &&
+      (await replaceStructuredExpenseRepositoryRecords(
+        userId,
+        data.expenses.filter((candidate) => candidate.user_id === userId),
+      )) &&
       (await replaceStructuredAuditRepositoryRecords(
         userId,
         data.auditEvents.filter((candidate) => candidate.user_id === userId),
