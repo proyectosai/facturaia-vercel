@@ -225,6 +225,9 @@ async function getLocalBackupView(userId: string) {
     expenses:
       structured?.expenses.filter((candidate) => candidate.user_id === userId) ??
       snapshot.expenses.filter((candidate) => candidate.user_id === userId),
+    aiUsage:
+      structured?.aiUsage.filter((candidate) => candidate.user_id === userId) ??
+      snapshot.aiUsage.filter((candidate) => candidate.user_id === userId),
     messageConnections:
       structured?.messageConnections.filter((candidate) => candidate.user_id === userId) ??
       snapshot.messageConnections.filter((candidate) => candidate.user_id === userId),
@@ -243,9 +246,6 @@ async function getLocalBackupView(userId: string) {
     mailSyncRuns:
       structured?.mailSyncRuns.filter((candidate) => candidate.user_id === userId) ??
       snapshot.mailSyncRuns.filter((candidate) => candidate.user_id === userId),
-    snapshotOnly: {
-      aiUsage: snapshot.aiUsage.filter((candidate) => candidate.user_id === userId),
-    },
   };
 }
 
@@ -603,7 +603,7 @@ export async function getBackupSummary(userId: string): Promise<BackupSummary> {
       documentSignatureRequests: localView.documentSignatureRequests.length,
       studyDocuments: (await exportStudyDocumentsForUser(userId)).length,
       expenses: localView.expenses.length,
-      aiUsageRows: localView.snapshotOnly.aiUsage.length,
+      aiUsageRows: localView.aiUsage.length,
       messageConnections: localView.messageConnections.length,
       messageThreads: localView.messageThreads.length,
       messageRecords: localView.messageRecords.length,
@@ -725,7 +725,7 @@ export async function exportBackupForUser(
       .sort((left, right) => left.issue_date.localeCompare(right.issue_date));
     const invoiceReminders = localView.invoiceReminders
       .sort((left, right) => right.sent_at.localeCompare(left.sent_at));
-    const aiUsage = localView.snapshotOnly.aiUsage
+    const aiUsage = localView.aiUsage
       .map((entry) => ({
         user_id: entry.user_id,
         date: entry.date,

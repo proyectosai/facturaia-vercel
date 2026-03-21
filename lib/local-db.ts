@@ -99,6 +99,11 @@ export type LocalStructuredMirrorSummary = {
 };
 
 type StructuredMirrorStatus = "ready" | "disabled_encrypted" | "empty";
+export type StructuredAiUsageRow = {
+  user_id: string;
+  date: string;
+  calls_count: number;
+};
 export type StructuredMirrorSection =
   | "clients"
   | "auditEvents"
@@ -112,6 +117,7 @@ export type StructuredMirrorSection =
   | "mailMessages"
   | "mailSyncRuns"
   | "expenses"
+  | "aiUsage"
   | "counters";
 export type StructuredMirrorMutation = {
   users?: Array<AppUserRecord & { password_hash: string }>;
@@ -132,6 +138,7 @@ export type StructuredMirrorMutation = {
   commercialDocuments?: CommercialDocumentRecord[];
   documentSignatureRequests?: DocumentSignatureRequestRecord[];
   expenses?: ExpenseRecord[];
+  aiUsage?: StructuredAiUsageRow[];
   counters?: StructuredSnapshot["counters"];
 };
 
@@ -154,6 +161,7 @@ export type StructuredLocalCoreSlices = {
   commercialDocuments: CommercialDocumentRecord[];
   documentSignatureRequests: DocumentSignatureRequestRecord[];
   expenses: ExpenseRecord[];
+  aiUsage: StructuredAiUsageRow[];
   counters: StructuredSnapshot["counters"];
 };
 
@@ -1515,6 +1523,18 @@ function upsertStructuredExpenseRows(db: Database, rows: ExpenseRecord[]) {
   }
 }
 
+function upsertStructuredAiUsageRows(db: Database, rows: StructuredAiUsageRow[]) {
+  for (const row of rows) {
+    upsertTableRow(
+      db,
+      "local_ai_usage",
+      ["user_id", "date", "calls_count"],
+      "user_id, date",
+      row,
+    );
+  }
+}
+
 function upsertStructuredCounters(db: Database, counters: StructuredSnapshot["counters"]) {
   upsertTableRow(
     db,
@@ -1889,6 +1909,14 @@ function mapExpenseRow(values: unknown[]): ExpenseRecord {
     extracted_payload: parseJsonObjectField(values[17]) ?? {},
     created_at: String(values[18] ?? ""),
     updated_at: String(values[19] ?? ""),
+  };
+}
+
+function mapAiUsageRow(values: unknown[]): StructuredAiUsageRow {
+  return {
+    user_id: String(values[0] ?? ""),
+    date: String(values[1] ?? ""),
+    calls_count: Number(values[2] ?? 0),
   };
 }
 
@@ -2557,6 +2585,10 @@ function applyStructuredMirrorMutation(
 
     if (mutation.expenses?.length) {
       upsertStructuredExpenseRows(db, mutation.expenses);
+    }
+
+    if (mutation.aiUsage?.length) {
+      upsertStructuredAiUsageRows(db, mutation.aiUsage);
     }
 
     if (mutation.counters) {
@@ -3295,6 +3327,57 @@ export async function replaceStructuredLocalMailStateForUser({
       db.run("ROLLBACK;");
       throw error;
     }
+
+      await persistDatabase(db);
+      return true;
+    } finally {
+      db.close();
+    }
+  });
+}
+
+export async function replaceStructuredLocalAiUsageForUser(
+  userId: string,
+  aiUsage: StructuredAiUsageRow[],
+): Promise<boolean> {
+  return runLocalDbWrite(async () => {
+    const db = await openDatabase();
+
+    try {
+      if (getStructuredMirrorStatus(db) === "disabled_encrypted") {
+        return false;
+      }
+
+      const syncedAt = new Date().toISOString();
+      const currentSnapshotVersion = Number(
+        readSchemaInfo(db, "structured_mirror_snapshot_version") ?? 0,
+      );
+      db.run("BEGIN TRANSACTION;");
+
+      try {
+        deleteRowsByUserId(db, "local_ai_usage", userId);
+
+        if (aiUsage.length > 0) {
+          upsertStructuredAiUsageRows(db, aiUsage);
+        }
+
+        upsertSchemaInfo(
+          db,
+          "structured_mirror_schema_version",
+          String(STRUCTURED_MIRROR_SCHEMA_VERSION),
+        );
+        upsertSchemaInfo(
+          db,
+          "structured_mirror_snapshot_version",
+          String(currentSnapshotVersion > 0 ? currentSnapshotVersion : 1),
+        );
+        upsertSchemaInfo(db, "structured_mirror_last_synced_at", syncedAt);
+        upsertSchemaInfo(db, "structured_mirror_status", "ready");
+        db.run("COMMIT;");
+      } catch (error) {
+        db.run("ROLLBACK;");
+        throw error;
+      }
 
       await persistDatabase(db);
       return true;
@@ -4513,6 +4596,35 @@ export async function listStructuredLocalMailSyncRunsForUser(
   }
 }
 
+export async function listStructuredLocalAiUsageForUser(
+  userId: string,
+): Promise<StructuredAiUsageRow[] | null> {
+  const db = await openDatabase();
+
+  try {
+    if (getStructuredMirrorStatus(db) !== "ready") {
+      return null;
+    }
+
+    return queryRows(
+      db,
+      `
+        SELECT
+          user_id,
+          date,
+          calls_count
+        FROM local_ai_usage
+        WHERE user_id = ?
+        ORDER BY date ASC;
+      `,
+      [userId],
+      (values) => mapAiUsageRow(values),
+    );
+  } finally {
+    db.close();
+  }
+}
+
 export async function getStructuredLocalCommercialDocumentById(
   userId: string,
   documentId: string,
@@ -5556,6 +5668,20 @@ export async function readStructuredLocalCoreSlices(): Promise<StructuredLocalCo
       (values) => mapExpenseRow(values),
     );
 
+    const aiUsage = queryRows(
+      db,
+      `
+        SELECT
+          user_id,
+          date,
+          calls_count
+        FROM local_ai_usage
+        ORDER BY date ASC;
+      `,
+      undefined,
+      (values) => mapAiUsageRow(values),
+    );
+
     const counterRows = queryRows(
       db,
       `
@@ -5607,6 +5733,7 @@ export async function readStructuredLocalCoreSlices(): Promise<StructuredLocalCo
       commercialDocuments,
       documentSignatureRequests,
       expenses,
+      aiUsage,
       counters,
     };
   } finally {

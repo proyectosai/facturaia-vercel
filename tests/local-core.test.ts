@@ -589,6 +589,7 @@ describe("local core persistence", () => {
         confidence: 1,
       },
     });
+    await incrementLocalDailyAiUsage(bootstrappedUser.id, "2026-03-21", null);
 
     const failedLogin = await authenticateLocalUser(
       userEmail,
@@ -608,6 +609,7 @@ describe("local core persistence", () => {
     staleSnapshot.authRateLimits = [];
     staleSnapshot.auditEvents = [];
     staleSnapshot.expenses = [];
+    staleSnapshot.aiUsage = [];
 
     await writeLocalStateText(
       JSON.stringify(staleSnapshot, null, 2),
@@ -627,7 +629,19 @@ describe("local core persistence", () => {
     expect(recovered.authRateLimits[0]?.failed_attempts).toBe(1);
     expect(recovered.expenses).toHaveLength(1);
     expect(recovered.expenses[0]?.vendor_name).toBe("Proveedor Persistente SL");
+    expect(recovered.aiUsage).toHaveLength(1);
+    expect(recovered.aiUsage[0]).toMatchObject({
+      user_id: bootstrappedUser.id,
+      date: "2026-03-21",
+      calls_count: 1,
+    });
     expect(recovered.auditEvents.length).toBeGreaterThan(0);
+
+    const dailyAiUsage = await getStructuredLocalDailyAiUsage(
+      bootstrappedUser.id,
+      "2026-03-21",
+    );
+    expect(dailyAiUsage).toBe(1);
   });
 
   test("uses separate counters for quotes and delivery notes", async () => {

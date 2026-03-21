@@ -136,7 +136,10 @@ import {
 } from "@/lib/local-repositories/profiles";
 import {
   getStructuredCounterRepositoryState,
+  listStructuredAiUsageRepositoryRecords,
   listStructuredAuditRepositoryRecords,
+  persistStructuredAiUsageRepositoryRecords,
+  replaceStructuredAiUsageRepositoryRecords,
   replaceStructuredAuditRepositoryRecords,
 } from "@/lib/local-repositories/system";
 import { roundCurrency, toNumber } from "@/lib/utils";
@@ -302,6 +305,7 @@ async function readLocalCoreData(): Promise<LocalCoreData> {
       commercialDocuments: structuredSlices.commercialDocuments,
       documentSignatureRequests: structuredSlices.documentSignatureRequests,
       expenses: structuredSlices.expenses,
+      aiUsage: structuredSlices.aiUsage,
       counters: {
         ...baseData.counters,
         ...structuredSlices.counters,
@@ -4586,6 +4590,32 @@ export async function getLocalDailyAiUsage(userId: string, usageDate: string) {
 }
 
 export async function incrementLocalDailyAiUsage(userId: string, usageDate: string, limit: number | null) {
+  if (canUseStructuredLocalRepositories()) {
+    const structuredUsage = (await listStructuredAiUsageRepositoryRecords(userId)) ?? [];
+    let entry = structuredUsage.find(
+      (candidate) => candidate.user_id === userId && candidate.date === usageDate,
+    );
+
+    if (!entry) {
+      entry = {
+        user_id: userId,
+        date: usageDate,
+        calls_count: 0,
+      };
+    }
+
+    if (limit !== null && entry.calls_count >= limit) {
+      return null;
+    }
+
+    entry.calls_count += 1;
+    const saved = await persistStructuredAiUsageRepositoryRecords([entry]);
+
+    if (saved) {
+      return entry.calls_count;
+    }
+  }
+
   return updateLocalCoreData(async (data) => {
     let entry = data.aiUsage.find(
       (candidate) => candidate.user_id === userId && candidate.date === usageDate,
@@ -4868,6 +4898,10 @@ export async function replaceLocalUserData({
       (await replaceStructuredExpenseRepositoryRecords(
         userId,
         data.expenses.filter((candidate) => candidate.user_id === userId),
+      )) &&
+      (await replaceStructuredAiUsageRepositoryRecords(
+        userId,
+        data.aiUsage.filter((candidate) => candidate.user_id === userId),
       )) &&
       (await replaceStructuredAuditRepositoryRecords(
         userId,

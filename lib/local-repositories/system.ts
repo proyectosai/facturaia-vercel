@@ -3,9 +3,12 @@ import "server-only";
 import type { LocalAuditEventRecord } from "@/lib/types";
 import {
   getStructuredLocalCounters,
+  listStructuredLocalAiUsageForUser,
   listStructuredLocalAuditEventsForUser,
   persistStructuredLocalMutation,
+  replaceStructuredLocalAiUsageForUser,
   replaceStructuredLocalAuditEventsForUser,
+  type StructuredAiUsageRow,
 } from "@/lib/local-db";
 
 export async function getStructuredCounterRepositoryState() {
@@ -38,4 +41,21 @@ export async function replaceStructuredAuditRepositoryRecords(
   auditEvents: LocalAuditEventRecord[],
 ) {
   return replaceStructuredLocalAuditEventsForUser(userId, auditEvents);
+}
+
+export async function listStructuredAiUsageRepositoryRecords(userId: string) {
+  return listStructuredLocalAiUsageForUser(userId);
+}
+
+export async function persistStructuredAiUsageRepositoryRecords(
+  aiUsage: StructuredAiUsageRow[],
+) {
+  return persistStructuredLocalMutation({ aiUsage });
+}
+
+export async function replaceStructuredAiUsageRepositoryRecords(
+  userId: string,
+  aiUsage: StructuredAiUsageRow[],
+) {
+  return replaceStructuredLocalAiUsageForUser(userId, aiUsage);
 }
