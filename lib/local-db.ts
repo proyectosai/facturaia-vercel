@@ -85,7 +85,9 @@ export type StructuredMirrorSection =
   | "invoiceReminders"
   | "counters";
 export type StructuredMirrorMutation = {
+  profiles?: Profile[];
   clients?: ClientRecord[];
+  feedbackEntries?: FeedbackEntryRecord[];
   auditEvents?: LocalAuditEventRecord[];
   invoices?: InvoiceRecord[];
   invoiceReminders?: InvoiceReminderRecord[];
@@ -1874,8 +1876,16 @@ function applyStructuredMirrorMutation(
   db.run("BEGIN TRANSACTION;");
 
   try {
+    if (mutation.profiles?.length) {
+      upsertStructuredProfileRows(db, mutation.profiles);
+    }
+
     if (mutation.clients?.length) {
       upsertStructuredClientRows(db, mutation.clients);
+    }
+
+    if (mutation.feedbackEntries?.length) {
+      upsertStructuredFeedbackRows(db, mutation.feedbackEntries);
     }
 
     if (mutation.auditEvents?.length) {
@@ -2092,12 +2102,10 @@ export async function replaceStructuredLocalClientsForUser(
 export async function replaceStructuredLocalIdentityForUser({
   user,
   profile,
-  feedbackEntries,
   authRateLimits,
 }: {
   user: AppUserRecord & { password_hash: string };
   profile: Profile | null;
-  feedbackEntries: FeedbackEntryRecord[];
   authRateLimits: LocalAuthRateLimitRecord[];
 }): Promise<boolean> {
   const db = await openDatabase();
@@ -2116,7 +2124,6 @@ export async function replaceStructuredLocalIdentityForUser({
     try {
       deleteRowsByColumn(db, "local_users", "id", user.id);
       deleteRowsByColumn(db, "local_profiles", "id", user.id);
-      deleteRowsByUserId(db, "local_feedback_entries", user.id);
       deleteRowsByColumn(
         db,
         "local_auth_rate_limits",
@@ -2128,10 +2135,6 @@ export async function replaceStructuredLocalIdentityForUser({
 
       if (profile) {
         upsertStructuredProfileRows(db, [profile]);
-      }
-
-      if (feedbackEntries.length > 0) {
-        upsertStructuredFeedbackRows(db, feedbackEntries);
       }
 
       if (authRateLimits.length > 0) {
@@ -2254,6 +2257,55 @@ export async function replaceStructuredLocalAuditEventsForUser(
 
       if (auditEvents.length > 0) {
         upsertStructuredAuditEventRows(db, auditEvents);
+      }
+
+      upsertSchemaInfo(
+        db,
+        "structured_mirror_schema_version",
+        String(STRUCTURED_MIRROR_SCHEMA_VERSION),
+      );
+      upsertSchemaInfo(
+        db,
+        "structured_mirror_snapshot_version",
+        String(currentSnapshotVersion > 0 ? currentSnapshotVersion : 1),
+      );
+      upsertSchemaInfo(db, "structured_mirror_last_synced_at", syncedAt);
+      upsertSchemaInfo(db, "structured_mirror_status", "ready");
+      db.run("COMMIT;");
+    } catch (error) {
+      db.run("ROLLBACK;");
+      throw error;
+    }
+
+    await persistDatabase(db);
+    return true;
+  } finally {
+    db.close();
+  }
+}
+
+export async function replaceStructuredLocalFeedbackEntriesForUser(
+  userId: string,
+  feedbackEntries: FeedbackEntryRecord[],
+): Promise<boolean> {
+  const db = await openDatabase();
+
+  try {
+    if (getStructuredMirrorStatus(db) === "disabled_encrypted") {
+      return false;
+    }
+
+    const syncedAt = new Date().toISOString();
+    const currentSnapshotVersion = Number(
+      readSchemaInfo(db, "structured_mirror_snapshot_version") ?? 0,
+    );
+    db.run("BEGIN TRANSACTION;");
+
+    try {
+      deleteRowsByUserId(db, "local_feedback_entries", userId);
+
+      if (feedbackEntries.length > 0) {
+        upsertStructuredFeedbackRows(db, feedbackEntries);
       }
 
       upsertSchemaInfo(
@@ -2506,6 +2558,79 @@ export async function listStructuredLocalClientsForUser(
       `,
       [userId],
       (values) => mapClientRow(values),
+    );
+  } finally {
+    db.close();
+  }
+}
+
+export async function getStructuredLocalProfileById(
+  userId: string,
+): Promise<Profile | null> {
+  const db = await openDatabase();
+
+  try {
+    if (getStructuredMirrorStatus(db) !== "ready") {
+      return null;
+    }
+
+    return queryFirstRow(
+      db,
+      `
+        SELECT
+          id,
+          email,
+          full_name,
+          nif,
+          address,
+          logo_path,
+          logo_url,
+          created_at,
+          updated_at
+        FROM local_profiles
+        WHERE id = ?
+        LIMIT 1;
+      `,
+      [userId],
+      (values) => mapProfileRow(values),
+    );
+  } finally {
+    db.close();
+  }
+}
+
+export async function listStructuredLocalFeedbackEntriesForUser(
+  userId: string,
+): Promise<FeedbackEntryRecord[] | null> {
+  const db = await openDatabase();
+
+  try {
+    if (getStructuredMirrorStatus(db) !== "ready") {
+      return null;
+    }
+
+    return queryRows(
+      db,
+      `
+        SELECT
+          id,
+          user_id,
+          source_type,
+          module_key,
+          severity,
+          status,
+          title,
+          message,
+          reporter_name,
+          contact_email,
+          created_at,
+          updated_at
+        FROM local_feedback_entries
+        WHERE user_id = ?
+        ORDER BY updated_at DESC, created_at DESC;
+      `,
+      [userId],
+      (values) => mapFeedbackEntryRow(values),
     );
   } finally {
     db.close();

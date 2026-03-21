@@ -66,6 +66,11 @@ import {
   saveStructuredClientRepositoryRecord,
 } from "@/lib/local-repositories/clients";
 import {
+  listStructuredFeedbackRepositoryRecords,
+  replaceStructuredFeedbackRepositoryRecords,
+  saveStructuredFeedbackRepositoryRecord,
+} from "@/lib/local-repositories/feedback";
+import {
   getStructuredInvoiceRepositoryCounters,
   getStructuredInvoiceRepositoryRecord,
   getStructuredInvoiceRepositoryRecordByPublicId,
@@ -74,6 +79,10 @@ import {
   persistStructuredInvoiceRepositoryState,
   replaceStructuredInvoiceRepositoryStateForUser,
 } from "@/lib/local-repositories/invoices";
+import {
+  getStructuredProfileRepositoryRecord,
+  saveStructuredProfileRepositoryRecord,
+} from "@/lib/local-repositories/profiles";
 import {
   getStructuredCounterRepositoryState,
   listStructuredAuditRepositoryRecords,
@@ -947,6 +956,12 @@ export async function getLocalAppUserById(userId: string) {
 }
 
 export async function getLocalProfile(userId: string, email?: string | null) {
+  const structuredProfile = await getStructuredProfileRepositoryRecord(userId);
+
+  if (structuredProfile) {
+    return structuredProfile;
+  }
+
   const data = await readLocalCoreData();
   const existing = data.profiles.find((candidate) => candidate.id === userId);
 
@@ -983,6 +998,52 @@ export async function saveLocalProfile({
   address: string;
   logoUrl: string | null;
 }) {
+  if (canUseStructuredLocalRepositories()) {
+    const timestamp = nowIso();
+    const existing = await getStructuredProfileRepositoryRecord(userId);
+    const profile: Profile = existing
+      ? {
+          ...existing,
+          email,
+          full_name: fullName,
+          nif,
+          address,
+          logo_url: logoUrl,
+          logo_path: null,
+          updated_at: timestamp,
+        }
+      : {
+          id: userId,
+          email,
+          full_name: fullName,
+          nif,
+          address,
+          logo_path: null,
+          logo_url: logoUrl,
+          created_at: timestamp,
+          updated_at: timestamp,
+        };
+    const auditEvent = buildLocalAuditEventRecord({
+      userId,
+      actorType: "user",
+      actorId: userId,
+      source: "profile",
+      action: existing ? "profile_updated" : "profile_created",
+      entityType: "profile",
+      entityId: userId,
+      beforeJson: buildProfileAuditSnapshot(existing),
+      afterJson: buildProfileAuditSnapshot(profile),
+    });
+    const saved = await saveStructuredProfileRepositoryRecord({
+      profile,
+      auditEvent,
+    });
+
+    if (saved) {
+      return saved;
+    }
+  }
+
   return updateLocalCoreData(async (data) => {
     const timestamp = nowIso();
     const existing = data.profiles.find((candidate) => candidate.id === userId);
@@ -1087,6 +1148,12 @@ export async function getLocalClientById(userId: string, clientId: string) {
 }
 
 export async function listLocalFeedbackEntriesForUser(userId: string) {
+  const structuredEntries = await listStructuredFeedbackRepositoryRecords(userId);
+
+  if (structuredEntries) {
+    return sortByPrimaryDateDescending(structuredEntries, (entry) => entry.created_at);
+  }
+
   const data = await readLocalCoreData();
   return sortByPrimaryDateDescending(
     data.feedbackEntries.filter((entry) => entry.user_id === userId),
@@ -1113,6 +1180,29 @@ export async function createLocalFeedbackEntry({
   reporterName: string | null;
   contactEmail: string | null;
 }) {
+  if (canUseStructuredLocalRepositories()) {
+    const timestamp = nowIso();
+    const entry: FeedbackEntryRecord = {
+      id: randomUUID(),
+      user_id: userId,
+      source_type: sourceType,
+      module_key: moduleKey,
+      severity,
+      status: "open",
+      title,
+      message,
+      reporter_name: reporterName,
+      contact_email: contactEmail,
+      created_at: timestamp,
+      updated_at: timestamp,
+    };
+    const saved = await saveStructuredFeedbackRepositoryRecord(entry);
+
+    if (saved) {
+      return saved;
+    }
+  }
+
   return updateLocalCoreData(async (data) => {
     const timestamp = nowIso();
     const entry: FeedbackEntryRecord = {
@@ -1140,6 +1230,22 @@ export async function updateLocalFeedbackStatus(
   entryId: string,
   status: FeedbackStatus,
 ) {
+  if (canUseStructuredLocalRepositories()) {
+    const entries = await listStructuredFeedbackRepositoryRecords(userId);
+    const entry = entries?.find((candidate) => candidate.id === entryId) ?? null;
+
+    if (entry) {
+      entry.status = status;
+      entry.updated_at = nowIso();
+
+      const saved = await saveStructuredFeedbackRepositoryRecord(entry);
+
+      if (saved) {
+        return saved;
+      }
+    }
+  }
+
   return updateLocalCoreData(async (data) => {
     const entry = data.feedbackEntries.find(
       (candidate) => candidate.user_id === userId && candidate.id === entryId,
@@ -3341,14 +3447,15 @@ export async function replaceLocalUserData({
           data.users[data.users.length - 1]!,
         profile:
           data.profiles.find((candidate) => candidate.id === userId) ?? null,
-        feedbackEntries: data.feedbackEntries.filter(
-          (candidate) => candidate.user_id === userId,
-        ),
         authRateLimits: data.authRateLimits.filter(
           (candidate) => candidate.email_key === getNormalizedEmail(email),
         ),
       })) &&
       (await replaceStructuredClientRepositoryRecords(userId, data.clients.filter((candidate) => candidate.user_id === userId))) &&
+      (await replaceStructuredFeedbackRepositoryRecords(
+        userId,
+        data.feedbackEntries.filter((candidate) => candidate.user_id === userId),
+      )) &&
       (await replaceStructuredAuditRepositoryRecords(
         userId,
         data.auditEvents.filter((candidate) => candidate.user_id === userId),
