@@ -225,26 +225,27 @@ export function AppSidebar({
         </div>
       </aside>
 
-      <div className="flex min-h-screen flex-1 flex-col">
-        <header className="sticky top-0 z-30 border-b border-white/30 bg-[color:rgba(251,247,241,0.78)] px-4 py-3 backdrop-blur lg:hidden">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <Link href="/" className="flex items-center gap-3">
+      <div className="flex min-h-screen min-w-0 flex-1 flex-col">
+        <header className="sticky top-0 z-30 overflow-hidden border-b border-white/30 bg-[color:rgba(251,247,241,0.78)] px-4 py-3 backdrop-blur lg:hidden">
+          <div className="mb-3 flex min-w-0 flex-wrap items-center justify-between gap-3">
+            <Link href="/" className="flex min-w-0 flex-1 items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[color:var(--color-brand)] text-xs font-bold uppercase tracking-[0.18em] text-[color:var(--color-brand-foreground)]">
                 FIA
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="font-display text-xl text-foreground">FacturaIA</p>
                 <p className="text-xs text-muted-foreground">Núcleo primero</p>
               </div>
             </Link>
             <Badge
               variant="success"
+              className="shrink-0"
             >
               Uso privado
             </Badge>
           </div>
 
-          <div className="flex gap-2 overflow-x-auto pb-1">
+          <div className="flex w-full min-w-0 gap-2 overflow-x-auto pb-1">
             {visibleMobileItems.map((item) => {
               const active =
                 pathname === item.href || pathname.startsWith(`${item.href}/`);

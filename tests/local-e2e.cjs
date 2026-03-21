@@ -7,6 +7,7 @@ const { chromium } = require("@playwright/test");
 const host = "127.0.0.1";
 const port = Number(process.env.FACTURAIA_E2E_PORT || 3101);
 const baseUrl = process.env.FACTURAIA_E2E_BASE_URL || `http://${host}:${port}`;
+const mobileViewport = { width: 390, height: 844 };
 const dataDir =
   process.env.FACTURAIA_E2E_DATA_DIR ||
   path.join(process.cwd(), ".facturaia-e2e");
@@ -95,6 +96,18 @@ async function clickButton(page, namePattern) {
   await button.click();
 }
 
+async function waitForPrimaryAction(page, namePattern) {
+  const button = page.getByRole("button", { name: namePattern }).first();
+
+  try {
+    await button.waitFor({ state: "visible", timeout: 5_000 });
+    return;
+  } catch {
+    const link = page.getByRole("link", { name: namePattern }).first();
+    await link.waitFor({ state: "visible", timeout: 30_000 });
+  }
+}
+
 async function loginLocalUser(page) {
   await page.goto(`${baseUrl}/login`, { waitUntil: "load" });
   await page.getByLabel("Email de acceso").fill(userEmail);
@@ -132,6 +145,48 @@ async function assertHealthyRoute(page, route) {
   assert(
     !/Runtime ZodError|Application error|NEXT_REDIRECT|Something went wrong|Server Error/i.test(mainText),
     `La ruta ${route} mostró un error visible.`,
+  );
+}
+
+async function assertNoHorizontalOverflow(page, route, tolerance = 8) {
+  await page.waitForTimeout(250);
+  const metrics = await page.evaluate(() => {
+    const offenders = [];
+
+    for (const el of document.querySelectorAll("body *")) {
+      const insideHorizontalScroller = Boolean(
+        el.closest(".overflow-x-auto"),
+      );
+      const rect = el.getBoundingClientRect();
+
+      if (insideHorizontalScroller) {
+        continue;
+      }
+
+      if (rect.width > 0 && rect.right > window.innerWidth + 4) {
+        offenders.push({
+          tag: el.tagName,
+          className: typeof el.className === "string" ? el.className : "",
+          text: (el.textContent || "").trim().slice(0, 140),
+          right: rect.right,
+          width: rect.width,
+        });
+      }
+    }
+
+    return {
+      innerWidth: window.innerWidth,
+      documentWidth: document.documentElement.scrollWidth,
+      bodyWidth: document.body?.scrollWidth ?? 0,
+      offenders: offenders.slice(0, 5),
+    };
+  });
+
+  const widest = Math.max(metrics.documentWidth, metrics.bodyWidth);
+
+  assert(
+    widest <= metrics.innerWidth + tolerance,
+    `La ruta ${route} tiene overflow horizontal en móvil (${widest}px > ${metrics.innerWidth}px). Offenders: ${JSON.stringify(metrics.offenders)}`,
   );
 }
 
@@ -234,6 +289,48 @@ async function runProtectedRouteSweep(page) {
   }
 }
 
+async function runMobileRouteSweep(page) {
+  const routes = [
+    {
+      route: "/dashboard",
+      heading: /hola|autónomo/i,
+      action: /nueva factura/i,
+    },
+    {
+      route: "/new-invoice",
+      heading: /emite una factura/i,
+      action: /generar factura|generación real desactivada en demo/i,
+    },
+    {
+      route: "/invoices",
+      heading: /historial claro|mis facturas/i,
+      action: /nueva factura/i,
+    },
+    {
+      route: "/cobros",
+      heading: /prioriza qué hay que cobrar|cobros y vencimientos/i,
+      action: /aplicar filtros/i,
+    },
+    {
+      route: "/profile",
+      heading: /datos fiscales y control del entorno privado/i,
+      action: /guardar perfil|guardado desactivado en demo/i,
+    },
+  ];
+
+  for (const item of routes) {
+    await page.goto(`${baseUrl}${item.route}`, { waitUntil: "load" });
+    await page.locator("main").last().waitFor({ state: "visible", timeout: 30_000 });
+    assertNoRouteError(page);
+    await page.getByRole("heading", { name: item.heading }).first().waitFor({
+      state: "visible",
+      timeout: 30_000,
+    });
+    await waitForPrimaryAction(page, item.action);
+    await assertNoHorizontalOverflow(page, item.route);
+  }
+}
+
 async function main() {
   let server;
   let browser;
@@ -256,6 +353,18 @@ async function main() {
     await runCriticalLocalFlow(page);
     await runProtectedRouteSweep(page);
 
+    const mobileContext = await browser.newContext({
+      viewport: mobileViewport,
+    });
+    const mobilePage = await mobileContext.newPage();
+
+    try {
+      await loginLocalUser(mobilePage);
+      await runMobileRouteSweep(mobilePage);
+    } finally {
+      await mobileContext.close();
+    }
+
     const backup = await exportBackupSnapshot(page);
 
     assert(backup.profile, "El backup no incluye perfil.");
@@ -263,8 +372,9 @@ async function main() {
 
 	    console.log(
 	      JSON.stringify(
-	        {
+        {
           baseUrl,
+          mobileViewport,
           dataDir: path.resolve(dataDir),
           finalUrl: page.url(),
           pageErrors,
