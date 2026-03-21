@@ -14,8 +14,10 @@ import {
   Landmark,
 } from "lucide-react";
 
+import { requireUser } from "@/lib/auth";
 import { isDemoMode, isLocalBootstrapEnabled, isLocalMode } from "@/lib/demo";
 import { getInboundMailStatusSummary } from "@/lib/inbound-mail";
+import { getLocalSecurityPolicy, listLocalAuditEventsForUser } from "@/lib/local-core";
 import { getOutboundMailStatusSummary } from "@/lib/mail";
 import { getRemoteBackupStatusSummary } from "@/lib/remote-backups";
 import { Badge } from "@/components/ui/badge";
@@ -32,15 +34,24 @@ function getEnvironmentFlags() {
   const remoteBackups = getRemoteBackupStatusSummary();
   const outboundMail = getOutboundMailStatusSummary();
   const inboundMail = getInboundMailStatusSummary();
+  const localMode = isLocalMode();
+  const localSecurity = getLocalSecurityPolicy();
+  const localCoreReady = localMode
+    ? localSecurity.sessionSecretConfigured
+    : Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL) &&
+      Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) &&
+      Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY);
 
   return {
     demoMode: isDemoMode(),
-    localMode: isLocalMode(),
+    localMode,
     localBootstrap: isLocalBootstrapEnabled(),
     hasSupabase:
       Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL) &&
       Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) &&
       Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
+    localCoreReady,
+    localSecurity,
     hasLocalAi:
       Boolean(process.env.LM_STUDIO_BASE_URL) && Boolean(process.env.LM_STUDIO_MODEL),
     appUrl: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
@@ -51,30 +62,39 @@ function getEnvironmentFlags() {
     remoteBackups,
     missingCoreEnv: [
       !process.env.NEXT_PUBLIC_APP_URL ? "NEXT_PUBLIC_APP_URL" : null,
-      !process.env.NEXT_PUBLIC_SUPABASE_URL ? "NEXT_PUBLIC_SUPABASE_URL" : null,
-      !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      localMode && !localSecurity.sessionSecretConfigured
+        ? "FACTURAIA_LOCAL_SESSION_SECRET"
+        : null,
+      !localMode && !process.env.NEXT_PUBLIC_SUPABASE_URL
+        ? "NEXT_PUBLIC_SUPABASE_URL"
+        : null,
+      !localMode && !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
         ? "NEXT_PUBLIC_SUPABASE_ANON_KEY"
         : null,
-      !process.env.SUPABASE_SERVICE_ROLE_KEY
+      !localMode && !process.env.SUPABASE_SERVICE_ROLE_KEY
         ? "SUPABASE_SERVICE_ROLE_KEY"
         : null,
     ].filter(Boolean) as string[],
   };
 }
 
-export default function SystemPage() {
+export default async function SystemPage() {
+  const user = await requireUser();
   const env = getEnvironmentFlags();
+  const recentAuditEvents = env.localMode
+    ? await listLocalAuditEventsForUser(user.id, 6)
+    : [];
   const checks = [
     {
       title: env.localMode ? "Backend local" : "Supabase",
-      description: env.hasSupabase
+      description: env.localCoreReady
         ? env.localMode
-          ? "Auth, base de datos y storage listos dentro de tu instalación privada."
+          ? "Sesión local, persistencia privada y núcleo de escritorio listos dentro de tu instalación."
           : "Auth, base de datos y storage listos."
         : env.localMode
-          ? "Faltan variables del backend local para persistir datos reales en esta instalación."
+          ? "Falta FACTURAIA_LOCAL_SESSION_SECRET para cerrar correctamente el acceso local."
           : "Faltan variables de Supabase para usar persistencia real.",
-      ready: env.hasSupabase,
+      ready: env.localCoreReady,
       icon: Database,
     },
     {
@@ -219,6 +239,85 @@ export default function SystemPage() {
           </CardContent>
         </Card>
       </section>
+
+      {env.localMode ? (
+        <section className="grid gap-4 xl:grid-cols-[0.92fr_1.08fr]">
+          <Card>
+            <CardHeader>
+              <CardTitle>Política de seguridad local</CardTitle>
+              <CardDescription>
+                Reglas activas del acceso privado en esta instalación.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="rounded-[26px] bg-[color:var(--color-panel)] p-5">
+                <p className="text-sm text-muted-foreground">Validez de sesión</p>
+                <p className="mt-2 text-2xl font-semibold text-foreground">
+                  {env.localSecurity.sessionMaxAgeHours} h
+                </p>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  Tiempo máximo del token local antes de volver a pedir credenciales.
+                </p>
+              </div>
+              <div className="rounded-[26px] bg-[color:var(--color-panel)] p-5">
+                <p className="text-sm text-muted-foreground">Intentos antes de bloqueo</p>
+                <p className="mt-2 text-2xl font-semibold text-foreground">
+                  {env.localSecurity.loginMaxAttempts}
+                </p>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  Límite de intentos fallidos por email y origen antes de cerrar temporalmente el acceso.
+                </p>
+              </div>
+              <div className="rounded-[26px] bg-[color:var(--color-panel)] p-5">
+                <p className="text-sm text-muted-foreground">Ventana de bloqueo</p>
+                <p className="mt-2 text-2xl font-semibold text-foreground">
+                  {env.localSecurity.loginLockoutMinutes} min
+                </p>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  El acceso vuelve a abrirse automáticamente o tras un inicio correcto posterior.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Auditoría reciente</CardTitle>
+              <CardDescription>
+                Últimos eventos de autenticación y operaciones sensibles guardados dentro del equipo.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {recentAuditEvents.length > 0 ? (
+                recentAuditEvents.map((event) => (
+                  <div
+                    key={event.id}
+                    className="rounded-[22px] bg-[color:var(--color-panel)] p-4"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <p className="font-semibold text-foreground">
+                        {event.action.replaceAll("_", " ")}
+                      </p>
+                      <Badge variant="secondary">{event.source}</Badge>
+                    </div>
+                    <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                      {event.entity_type}
+                      {event.entity_id ? ` · ${event.entity_id}` : ""}
+                    </p>
+                    <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                      {new Date(event.created_at).toLocaleString("es-ES")}
+                    </p>
+                  </div>
+                ))
+              ) : (
+                <div className="rounded-[22px] bg-[color:var(--color-panel)] p-4 text-sm leading-6 text-muted-foreground">
+                  Todavía no hay eventos de auditoría local para este usuario.
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </section>
+      ) : null}
 
       <section className="grid gap-4 xl:grid-cols-3">
         <Card className="xl:col-span-3">

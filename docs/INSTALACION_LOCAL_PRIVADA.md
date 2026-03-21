@@ -36,6 +36,9 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 FACTURAIA_LOCAL_MODE=1
 FACTURAIA_LOCAL_BOOTSTRAP=1
 FACTURAIA_LOCAL_SESSION_SECRET=pon-aqui-un-secreto-largo
+FACTURAIA_LOCAL_SESSION_MAX_AGE_HOURS=168
+FACTURAIA_LOCAL_LOGIN_MAX_ATTEMPTS=5
+FACTURAIA_LOCAL_LOGIN_LOCKOUT_MINUTES=15
 FACTURAIA_DATA_DIR=.facturaia-local
 FACTURAIA_ENCRYPT_LOCAL_DATA=0
 FACTURAIA_ENCRYPT_BACKUPS=0
@@ -59,6 +62,25 @@ FACTURAIA_LOCAL_BOOTSTRAP=0
 8. Reinicia la aplicación.
 
 Si vienes de una instalación antigua basada en `core.json`, FacturaIA migra ese estado automáticamente a `core.sqlite` en el primer arranque local.
+
+## Política local recomendada
+
+Estas variables endurecen el acceso privado:
+
+- `FACTURAIA_LOCAL_SESSION_MAX_AGE_HOURS`
+  - horas máximas de validez del token local
+  - valor recomendado inicial: `168`
+- `FACTURAIA_LOCAL_LOGIN_MAX_ATTEMPTS`
+  - intentos fallidos antes de bloqueo temporal
+  - valor recomendado inicial: `5`
+- `FACTURAIA_LOCAL_LOGIN_LOCKOUT_MINUTES`
+  - minutos de bloqueo temporal tras superar el límite
+  - valor recomendado inicial: `15`
+
+Además:
+
+- FacturaIA guarda auditoría local de logins correctos, fallos, bloqueos, logout y restauraciones de backup
+- en producción conviene tratar `FACTURAIA_LOCAL_SESSION_SECRET` como obligatorio
 
 ## Cifrado opcional
 

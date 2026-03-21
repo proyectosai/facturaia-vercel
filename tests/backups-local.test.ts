@@ -21,6 +21,7 @@ import {
   createLocalInvoiceRecord,
   getLocalCoreSnapshot,
   reconcileLocalBankMovement,
+  recordLocalAuditEvent,
   recordLocalInvoiceReminder,
   respondToLocalDocumentSignatureRequest,
   saveLocalClientRecord,
@@ -138,6 +139,21 @@ describe("local backup export and restore", () => {
       totals: buildTotals(),
       issuerLogoUrl: null,
     });
+    await recordLocalAuditEvent({
+      userId,
+      actorType: "user",
+      actorId: userId,
+      source: "auth",
+      action: "local_login_succeeded",
+      entityType: "session",
+      entityId: userId,
+      afterJson: {
+        email,
+      },
+      contextJson: {
+        ipAddress: "127.0.0.1",
+      },
+    });
 
     const backup = await exportBackupForUser(userId, email);
     const serialized = serializeBackupPayload(backup);
@@ -147,6 +163,8 @@ describe("local backup export and restore", () => {
     expect(inspected.manifest.appVersion).toBeTruthy();
     expect(inspected.manifest.checksumAlgorithm).toBe("sha256");
     expect(inspected.manifest.modulesIncluded).toContain("core");
+    expect(inspected.manifest.modulesIncluded).toContain("security");
+    expect(inspected.manifest.counts.auditEvents).toBe(1);
     expect(inspected.manifest.counts.invoices).toBe(1);
     expect(inspected.checksum).toHaveLength(64);
     expect(parseBackupPayload(serialized).invoices).toHaveLength(1);
@@ -282,6 +300,21 @@ describe("local backup export and restore", () => {
       reporterName: "Asesoria Martin Fiscal",
       contactEmail: email,
     });
+    await recordLocalAuditEvent({
+      userId,
+      actorType: "user",
+      actorId: userId,
+      source: "auth",
+      action: "local_login_succeeded",
+      entityType: "session",
+      entityId: userId,
+      afterJson: {
+        email,
+      },
+      contextJson: {
+        ipAddress: "127.0.0.1",
+      },
+    });
 
     const document = await createLocalCommercialDocumentRecord({
       userId,
@@ -362,8 +395,10 @@ describe("local backup export and restore", () => {
     expect(backup.appUrl).toBe("http://127.0.0.1:3999");
     expect(envelope.manifest.counts.invoices).toBe(1);
     expect(envelope.manifest.counts.feedbackEntries).toBe(1);
+    expect(envelope.manifest.counts.auditEvents).toBe(1);
     expect(envelope.manifest.modulesIncluded).toContain("crm");
     expect(envelope.manifest.modulesIncluded).toContain("commercial-documents");
+    expect(envelope.manifest.modulesIncluded).toContain("security");
     expect(backup.clients).toHaveLength(1);
     expect(backup.feedbackEntries).toHaveLength(1);
     expect(backup.expenses).toHaveLength(1);
@@ -382,6 +417,7 @@ describe("local backup export and restore", () => {
       expect(restored.profiles).toHaveLength(1);
       expect(restored.clients).toHaveLength(1);
       expect(restored.feedbackEntries).toHaveLength(1);
+      expect(restored.auditEvents.filter((event) => event.user_id === userId)).toHaveLength(2);
       expect(restored.expenses).toHaveLength(1);
       expect(restored.commercialDocuments).toHaveLength(1);
       expect(restored.documentSignatureRequests).toHaveLength(1);

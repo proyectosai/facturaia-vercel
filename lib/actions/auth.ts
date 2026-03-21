@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidateAppPath } from "@/lib/actions/revalidate-path";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { ZodError, z } from "zod";
 
@@ -10,16 +10,39 @@ import { isDemoMode, isLocalBootstrapEnabled, isLocalFileMode, isLocalMode } fro
 import { rethrowIfRedirectError } from "@/lib/actions/redirect-error";
 import { getLogoStoragePath } from "@/lib/invoices";
 import {
+  getLocalAppUserById,
+  getLocalSecurityPolicy,
   ensureInitialLocalUser,
   fileToDataUrl,
   getLocalSessionCookieName,
+  getLocalSessionMaxAgeSeconds,
+  recordLocalAuditEvent,
   saveLocalProfile,
   signLocalSessionToken,
+  verifyLocalSessionToken,
 } from "@/lib/local-core";
 import { assertAllowedUpload, uploadRules } from "@/lib/security";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getBaseUrl } from "@/lib/utils";
+
+function getRequestIpAddress(headerStore: Headers) {
+  const forwardedFor = headerStore.get("x-forwarded-for");
+  const realIp = headerStore.get("x-real-ip");
+
+  if (forwardedFor?.trim()) {
+    return forwardedFor.split(",")[0]?.trim() || null;
+  }
+
+  return realIp?.trim() || null;
+}
+
+function getLocalLockoutErrorMessage(lockedUntil: string) {
+  const remainingMs = new Date(lockedUntil).getTime() - Date.now();
+  const remainingMinutes = Math.max(1, Math.ceil(remainingMs / 60_000));
+
+  return `Demasiados intentos fallidos. El acceso local queda bloqueado durante ${remainingMinutes} minuto(s).`;
+}
 
 export async function requestMagicLinkAction(formData: FormData) {
   if (isDemoMode()) {
@@ -71,26 +94,48 @@ export async function signInLocalPasswordAction(formData: FormData) {
   }
 
   if (isLocalFileMode()) {
+    const headerStore = await headers();
+    const ipAddress = getRequestIpAddress(headerStore);
+    const userAgent = headerStore.get("user-agent");
+    const securityPolicy = getLocalSecurityPolicy();
+
+    if (process.env.NODE_ENV === "production" && !securityPolicy.sessionSecretConfigured) {
+      redirect(
+        "/login?error=FACTURAIA_LOCAL_SESSION_SECRET%20es%20obligatorio%20en%20producci%C3%B3n%20para%20usar%20el%20acceso%20local.",
+      );
+    }
+
     if (isLocalBootstrapEnabled()) {
       await ensureInitialLocalUser(email, password);
     }
 
     const { authenticateLocalUser } = await import("@/lib/local-core");
-    const user = await authenticateLocalUser(email, password);
+    const result = await authenticateLocalUser(email, password, {
+      ipAddress,
+      userAgent,
+    });
 
-    if (!user) {
+    if (result.status === "locked") {
       redirect(
-        "/login?error=No%20se%20ha%20podido%20iniciar%20sesi%C3%B3n%20en%20modo%20local.%20Revisa%20las%20credenciales.",
+        `/login?error=${encodeURIComponent(getLocalLockoutErrorMessage(result.lockedUntil))}`,
+      );
+    }
+
+    if (result.status === "invalid") {
+      redirect(
+        `/login?error=${encodeURIComponent(
+          `Credenciales incorrectas. Quedan ${result.remainingAttempts} intento(s) antes del bloqueo temporal.`,
+        )}`,
       );
     }
 
     const cookieStore = await cookies();
-    cookieStore.set(getLocalSessionCookieName(), signLocalSessionToken(user.id), {
+    cookieStore.set(getLocalSessionCookieName(), signLocalSessionToken(result.user.id), {
       httpOnly: true,
       sameSite: "lax",
       secure: process.env.NODE_ENV === "production",
       path: "/",
-      maxAge: 60 * 60 * 24 * 30,
+      maxAge: getLocalSessionMaxAgeSeconds(),
     });
 
     redirect("/dashboard");
@@ -160,6 +205,33 @@ export async function signOutAction() {
 
   if (isLocalFileMode()) {
     const cookieStore = await cookies();
+    const headerStore = await headers();
+    const token = cookieStore.get(getLocalSessionCookieName())?.value;
+    const userId = verifyLocalSessionToken(token);
+
+    if (userId) {
+      const user = await getLocalAppUserById(userId);
+
+      if (user) {
+        await recordLocalAuditEvent({
+          userId: user.id,
+          actorType: "user",
+          actorId: user.id,
+          source: "auth",
+          action: "local_logout",
+          entityType: "session",
+          entityId: user.id,
+          afterJson: {
+            email: user.email,
+          },
+          contextJson: {
+            ipAddress: getRequestIpAddress(headerStore),
+            userAgent: headerStore.get("user-agent"),
+          },
+        });
+      }
+    }
+
     cookieStore.delete(getLocalSessionCookieName());
     redirect("/");
   }

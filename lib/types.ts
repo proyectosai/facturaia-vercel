@@ -70,6 +70,12 @@ export type FeedbackStatus = "open" | "reviewed" | "planned" | "resolved";
 
 export type FeedbackSourceType = "self" | "pilot";
 
+export type LocalAuditActorType = "user" | "anonymous" | "system" | "public";
+
+export type LocalAuditSource = "auth" | "backup" | "system" | "profile";
+
+export type LocalAuthRateLimitScope = "local_login";
+
 export type Profile = {
   id: string;
   email: string;
@@ -321,6 +327,33 @@ export type FeedbackEntryRecord = {
   message: string;
   reporter_name: string | null;
   contact_email: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type LocalAuditEventRecord = {
+  id: string;
+  user_id: string | null;
+  actor_type: LocalAuditActorType;
+  actor_id: string | null;
+  source: LocalAuditSource;
+  action: string;
+  entity_type: string;
+  entity_id: string | null;
+  before_json: Record<string, unknown> | null;
+  after_json: Record<string, unknown> | null;
+  context_json: Record<string, unknown>;
+  created_at: string;
+};
+
+export type LocalAuthRateLimitRecord = {
+  id: string;
+  scope: LocalAuthRateLimitScope;
+  email_key: string;
+  ip_address: string | null;
+  failed_attempts: number;
+  last_failed_at: string | null;
+  locked_until: string | null;
   created_at: string;
   updated_at: string;
 };

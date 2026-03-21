@@ -60,6 +60,9 @@ En el repositorio, `lint`, `typecheck`, `npm test`, `test:massive-local`, build 
 - errores legibles en modo local
 - acceso protegido a export y restore
 - cifrado opcional reproducible del núcleo local y de los backups cuando esté activado
+- expiración real del token local
+- bloqueo temporal tras intentos fallidos
+- auditoría persistente de login, logout y restore
 - manifest y checksum válidos en el backup
 - restauración rechazada si la copia ha sido manipulada
 

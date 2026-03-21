@@ -74,6 +74,9 @@ const nodeMajor = Number(process.versions.node.split(".")[0] ?? "0");
 const localModeEnabled = String(env.FACTURAIA_LOCAL_MODE ?? "").trim() === "1";
 const encryptLocalData = String(env.FACTURAIA_ENCRYPT_LOCAL_DATA ?? "").trim() === "1";
 const encryptBackups = String(env.FACTURAIA_ENCRYPT_BACKUPS ?? "").trim() === "1";
+const localSessionMaxAgeHours = Number(env.FACTURAIA_LOCAL_SESSION_MAX_AGE_HOURS ?? "168");
+const localLoginMaxAttempts = Number(env.FACTURAIA_LOCAL_LOGIN_MAX_ATTEMPTS ?? "5");
+const localLoginLockoutMinutes = Number(env.FACTURAIA_LOCAL_LOGIN_LOCKOUT_MINUTES ?? "15");
 const encryptionPassphraseMissing =
   (encryptLocalData || encryptBackups)
     ? getMissingKeys(env, ["FACTURAIA_ENCRYPTION_PASSPHRASE"])
@@ -142,6 +145,10 @@ if (localModeEnabled) {
     "Sesión local",
     getMissingKeys(env, ["FACTURAIA_LOCAL_SESSION_SECRET"]),
     "Necesaria para autenticación privada en instalación 100% local.",
+  );
+  console.log("- [INFO] Política de acceso local");
+  console.log(
+    `  Sesión: ${Number.isFinite(localSessionMaxAgeHours) ? localSessionMaxAgeHours : 168} h · Intentos: ${Number.isFinite(localLoginMaxAttempts) ? localLoginMaxAttempts : 5} · Bloqueo: ${Number.isFinite(localLoginLockoutMinutes) ? localLoginLockoutMinutes : 15} min`,
   );
   console.log("- [INFO] Supabase");
   console.log("  En modo local no es obligatorio para el núcleo privado de facturación.");

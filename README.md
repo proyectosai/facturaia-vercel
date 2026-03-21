@@ -13,6 +13,7 @@ La línea principal es reforzar la instalación privada del cliente:
 - menos dependencia de servicios externos
 - más control de datos en el propio ordenador o servidor
 - simplificación progresiva del despliegue
+- endurecimiento de auth local, auditoría y backup/restore
 
 ## Qué incluye
 
@@ -44,6 +45,7 @@ La línea principal es reforzar la instalación privada del cliente:
 - Asistente de primeros pasos dentro del panel para instalaciones no técnicas.
 - Script `npm run doctor` para validar la instalación local.
 - Cabeceras de seguridad y validación estricta de uploads en puntos sensibles.
+- Rate limiting en login local, expiración real de sesión y auditoría persistente de accesos y restores.
 - Suite de tests unitarios para cobros, seguridad, Facturae y firma.
 - Suite unitaria específica para el núcleo local y su persistencia.
 - Suite masiva local para facturación, banca, comunicaciones, cifrado y módulos.
@@ -94,6 +96,9 @@ Primero configura solo:
 - `FACTURAIA_LOCAL_MODE=1`
 - `FACTURAIA_LOCAL_BOOTSTRAP=1`
 - `FACTURAIA_LOCAL_SESSION_SECRET`
+- `FACTURAIA_LOCAL_SESSION_MAX_AGE_HOURS=168`
+- `FACTURAIA_LOCAL_LOGIN_MAX_ATTEMPTS=5`
+- `FACTURAIA_LOCAL_LOGIN_LOCKOUT_MINUTES=15`
 - `FACTURAIA_DATA_DIR`
 - tu bloque de correo saliente
 
@@ -111,6 +116,9 @@ Si el cliente quiere entrar con email y contraseña dentro de su propia instalac
 FACTURAIA_LOCAL_MODE=1
 FACTURAIA_LOCAL_BOOTSTRAP=1
 FACTURAIA_LOCAL_SESSION_SECRET=pon-aqui-un-secreto-largo
+FACTURAIA_LOCAL_SESSION_MAX_AGE_HOURS=168
+FACTURAIA_LOCAL_LOGIN_MAX_ATTEMPTS=5
+FACTURAIA_LOCAL_LOGIN_LOCKOUT_MINUTES=15
 FACTURAIA_DATA_DIR=.facturaia-local
 FACTURAIA_ENCRYPT_LOCAL_DATA=0
 FACTURAIA_ENCRYPT_BACKUPS=0
@@ -122,6 +130,7 @@ Comportamiento:
 - el login cambia a email + contraseña
 - si aún no existe ningún usuario, la primera sesión crea la cuenta local inicial
 - el perfil fiscal, las facturas, el PDF, la factura pública, los cobros y los recordatorios se guardan en una base SQLite local dentro del equipo
+- el acceso local aplica expiración real de sesión, bloqueo temporal por intentos fallidos y auditoría persistente de eventos sensibles
 - después conviene poner `FACTURAIA_LOCAL_BOOTSTRAP=0`
 
 Importante:

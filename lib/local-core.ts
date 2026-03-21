@@ -28,6 +28,10 @@ import type {
   MailMessage,
   MailSyncRun,
   MailThread,
+  LocalAuditActorType,
+  LocalAuditEventRecord,
+  LocalAuditSource,
+  LocalAuthRateLimitRecord,
   MessageChannel,
   MessageConnection,
   MessageConnectionStatus,
@@ -60,12 +64,30 @@ type LocalAiUsage = {
   calls_count: number;
 };
 
+type LocalAuthenticationResult =
+  | {
+      status: "success";
+      user: AppUserRecord;
+    }
+  | {
+      status: "invalid";
+      remainingAttempts: number;
+      lockedUntil: null;
+    }
+  | {
+      status: "locked";
+      remainingAttempts: 0;
+      lockedUntil: string;
+    };
+
 type LocalCoreData = {
   version: 1;
   users: LocalCoreAuthUser[];
   profiles: Profile[];
   clients: ClientRecord[];
   feedbackEntries: FeedbackEntryRecord[];
+  auditEvents: LocalAuditEventRecord[];
+  authRateLimits: LocalAuthRateLimitRecord[];
   invoices: InvoiceRecord[];
   invoiceReminders: InvoiceReminderRecord[];
   bankMovements: BankMovementRecord[];
@@ -96,6 +118,8 @@ function getDefaultLocalData(): LocalCoreData {
     profiles: [],
     clients: [],
     feedbackEntries: [],
+    auditEvents: [],
+    authRateLimits: [],
     invoices: [],
     invoiceReminders: [],
     bankMovements: [],
@@ -203,6 +227,131 @@ function nowIso() {
   return new Date().toISOString();
 }
 
+function getNormalizedEmail(email: string) {
+  return email.trim().toLowerCase();
+}
+
+function getLocalSessionSecretFallback() {
+  return createHash("sha256")
+    .update(`${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}:${getLocalDataDir()}`)
+    .digest("hex");
+}
+
+function getConfiguredLocalSessionSecret() {
+  return process.env.FACTURAIA_LOCAL_SESSION_SECRET?.trim() || null;
+}
+
+function getLocalSessionSecret() {
+  const configured = getConfiguredLocalSessionSecret();
+
+  if (configured) {
+    return configured;
+  }
+
+  if (process.env.NODE_ENV === "production") {
+    return null;
+  }
+
+  return getLocalSessionSecretFallback();
+}
+
+function getPositiveNumberFromEnv(rawValue: string | undefined, fallback: number) {
+  const parsed = Number(rawValue ?? "");
+
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return fallback;
+  }
+
+  return parsed;
+}
+
+export function getLocalSecurityPolicy() {
+  const sessionMaxAgeHours = getPositiveNumberFromEnv(
+    process.env.FACTURAIA_LOCAL_SESSION_MAX_AGE_HOURS,
+    168,
+  );
+  const loginMaxAttempts = Math.max(
+    1,
+    Math.trunc(
+      getPositiveNumberFromEnv(process.env.FACTURAIA_LOCAL_LOGIN_MAX_ATTEMPTS, 5),
+    ),
+  );
+  const loginLockoutMinutes = Math.max(
+    1,
+    Math.trunc(
+      getPositiveNumberFromEnv(process.env.FACTURAIA_LOCAL_LOGIN_LOCKOUT_MINUTES, 15),
+    ),
+  );
+
+  return {
+    sessionSecretConfigured: Boolean(getConfiguredLocalSessionSecret()),
+    sessionMaxAgeHours,
+    sessionMaxAgeSeconds: sessionMaxAgeHours * 60 * 60,
+    loginMaxAttempts,
+    loginLockoutMinutes,
+  };
+}
+
+export function getLocalSessionMaxAgeSeconds() {
+  return getLocalSecurityPolicy().sessionMaxAgeSeconds;
+}
+
+function getLocalLoginAttemptKey(email: string, ipAddress: string | null) {
+  return `${getNormalizedEmail(email)}::${ipAddress?.trim() || "local"}`;
+}
+
+function createLocalAuditEvent(
+  data: LocalCoreData,
+  {
+    userId,
+    actorType,
+    actorId,
+    source,
+    action,
+    entityType,
+    entityId,
+    beforeJson,
+    afterJson,
+    contextJson,
+  }: {
+    userId: string | null;
+    actorType: LocalAuditActorType;
+    actorId: string | null;
+    source: LocalAuditSource;
+    action: string;
+    entityType: string;
+    entityId: string | null;
+    beforeJson?: Record<string, unknown> | null;
+    afterJson?: Record<string, unknown> | null;
+    contextJson?: Record<string, unknown>;
+  },
+) {
+  const entry: LocalAuditEventRecord = {
+    id: randomUUID(),
+    user_id: userId,
+    actor_type: actorType,
+    actor_id: actorId,
+    source,
+    action,
+    entity_type: entityType,
+    entity_id: entityId,
+    before_json: beforeJson ?? null,
+    after_json: afterJson ?? null,
+    context_json: contextJson ?? {},
+    created_at: nowIso(),
+  };
+
+  data.auditEvents.push(entry);
+
+  if (data.auditEvents.length > 5000) {
+    data.auditEvents = data.auditEvents
+      .sort((left, right) => left.created_at.localeCompare(right.created_at))
+      .slice(-5000);
+  }
+
+  return entry;
+}
+
 function hashPassword(password: string, salt = randomBytes(16).toString("hex")) {
   const derived = scryptSync(password, salt, 64).toString("hex");
   return `${salt}:${derived}`;
@@ -219,20 +368,21 @@ function verifyPassword(password: string, storedHash: string) {
   return timingSafeEqual(Buffer.from(actual, "hex"), Buffer.from(expected, "hex"));
 }
 
-function getLocalSessionSecret() {
-  return process.env.FACTURAIA_LOCAL_SESSION_SECRET?.trim() ||
-    createHash("sha256")
-      .update(`${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}:${getLocalDataDir()}`)
-      .digest("hex");
-}
-
 export function getLocalSessionCookieName() {
   return LOCAL_SESSION_COOKIE;
 }
 
 export function signLocalSessionToken(userId: string) {
+  const secret = getLocalSessionSecret();
+
+  if (!secret) {
+    throw new Error(
+      "FACTURAIA_LOCAL_SESSION_SECRET es obligatorio en producción para usar el acceso local.",
+    );
+  }
+
   const payload = `${userId}.${Date.now()}`;
-  const signature = createHmac("sha256", getLocalSessionSecret())
+  const signature = createHmac("sha256", secret)
     .update(payload)
     .digest("hex");
 
@@ -251,8 +401,24 @@ export function verifyLocalSessionToken(token: string | undefined | null) {
   }
 
   const [userId, issuedAt, signature] = parts;
+  const secret = getLocalSessionSecret();
+
+  if (!secret) {
+    return null;
+  }
+
+  const issuedAtMs = Number(issuedAt);
+
+  if (!Number.isFinite(issuedAtMs)) {
+    return null;
+  }
+
+  if (Date.now() - issuedAtMs > getLocalSessionMaxAgeSeconds() * 1000) {
+    return null;
+  }
+
   const payload = `${userId}.${issuedAt}`;
-  const expected = createHmac("sha256", getLocalSessionSecret())
+  const expected = createHmac("sha256", secret)
     .update(payload)
     .digest("hex");
 
@@ -265,6 +431,53 @@ export function verifyLocalSessionToken(token: string | undefined | null) {
   }
 
   return userId || null;
+}
+
+export async function listLocalAuditEventsForUser(userId: string, limit = 25) {
+  const data = await readLocalCoreData();
+  return [...data.auditEvents]
+    .filter((event) => event.user_id === userId)
+    .sort((left, right) => right.created_at.localeCompare(left.created_at))
+    .slice(0, Math.max(1, limit));
+}
+
+export async function recordLocalAuditEvent({
+  userId,
+  actorType,
+  actorId,
+  source,
+  action,
+  entityType,
+  entityId,
+  beforeJson,
+  afterJson,
+  contextJson,
+}: {
+  userId: string | null;
+  actorType: LocalAuditActorType;
+  actorId: string | null;
+  source: LocalAuditSource;
+  action: string;
+  entityType: string;
+  entityId: string | null;
+  beforeJson?: Record<string, unknown> | null;
+  afterJson?: Record<string, unknown> | null;
+  contextJson?: Record<string, unknown>;
+}) {
+  return updateLocalCoreData(async (data) =>
+    createLocalAuditEvent(data, {
+      userId,
+      actorType,
+      actorId,
+      source,
+      action,
+      entityType,
+      entityId,
+      beforeJson,
+      afterJson,
+      contextJson,
+    }),
+  );
 }
 
 export async function getLocalUserCount() {
@@ -283,9 +496,10 @@ export async function ensureInitialLocalUser(email: string, password: string) {
     }
 
     const timestamp = nowIso();
+    const normalizedEmail = getNormalizedEmail(email);
     const user: LocalCoreAuthUser = {
       id: randomUUID(),
-      email,
+      email: normalizedEmail,
       password_hash: hashPassword(password),
       created_at: timestamp,
       updated_at: timestamp,
@@ -303,31 +517,186 @@ export async function ensureInitialLocalUser(email: string, password: string) {
       created_at: timestamp,
       updated_at: timestamp,
     });
+    createLocalAuditEvent(data, {
+      userId: user.id,
+      actorType: "system",
+      actorId: "bootstrap",
+      source: "auth",
+      action: "local_user_bootstrapped",
+      entityType: "user",
+      entityId: user.id,
+      afterJson: {
+        email: user.email,
+      },
+      contextJson: {
+        bootstrapEnabled: true,
+      },
+    });
 
     return user;
   });
 }
 
-export async function authenticateLocalUser(email: string, password: string) {
-  const data = await readLocalCoreData();
-  const user = data.users.find(
-    (candidate) => candidate.email.trim().toLowerCase() === email.trim().toLowerCase(),
-  );
+export async function authenticateLocalUser(
+  email: string,
+  password: string,
+  options?: {
+    ipAddress?: string | null;
+    userAgent?: string | null;
+  },
+): Promise<LocalAuthenticationResult> {
+  return updateLocalCoreData(async (data) => {
+    const normalizedEmail = getNormalizedEmail(email);
+    const ipAddress = options?.ipAddress?.trim() || null;
+    const userAgent = options?.userAgent?.trim() || null;
+    const policy = getLocalSecurityPolicy();
+    const attemptKey = getLocalLoginAttemptKey(normalizedEmail, ipAddress);
+    const timestamp = nowIso();
+    const nowMs = Date.now();
+    let rateLimit = data.authRateLimits.find(
+      (candidate) => candidate.scope === "local_login" && candidate.id === attemptKey,
+    );
+    const user = data.users.find(
+      (candidate) => getNormalizedEmail(candidate.email) === normalizedEmail,
+    );
 
-  if (!user) {
-    return null;
-  }
+    if (!rateLimit) {
+      rateLimit = {
+        id: attemptKey,
+        scope: "local_login",
+        email_key: normalizedEmail,
+        ip_address: ipAddress,
+        failed_attempts: 0,
+        last_failed_at: null,
+        locked_until: null,
+        created_at: timestamp,
+        updated_at: timestamp,
+      };
+      data.authRateLimits.push(rateLimit);
+    } else if (
+      rateLimit.locked_until &&
+      new Date(rateLimit.locked_until).getTime() <= nowMs
+    ) {
+      rateLimit.failed_attempts = 0;
+      rateLimit.locked_until = null;
+      rateLimit.updated_at = timestamp;
+    }
 
-  if (!verifyPassword(password, user.password_hash)) {
-    return null;
-  }
+    if (
+      rateLimit.locked_until &&
+      new Date(rateLimit.locked_until).getTime() > nowMs
+    ) {
+      createLocalAuditEvent(data, {
+        userId: user?.id ?? null,
+        actorType: user ? "user" : "anonymous",
+        actorId: user?.id ?? normalizedEmail,
+        source: "auth",
+        action: "local_login_blocked",
+        entityType: "session",
+        entityId: user?.id ?? null,
+        beforeJson: {
+          failedAttempts: rateLimit.failed_attempts,
+        },
+        afterJson: {
+          lockedUntil: rateLimit.locked_until,
+        },
+        contextJson: {
+          email: normalizedEmail,
+          ipAddress,
+          userAgent,
+        },
+      });
 
-  return {
-    id: user.id,
-    email: user.email,
-    created_at: user.created_at,
-    updated_at: user.updated_at,
-  } satisfies AppUserRecord;
+      return {
+        status: "locked",
+        remainingAttempts: 0,
+        lockedUntil: rateLimit.locked_until,
+      };
+    }
+
+    if (!user || !verifyPassword(password, user.password_hash)) {
+      const beforeAttempts = rateLimit.failed_attempts;
+      rateLimit.failed_attempts += 1;
+      rateLimit.last_failed_at = timestamp;
+      rateLimit.updated_at = timestamp;
+
+      if (rateLimit.failed_attempts >= policy.loginMaxAttempts) {
+        rateLimit.locked_until = new Date(
+          nowMs + policy.loginLockoutMinutes * 60 * 1000,
+        ).toISOString();
+      }
+
+      createLocalAuditEvent(data, {
+        userId: user?.id ?? null,
+        actorType: user ? "user" : "anonymous",
+        actorId: user?.id ?? normalizedEmail,
+        source: "auth",
+        action: rateLimit.locked_until ? "local_login_locked" : "local_login_failed",
+        entityType: "session",
+        entityId: user?.id ?? null,
+        beforeJson: {
+          failedAttempts: beforeAttempts,
+          lockedUntil: null,
+        },
+        afterJson: {
+          failedAttempts: rateLimit.failed_attempts,
+          lockedUntil: rateLimit.locked_until,
+        },
+        contextJson: {
+          email: normalizedEmail,
+          ipAddress,
+          userAgent,
+        },
+      });
+
+      if (rateLimit.locked_until) {
+        return {
+          status: "locked",
+          remainingAttempts: 0,
+          lockedUntil: rateLimit.locked_until,
+        };
+      }
+
+      return {
+        status: "invalid",
+        remainingAttempts: Math.max(
+          0,
+          policy.loginMaxAttempts - rateLimit.failed_attempts,
+        ),
+        lockedUntil: null,
+      };
+    }
+
+    data.authRateLimits = data.authRateLimits.filter(
+      (candidate) => !(candidate.scope === "local_login" && candidate.email_key === normalizedEmail),
+    );
+    createLocalAuditEvent(data, {
+      userId: user.id,
+      actorType: "user",
+      actorId: user.id,
+      source: "auth",
+      action: "local_login_succeeded",
+      entityType: "session",
+      entityId: user.id,
+      afterJson: {
+        email: user.email,
+      },
+      contextJson: {
+        ipAddress,
+        userAgent,
+      },
+    });
+
+    return {
+      status: "success",
+      user: {
+        id: user.id,
+        email: user.email,
+        created_at: user.created_at,
+        updated_at: user.updated_at,
+      } satisfies AppUserRecord,
+    };
+  });
 }
 
 export async function getLocalAppUserById(userId: string) {
@@ -1901,6 +2270,7 @@ export async function replaceLocalUserData({
   profile,
   clients,
   feedbackEntries,
+  auditEvents,
   invoices,
   invoiceReminders,
   bankMovements,
@@ -1920,6 +2290,7 @@ export async function replaceLocalUserData({
   profile: Profile | null;
   clients: ClientRecord[];
   feedbackEntries: FeedbackEntryRecord[];
+  auditEvents: LocalAuditEventRecord[];
   invoices: InvoiceRecord[];
   invoiceReminders: InvoiceReminderRecord[];
   bankMovements: BankMovementRecord[];
@@ -1972,6 +2343,14 @@ export async function replaceLocalUserData({
       ...data.feedbackEntries.filter((candidate) => candidate.user_id !== userId),
       ...feedbackEntries.map((entry) => ({
         ...entry,
+        user_id: userId,
+      })),
+    ];
+
+    data.auditEvents = [
+      ...data.auditEvents.filter((candidate) => candidate.user_id !== userId),
+      ...auditEvents.map((event) => ({
+        ...event,
         user_id: userId,
       })),
     ];

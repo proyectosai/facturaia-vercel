@@ -24,6 +24,7 @@ import {
 } from "@/lib/demo";
 import {
   getLocalCoreSnapshot,
+  recordLocalAuditEvent,
   replaceLocalUserData,
 } from "@/lib/local-core";
 import {
@@ -42,6 +43,7 @@ import type {
   FeedbackEntryRecord,
   InvoiceRecord,
   InvoiceReminderRecord,
+  LocalAuditEventRecord,
   MailMessage,
   MailSyncRun,
   MailThread,
@@ -71,6 +73,7 @@ export type FacturaIaBackup = {
   profile: Profile | null;
   clients: ClientRecord[];
   feedbackEntries: FeedbackEntryRecord[];
+  auditEvents: LocalAuditEventRecord[];
   invoices: InvoiceRecord[];
   invoiceReminders: InvoiceReminderRecord[];
   commercialDocuments: CommercialDocumentRecord[];
@@ -121,6 +124,7 @@ export type BackupContentComparison = {
 export type BackupSummary = {
   clients: number;
   feedbackEntries: number;
+  auditEvents: number;
   invoices: number;
   invoiceReminders: number;
   commercialDocuments: number;
@@ -153,6 +157,7 @@ function getBackupCounts(backup: FacturaIaBackup): BackupSummary {
   return {
     clients: backup.clients.length,
     feedbackEntries: backup.feedbackEntries.length,
+    auditEvents: backup.auditEvents.length,
     invoices: backup.invoices.length,
     invoiceReminders: backup.invoiceReminders.length,
     commercialDocuments: backup.commercialDocuments.length,
@@ -173,6 +178,7 @@ function getBackupModulesIncluded(backup: FacturaIaBackup) {
 
   if (backup.clients.length > 0) modules.push("crm");
   if (backup.feedbackEntries.length > 0) modules.push("feedback");
+  if (backup.auditEvents.length > 0) modules.push("security");
   if (backup.commercialDocuments.length > 0) modules.push("commercial-documents");
   if (backup.documentSignatureRequests.length > 0) modules.push("signatures");
   if (backup.expenses.length > 0) modules.push("expenses");
@@ -194,6 +200,10 @@ function sortByJsonValue<T>(items: T[]) {
   );
 }
 
+function getComparableAuditEvents(auditEvents: LocalAuditEventRecord[]) {
+  return auditEvents.filter((event) => event.action !== "backup_restore_completed");
+}
+
 function normalizeBackupForComparison(backup: FacturaIaBackup) {
   return {
     schemaVersion: backup.schemaVersion,
@@ -203,6 +213,7 @@ function normalizeBackupForComparison(backup: FacturaIaBackup) {
     profile: backup.profile,
     clients: sortByJsonValue(backup.clients),
     feedbackEntries: sortByJsonValue(backup.feedbackEntries),
+    auditEvents: sortByJsonValue(getComparableAuditEvents(backup.auditEvents)),
     invoices: sortByJsonValue(backup.invoices),
     invoiceReminders: sortByJsonValue(backup.invoiceReminders),
     commercialDocuments: sortByJsonValue(backup.commercialDocuments),
@@ -261,6 +272,7 @@ export function compareBackupContents(
   const summaryFields: Array<keyof BackupSummary> = [
     "clients",
     "feedbackEntries",
+    "auditEvents",
     "invoices",
     "invoiceReminders",
     "commercialDocuments",
@@ -277,6 +289,8 @@ export function compareBackupContents(
 
   const expectedSummary = getBackupCounts(expected);
   const actualSummary = getBackupCounts(actual);
+  expectedSummary.auditEvents = getComparableAuditEvents(expected.auditEvents).length;
+  actualSummary.auditEvents = getComparableAuditEvents(actual.auditEvents).length;
 
   for (const field of summaryFields) {
     if (expectedSummary[field] !== actualSummary[field]) {
@@ -480,6 +494,7 @@ export async function getBackupSummary(userId: string): Promise<BackupSummary> {
     return {
       clients: demoClients.length,
       feedbackEntries: demoFeedbackEntries.length,
+      auditEvents: 0,
       invoices: demoInvoices.length,
       invoiceReminders: demoInvoiceReminders.length,
       commercialDocuments: demoCommercialDocuments.length,
@@ -500,6 +515,7 @@ export async function getBackupSummary(userId: string): Promise<BackupSummary> {
     return {
       clients: snapshot.clients.filter((client) => client.user_id === userId).length,
       feedbackEntries: snapshot.feedbackEntries.filter((entry) => entry.user_id === userId).length,
+      auditEvents: snapshot.auditEvents.filter((event) => event.user_id === userId).length,
       invoices: snapshot.invoices.filter((invoice) => invoice.user_id === userId).length,
       invoiceReminders: snapshot.invoiceReminders.filter((reminder) => reminder.user_id === userId)
         .length,
@@ -573,6 +589,7 @@ export async function getBackupSummary(userId: string): Promise<BackupSummary> {
   return {
     clients: clients.count ?? 0,
     feedbackEntries: feedbackEntries.count ?? 0,
+    auditEvents: 0,
     invoices: invoices.count ?? 0,
     invoiceReminders: invoiceReminders.count ?? 0,
     commercialDocuments: commercialDocuments.count ?? 0,
@@ -602,6 +619,7 @@ export async function exportBackupForUser(
       profile: demoProfile,
       clients: demoClients,
       feedbackEntries: demoFeedbackEntries,
+      auditEvents: [],
       invoices: demoInvoices,
       invoiceReminders: demoInvoiceReminders,
       commercialDocuments: demoCommercialDocuments,
@@ -655,6 +673,7 @@ export async function exportBackupForUser(
       profile,
       clients: snapshot.clients.filter((client) => client.user_id === userId),
       feedbackEntries: snapshot.feedbackEntries.filter((entry) => entry.user_id === userId),
+      auditEvents: snapshot.auditEvents.filter((event) => event.user_id === userId),
       invoices,
       invoiceReminders,
       bankMovements: snapshot.bankMovements.filter((movement) => movement.user_id === userId),
@@ -781,6 +800,7 @@ export async function exportBackupForUser(
     profile: (profile.data as Profile | null) ?? null,
     clients: (clients.data as ClientRecord[] | null) ?? [],
     feedbackEntries: (feedbackEntries.data as FeedbackEntryRecord[] | null) ?? [],
+    auditEvents: [],
     invoices: (invoices.data as InvoiceRecord[] | null) ?? [],
     invoiceReminders: (invoiceReminders.data as InvoiceReminderRecord[] | null) ?? [],
     commercialDocuments:
@@ -829,6 +849,10 @@ export async function restoreBackupForUser(
       })),
       feedbackEntries: backup.feedbackEntries.map((entry) => ({
         ...entry,
+        user_id: userId,
+      })),
+      auditEvents: backup.auditEvents.map((event) => ({
+        ...event,
         user_id: userId,
       })),
       invoices: backup.invoices.map((invoice) => ({
@@ -884,6 +908,25 @@ export async function restoreBackupForUser(
         date: entry.date,
         calls_count: entry.calls_count,
       })),
+    });
+
+    await recordLocalAuditEvent({
+      userId,
+      actorType: "system",
+      actorId: "restore",
+      source: "backup",
+      action: "backup_restore_completed",
+      entityType: "backup",
+      entityId: null,
+      afterJson: {
+        schemaVersion: backup.schemaVersion,
+        invoices: backup.invoices.length,
+        auditEvents: backup.auditEvents.length,
+      },
+      contextJson: {
+        appUrl: backup.appUrl,
+        exportedAt: backup.exportedAt,
+      },
     });
 
     return;

@@ -376,6 +376,7 @@ describe("local core persistence", () => {
       profile,
       clients: [],
       feedbackEntries: [],
+      auditEvents: [],
       invoices: [buildRestoredInvoice(7)],
       invoiceReminders: [],
       bankMovements: [],
