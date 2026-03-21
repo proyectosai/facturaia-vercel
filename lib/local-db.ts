@@ -1706,6 +1706,7 @@ function applyStructuredMirrorMutation(
   mutation: StructuredMirrorMutation,
 ) {
   const syncedAt = new Date().toISOString();
+  const currentSnapshotVersion = Number(readSchemaInfo(db, "structured_mirror_snapshot_version") ?? 0);
 
   db.run("BEGIN TRANSACTION;");
 
@@ -1731,6 +1732,11 @@ function applyStructuredMirrorMutation(
     }
 
     upsertSchemaInfo(db, "structured_mirror_schema_version", String(STRUCTURED_MIRROR_SCHEMA_VERSION));
+    upsertSchemaInfo(
+      db,
+      "structured_mirror_snapshot_version",
+      String(currentSnapshotVersion > 0 ? currentSnapshotVersion : 1),
+    );
     upsertSchemaInfo(db, "structured_mirror_last_synced_at", syncedAt);
     upsertSchemaInfo(db, "structured_mirror_status", "ready");
     db.run("COMMIT;");
@@ -1865,13 +1871,56 @@ export async function persistStructuredLocalMutation(
   const db = await openDatabase();
 
   try {
-    if (getStructuredMirrorStatus(db) !== "ready") {
+    if (getStructuredMirrorStatus(db) === "disabled_encrypted") {
       return false;
     }
 
     applyStructuredMirrorMutation(db, mutation);
     await persistDatabase(db);
     return true;
+  } finally {
+    db.close();
+  }
+}
+
+export async function getStructuredLocalCounters(): Promise<StructuredSnapshot["counters"] | null> {
+  const db = await openDatabase();
+
+  try {
+    if (getStructuredMirrorStatus(db) === "disabled_encrypted") {
+      return null;
+    }
+
+    const counterRows = queryRows(
+      db,
+      `
+        SELECT counter_key, counter_value
+        FROM local_counters;
+      `,
+      undefined,
+      (values) => ({
+        key: String(values[0] ?? ""),
+        value: Number(values[1] ?? 0),
+      }),
+    );
+
+    const counters: StructuredSnapshot["counters"] = {
+      invoice_number: 0,
+      quote_number: 0,
+      delivery_note_number: 0,
+    };
+
+    for (const row of counterRows) {
+      if (row.key === "invoice_number") {
+        counters.invoice_number = row.value;
+      } else if (row.key === "quote_number") {
+        counters.quote_number = row.value;
+      } else if (row.key === "delivery_note_number") {
+        counters.delivery_note_number = row.value;
+      }
+    }
+
+    return counters;
   } finally {
     db.close();
   }

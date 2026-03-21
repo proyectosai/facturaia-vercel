@@ -48,16 +48,9 @@ import {
   tryParseEncryptedEnvelope,
 } from "@/lib/local-encryption";
 import {
-  getStructuredLocalClientById,
   getStructuredLocalDailyAiUsage,
-  getStructuredLocalInvoiceById,
-  getStructuredLocalInvoiceByPublicId,
   getStructuredLocalMonthlyInvoiceUsage,
-  listStructuredLocalClientsForUser,
   listStructuredLocalAuditEventsForUser,
-  listStructuredLocalInvoicesForUser,
-  listStructuredLocalInvoiceRemindersForUser,
-  persistStructuredLocalMutation,
   readStructuredLocalCoreSlices,
   getLocalDataDir as getLocalDataDirFromDb,
   readLocalStateText,
@@ -66,6 +59,19 @@ import {
   writeLocalStateText,
 } from "@/lib/local-db";
 import { getLocalRuntimeEnv, getOptionalPublicEnv } from "@/lib/env";
+import {
+  getStructuredClientRepositoryRecord,
+  listStructuredClientRepositoryRecords,
+  saveStructuredClientRepositoryRecord,
+} from "@/lib/local-repositories/clients";
+import {
+  getStructuredInvoiceRepositoryCounters,
+  getStructuredInvoiceRepositoryRecord,
+  getStructuredInvoiceRepositoryRecordByPublicId,
+  listStructuredInvoiceRepositoryRecords,
+  listStructuredInvoiceRepositoryReminders,
+  persistStructuredInvoiceRepositoryState,
+} from "@/lib/local-repositories/invoices";
 import { roundCurrency, toNumber } from "@/lib/utils";
 
 type LocalCoreAuthUser = AppUserRecord & {
@@ -191,20 +197,19 @@ function tryParseLocalCoreData(raw: string) {
 async function readLocalCoreData(): Promise<LocalCoreData> {
   try {
     const raw = await readLocalStateText();
-
-    if (!raw) {
-      return getDefaultLocalData();
-    }
-
-    const encryptedEnvelope = tryParseEncryptedEnvelope(raw);
-
-    const baseData = encryptedEnvelope
-      ? tryParseLocalCoreData(
-          decryptEncryptedEnvelope(encryptedEnvelope, "local-core"),
-        )
-      : tryParseLocalCoreData(raw);
-
     const structuredSlices = await readStructuredLocalCoreSlices();
+
+    const baseData = raw
+      ? (() => {
+          const encryptedEnvelope = tryParseEncryptedEnvelope(raw);
+
+          return encryptedEnvelope
+            ? tryParseLocalCoreData(
+                decryptEncryptedEnvelope(encryptedEnvelope, "local-core"),
+              )
+            : tryParseLocalCoreData(raw);
+        })()
+      : getDefaultLocalData();
 
     if (!structuredSlices) {
       return baseData;
@@ -255,25 +260,13 @@ async function updateLocalCoreData<T>(
   updater: (data: LocalCoreData) => T | Promise<T>,
   options?: {
     structuredSections?: StructuredMirrorSection[];
-    structuredMutation?:
-      | StructuredMirrorMutation
-      | ((data: LocalCoreData, result: T) => StructuredMirrorMutation | null | undefined);
   },
 ) {
   return runLocalCoreMutation(async () => {
     const data = await readLocalCoreData();
     const result = await updater(data);
-    const structuredMutation =
-      typeof options?.structuredMutation === "function"
-        ? (options.structuredMutation(data, result) ?? undefined)
-        : options?.structuredMutation;
-    const skipStructuredMirrorSync = structuredMutation
-      ? await persistStructuredLocalMutation(structuredMutation)
-      : false;
     await writeLocalCoreData(data, {
       structuredSections: options?.structuredSections,
-      structuredMutation: skipStructuredMirrorSync ? undefined : structuredMutation,
-      skipStructuredMirrorSync,
     });
     return result;
   });
@@ -368,8 +361,7 @@ function getLocalLoginAttemptKey(email: string, ipAddress: string | null) {
   return `${getNormalizedEmail(email)}::${ipAddress?.trim() || "local"}`;
 }
 
-function createLocalAuditEvent(
-  data: LocalCoreData,
+function buildLocalAuditEventRecord(
   {
     userId,
     actorType,
@@ -391,10 +383,10 @@ function createLocalAuditEvent(
     entityId: string | null;
     beforeJson?: Record<string, unknown> | null;
     afterJson?: Record<string, unknown> | null;
-    contextJson?: Record<string, unknown>;
+      contextJson?: Record<string, unknown>;
   },
 ) {
-  const entry: LocalAuditEventRecord = {
+  return {
     id: randomUUID(),
     user_id: userId,
     actor_type: actorType,
@@ -407,8 +399,10 @@ function createLocalAuditEvent(
     after_json: afterJson ?? null,
     context_json: contextJson ?? {},
     created_at: nowIso(),
-  };
+  } satisfies LocalAuditEventRecord;
+}
 
+function appendLocalAuditEvent(data: LocalCoreData, entry: LocalAuditEventRecord) {
   data.auditEvents.push(entry);
 
   if (data.auditEvents.length > 5000) {
@@ -416,8 +410,30 @@ function createLocalAuditEvent(
       .sort((left, right) => left.created_at.localeCompare(right.created_at))
       .slice(-5000);
   }
+}
 
+function createLocalAuditEvent(
+  data: LocalCoreData,
+  input: {
+    userId: string | null;
+    actorType: LocalAuditActorType;
+    actorId: string | null;
+    source: LocalAuditSource;
+    action: string;
+    entityType: string;
+    entityId: string | null;
+    beforeJson?: Record<string, unknown> | null;
+    afterJson?: Record<string, unknown> | null;
+    contextJson?: Record<string, unknown>;
+  },
+) {
+  const entry = buildLocalAuditEventRecord(input);
+  appendLocalAuditEvent(data, entry);
   return entry;
+}
+
+function canUseStructuredLocalRepositories() {
+  return !getLocalRuntimeEnv().FACTURAIA_ENCRYPT_LOCAL_DATA;
 }
 
 function buildProfileAuditSnapshot(profile: Profile | null | undefined) {
@@ -1038,7 +1054,7 @@ function sortByPrimaryDateDescending<T extends { created_at: string; updated_at:
 }
 
 export async function listLocalClientsForUser(userId: string) {
-  const structuredClients = await listStructuredLocalClientsForUser(userId);
+  const structuredClients = await listStructuredClientRepositoryRecords(userId);
   if (structuredClients) {
     return structuredClients;
   }
@@ -1050,7 +1066,7 @@ export async function listLocalClientsForUser(userId: string) {
 }
 
 export async function getLocalClientById(userId: string, clientId: string) {
-  const structuredClient = await getStructuredLocalClientById(userId, clientId);
+  const structuredClient = await getStructuredClientRepositoryRecord(userId, clientId);
   if (structuredClient) {
     return structuredClient;
   }
@@ -1161,6 +1177,69 @@ export async function saveLocalClientRecord({
   notes: string | null;
   tags: string[];
 }) {
+  if (canUseStructuredLocalRepositories()) {
+    const timestamp = nowIso();
+    const existing = clientId
+      ? await getStructuredClientRepositoryRecord(userId, clientId)
+      : null;
+    const client: ClientRecord = existing
+      ? {
+          ...existing,
+          relation_kind: relationKind,
+          status,
+          priority,
+          display_name: displayName,
+          first_name: firstName,
+          last_name: lastName,
+          company_name: companyName,
+          email,
+          phone,
+          nif,
+          address,
+          notes,
+          tags,
+          updated_at: timestamp,
+        }
+      : {
+          id: randomUUID(),
+          user_id: userId,
+          relation_kind: relationKind,
+          status,
+          priority,
+          display_name: displayName,
+          first_name: firstName,
+          last_name: lastName,
+          company_name: companyName,
+          email,
+          phone,
+          nif,
+          address,
+          notes,
+          tags,
+          created_at: timestamp,
+          updated_at: timestamp,
+        };
+    const auditEvent = buildLocalAuditEventRecord({
+      userId,
+      actorType: "user",
+      actorId: userId,
+      source: "clients",
+      action: existing ? "client_updated" : "client_created",
+      entityType: "client",
+      entityId: client.id,
+      beforeJson: buildClientAuditSnapshot(existing),
+      afterJson: buildClientAuditSnapshot(client),
+    });
+    const saved = await saveStructuredClientRepositoryRecord({
+      client,
+      auditEvent,
+    });
+
+    if (saved) {
+      return saved;
+    }
+  }
+
   return updateLocalCoreData(async (data) => {
     const timestamp = nowIso();
     const existing = clientId
@@ -1234,15 +1313,11 @@ export async function saveLocalClientRecord({
     return client;
   }, {
     structuredSections: ["clients", "auditEvents"],
-    structuredMutation: (data, result) => ({
-      clients: result ? [result] : [],
-      auditEvents: data.auditEvents.at(-1) ? [data.auditEvents.at(-1)!] : [],
-    }),
   });
 }
 
 export async function listLocalInvoicesForUser(userId: string) {
-  const structuredInvoices = await listStructuredLocalInvoicesForUser(userId);
+  const structuredInvoices = await listStructuredInvoiceRepositoryRecords(userId);
   if (structuredInvoices) {
     return structuredInvoices;
   }
@@ -1260,7 +1335,7 @@ export async function listLocalInvoicesForUser(userId: string) {
 }
 
 export async function getLocalInvoiceById(userId: string, invoiceId: string) {
-  const structuredInvoice = await getStructuredLocalInvoiceById(userId, invoiceId);
+  const structuredInvoice = await getStructuredInvoiceRepositoryRecord(userId, invoiceId);
   if (structuredInvoice) {
     return structuredInvoice;
   }
@@ -1270,7 +1345,7 @@ export async function getLocalInvoiceById(userId: string, invoiceId: string) {
 }
 
 export async function getLocalInvoiceByPublicId(publicId: string) {
-  const structuredInvoice = await getStructuredLocalInvoiceByPublicId(publicId);
+  const structuredInvoice = await getStructuredInvoiceRepositoryRecordByPublicId(publicId);
   if (structuredInvoice) {
     return structuredInvoice;
   }
@@ -1302,6 +1377,67 @@ export async function createLocalInvoiceRecord({
   totals: InvoiceTotals;
   issuerLogoUrl: string | null;
 }) {
+  if (canUseStructuredLocalRepositories()) {
+    const timestamp = nowIso();
+    const counters =
+      (await getStructuredInvoiceRepositoryCounters()) ?? getDefaultLocalData().counters;
+    const invoiceNumber = counters.invoice_number + 1;
+    const nextCounters = {
+      ...counters,
+      invoice_number: invoiceNumber,
+    };
+    const invoice: InvoiceRecord = {
+      id: randomUUID(),
+      user_id: userId,
+      public_id: randomUUID(),
+      invoice_number: invoiceNumber,
+      issue_date: payload.issueDate,
+      due_date: payload.dueDate,
+      issuer_name: payload.issuerName,
+      issuer_nif: payload.issuerNif,
+      issuer_address: payload.issuerAddress,
+      issuer_logo_url: issuerLogoUrl,
+      client_name: payload.clientName,
+      client_nif: payload.clientNif,
+      client_address: payload.clientAddress,
+      client_email: payload.clientEmail,
+      line_items: lineItems,
+      subtotal: totals.subtotal,
+      vat_total: totals.vatTotal,
+      irpf_rate: totals.irpfRate,
+      irpf_amount: totals.irpfAmount,
+      grand_total: totals.grandTotal,
+      amount_paid: 0,
+      payment_status: "pending",
+      paid_at: null,
+      last_reminder_at: null,
+      reminder_count: 0,
+      collection_notes: null,
+      vat_breakdown: totals.vatBreakdown,
+      created_at: timestamp,
+      updated_at: timestamp,
+    };
+    const auditEvent = buildLocalAuditEventRecord({
+      userId,
+      actorType: "user",
+      actorId: userId,
+      source: "invoices",
+      action: "invoice_created",
+      entityType: "invoice",
+      entityId: invoice.id,
+      afterJson: buildInvoiceAuditSnapshot(invoice),
+    });
+    const saved = await persistStructuredInvoiceRepositoryState({
+      invoices: [invoice],
+      auditEvents: [auditEvent],
+      counters: nextCounters,
+    });
+
+    if (saved) {
+      return invoice;
+    }
+  }
+
   return updateLocalCoreData(async (data) => {
     const timestamp = nowIso();
     const invoiceNumber = data.counters.invoice_number + 1;
@@ -1353,11 +1489,6 @@ export async function createLocalInvoiceRecord({
     return invoice;
   }, {
     structuredSections: ["invoices", "auditEvents", "counters"],
-    structuredMutation: (data, result) => ({
-      invoices: result ? [result] : [],
-      auditEvents: data.auditEvents.at(-1) ? [data.auditEvents.at(-1)!] : [],
-      counters: data.counters,
-    }),
   });
 }
 
@@ -2124,6 +2255,81 @@ export async function updateLocalInvoicePaymentStates(
   invoiceIds: string[],
   actionKind: "mark_paid" | "reopen",
 ) {
+  if (canUseStructuredLocalRepositories()) {
+    const uniqueInvoiceIds = Array.from(
+      new Set(invoiceIds.map((invoiceId) => invoiceId.trim()).filter(Boolean)),
+    );
+
+    if (uniqueInvoiceIds.length === 0) {
+      return [];
+    }
+
+    const allInvoices = await listStructuredInvoiceRepositoryRecords(userId);
+    if (allInvoices) {
+      const beforeSnapshots = new Map<string, ReturnType<typeof buildInvoiceAuditSnapshot>>();
+      const targetInvoices = allInvoices.filter((invoice) =>
+        uniqueInvoiceIds.includes(invoice.id),
+      );
+
+      if (targetInvoices.length > 0) {
+        targetInvoices.forEach((invoice) => {
+          beforeSnapshots.set(invoice.id, buildInvoiceAuditSnapshot(invoice));
+          invoice.updated_at = nowIso();
+
+          if (actionKind === "mark_paid") {
+            invoice.payment_status = "paid";
+            invoice.amount_paid = roundCurrency(toNumber(invoice.grand_total));
+            invoice.paid_at = invoice.updated_at;
+          } else {
+            invoice.payment_status = "pending";
+            invoice.amount_paid = 0;
+            invoice.paid_at = null;
+          }
+        });
+
+        let resolvedUpdated = targetInvoices;
+
+        if (actionKind === "reopen") {
+          const compatibilityData = await readLocalCoreData();
+          compatibilityData.invoices = compatibilityData.invoices.map((invoice) => {
+            const structured = targetInvoices.find((candidate) => candidate.id === invoice.id);
+            return structured ?? invoice;
+          });
+          resolvedUpdated = syncLocalInvoicePaymentStatusInData(
+            compatibilityData,
+            userId,
+            targetInvoices.map((invoice) => invoice.id),
+          );
+        }
+
+        const auditEvents = resolvedUpdated.map((invoice) =>
+          buildLocalAuditEventRecord({
+            userId,
+            actorType: "user",
+            actorId: userId,
+            source: "collections",
+            action:
+              actionKind === "mark_paid"
+                ? "invoice_payment_marked_paid"
+                : "invoice_payment_reopened",
+            entityType: "invoice",
+            entityId: invoice.id,
+            beforeJson: beforeSnapshots.get(invoice.id) ?? null,
+            afterJson: buildInvoiceAuditSnapshot(invoice),
+          }),
+        );
+        const saved = await persistStructuredInvoiceRepositoryState({
+          invoices: resolvedUpdated,
+          auditEvents,
+        });
+
+        if (saved) {
+          return resolvedUpdated;
+        }
+      }
+    }
+  }
+
   return updateLocalCoreData(async (data) => {
     const uniqueInvoiceIds = Array.from(
       new Set(invoiceIds.map((invoiceId) => invoiceId.trim()).filter(Boolean)),
@@ -2200,10 +2406,6 @@ export async function updateLocalInvoicePaymentStates(
     return updated;
   }, {
     structuredSections: ["invoices", "auditEvents"],
-    structuredMutation: (data, result) => ({
-      invoices: result,
-      auditEvents: result.length > 0 ? data.auditEvents.slice(-result.length) : [],
-    }),
   });
 }
 
@@ -2750,7 +2952,7 @@ export async function markLocalMailThreadRead(userId: string, threadId: string) 
 }
 
 export async function listLocalInvoiceRemindersForUser(userId: string) {
-  const mirrored = await listStructuredLocalInvoiceRemindersForUser(userId);
+  const mirrored = await listStructuredInvoiceRepositoryReminders(userId);
 
   if (mirrored) {
     return mirrored;
@@ -2777,6 +2979,42 @@ export async function recordLocalInvoiceReminder({
   triggerMode: InvoiceReminderRecord["trigger_mode"];
   batchKey: string | null;
 }) {
+  if (canUseStructuredLocalRepositories()) {
+    const invoice = await getStructuredInvoiceRepositoryRecord(userId, invoiceId);
+
+    if (invoice) {
+      const timestamp = nowIso();
+      const updatedInvoice: InvoiceRecord = {
+        ...invoice,
+        last_reminder_at: timestamp,
+        reminder_count: (invoice.reminder_count ?? 0) + 1,
+        updated_at: timestamp,
+      };
+      const reminder: InvoiceReminderRecord = {
+        id: randomUUID(),
+        user_id: userId,
+        invoice_id: invoiceId,
+        delivery_channel: "email",
+        trigger_mode: triggerMode,
+        batch_key: batchKey,
+        recipient_email: recipientEmail,
+        subject,
+        status: "sent",
+        error_message: null,
+        sent_at: timestamp,
+        created_at: timestamp,
+      };
+      const saved = await persistStructuredInvoiceRepositoryState({
+        invoices: [updatedInvoice],
+        invoiceReminders: [reminder],
+      });
+
+      if (saved) {
+        return reminder;
+      }
+    }
+  }
+
   return updateLocalCoreData(async (data) => {
     const invoice = data.invoices.find(
       (candidate) => candidate.user_id === userId && candidate.id === invoiceId,
@@ -2810,12 +3048,6 @@ export async function recordLocalInvoiceReminder({
     return reminder;
   }, {
     structuredSections: ["invoices", "invoiceReminders"],
-    structuredMutation: (data, result) => ({
-      invoices: data.invoices.filter(
-        (candidate) => candidate.user_id === userId && candidate.id === invoiceId,
-      ),
-      invoiceReminders: result ? [result] : [],
-    }),
   });
 }
 

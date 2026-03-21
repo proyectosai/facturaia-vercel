@@ -479,15 +479,53 @@ describe("local core persistence", () => {
       { structuredMutation: {} },
     );
 
+    const secondClient = await saveLocalClientRecord({
+      userId,
+      relationKind: "client",
+      status: "active",
+      priority: "high",
+      displayName: "Empresa Segunda S.L.",
+      firstName: null,
+      lastName: null,
+      companyName: "Empresa Segunda S.L.",
+      email: "admin@segunda.es",
+      phone: "+34 600888999",
+      nif: "B66666666",
+      address: "Calle Segunda 2, Madrid",
+      notes: "Cliente creado con snapshot degradado",
+      tags: ["sqlite-primary-2"],
+    });
+
+    const secondInvoice = await createLocalInvoiceRecord({
+      userId,
+      payload: {
+        issueDate: "2026-03-25",
+        dueDate: "2026-04-01",
+        issuerName: "Asesoria Martin Fiscal",
+        issuerNif: "B12345678",
+        issuerAddress: "Calle Alcala 100, Madrid",
+        clientName: secondClient.display_name,
+        clientNif: secondClient.nif ?? "",
+        clientAddress: secondClient.address ?? "",
+        clientEmail: secondClient.email ?? "",
+      },
+      lineItems: buildLineItems(),
+      totals: buildTotals(),
+      issuerLogoUrl: null,
+    });
+
     const recovered = await getLocalCoreSnapshot();
 
-    expect(recovered.clients).toHaveLength(1);
-    expect(recovered.invoices).toHaveLength(1);
+    expect(recovered.clients).toHaveLength(2);
+    expect(recovered.invoices).toHaveLength(2);
     expect(recovered.invoiceReminders).toHaveLength(1);
     expect(recovered.auditEvents.length).toBeGreaterThan(0);
-    expect(recovered.counters.invoice_number).toBe(1);
-    expect(recovered.clients[0]?.display_name).toBe("Empresa Fuente Principal S.L.");
-    expect(recovered.invoices[0]?.client_name).toBe("Empresa Fuente Principal S.L.");
+    expect(recovered.counters.invoice_number).toBe(2);
+    expect(recovered.clients.some((entry) => entry.display_name === "Empresa Fuente Principal S.L.")).toBe(true);
+    expect(recovered.clients.some((entry) => entry.display_name === "Empresa Segunda S.L.")).toBe(true);
+    expect(recovered.invoices.some((entry) => entry.client_name === "Empresa Fuente Principal S.L.")).toBe(true);
+    expect(recovered.invoices.some((entry) => entry.client_name === "Empresa Segunda S.L.")).toBe(true);
+    expect(secondInvoice.invoice_number).toBe(2);
   });
 
   test("stores feedback entries locally and updates their status", async () => {
