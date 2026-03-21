@@ -48,6 +48,9 @@ import {
   tryParseEncryptedEnvelope,
 } from "@/lib/local-encryption";
 import {
+  getStructuredLocalDailyAiUsage,
+  getStructuredLocalMonthlyInvoiceUsage,
+  listStructuredLocalAuditEventsForUser,
   getLocalDataDir as getLocalDataDirFromDb,
   readLocalStateText,
   writeLocalStateText,
@@ -594,6 +597,12 @@ export function verifyLocalSessionToken(token: string | undefined | null) {
 }
 
 export async function listLocalAuditEventsForUser(userId: string, limit = 25) {
+  const mirrored = await listStructuredLocalAuditEventsForUser(userId, limit);
+
+  if (mirrored) {
+    return mirrored;
+  }
+
   const data = await readLocalCoreData();
   return [...data.auditEvents]
     .filter((event) => event.user_id === userId)
@@ -2718,11 +2727,23 @@ export async function recordLocalInvoiceReminder({
 }
 
 export async function getLocalMonthlyInvoiceUsage(userId: string, monthStartIso: string) {
+  const mirrored = await getStructuredLocalMonthlyInvoiceUsage(userId, monthStartIso);
+
+  if (mirrored !== null) {
+    return mirrored;
+  }
+
   const invoices = await listLocalInvoicesForUser(userId);
   return invoices.filter((invoice) => invoice.issue_date >= monthStartIso).length;
 }
 
 export async function getLocalDailyAiUsage(userId: string, usageDate: string) {
+  const mirrored = await getStructuredLocalDailyAiUsage(userId, usageDate);
+
+  if (mirrored !== null) {
+    return mirrored;
+  }
+
   const data = await readLocalCoreData();
   return data.aiUsage.find(
     (entry) => entry.user_id === userId && entry.date === usageDate,

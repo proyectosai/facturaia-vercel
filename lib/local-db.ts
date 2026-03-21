@@ -4,6 +4,7 @@ import path from "node:path";
 import { promises as fs } from "node:fs";
 
 import initSqlJs, { type Database, type SqlJsStatic } from "sql.js";
+import type { LocalAuditEventRecord } from "@/lib/types";
 
 let sqlJsPromise: Promise<SqlJsStatic> | null = null;
 
@@ -65,6 +66,8 @@ export type LocalStructuredMirrorSummary = {
     counters: number;
   };
 };
+
+type StructuredMirrorStatus = "ready" | "disabled_encrypted" | "empty";
 
 const STRUCTURED_MIRROR_TABLES = [
   "local_users",
@@ -651,6 +654,45 @@ function readSchemaInfo(db: Database, key: string) {
   return typeof value === "string" ? value : null;
 }
 
+function getStructuredMirrorStatus(db: Database): StructuredMirrorStatus {
+  return (
+    (readSchemaInfo(db, "structured_mirror_status") as StructuredMirrorStatus | null) ??
+    "empty"
+  );
+}
+
+function parseJsonObjectField(value: unknown) {
+  if (typeof value !== "string" || !value) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return parsed && typeof parsed === "object"
+      ? (parsed as Record<string, unknown>)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function mapAuditEventRow(values: unknown[]): LocalAuditEventRecord {
+  return {
+    id: String(values[0] ?? ""),
+    user_id: values[1] === null ? null : String(values[1] ?? ""),
+    actor_type: String(values[2] ?? "system") as LocalAuditEventRecord["actor_type"],
+    actor_id: values[3] === null ? null : String(values[3] ?? ""),
+    source: String(values[4] ?? "system") as LocalAuditEventRecord["source"],
+    action: String(values[5] ?? ""),
+    entity_type: String(values[6] ?? ""),
+    entity_id: values[7] === null ? null : String(values[7] ?? ""),
+    before_json: parseJsonObjectField(values[8]),
+    after_json: parseJsonObjectField(values[9]),
+    context_json: parseJsonObjectField(values[10]) ?? {},
+    created_at: String(values[11] ?? ""),
+  };
+}
+
 function clearStructuredMirrorTables(db: Database) {
   for (const tableName of STRUCTURED_MIRROR_TABLES) {
     db.run(`DELETE FROM ${tableName};`);
@@ -1235,12 +1277,7 @@ export async function inspectLocalStructuredMirror(): Promise<LocalStructuredMir
       schemaVersion: Number(readSchemaInfo(db, "structured_mirror_schema_version") ?? "0") || null,
       snapshotVersion: Number(readSchemaInfo(db, "structured_mirror_snapshot_version") ?? "0") || null,
       lastSyncedAt: readSchemaInfo(db, "structured_mirror_last_synced_at"),
-      status:
-        (readSchemaInfo(db, "structured_mirror_status") as
-          | "ready"
-          | "disabled_encrypted"
-          | "empty"
-          | null) ?? "empty",
+      status: getStructuredMirrorStatus(db),
       counts: {
         users: getTableCount(db, "local_users"),
         profiles: getTableCount(db, "local_profiles"),
@@ -1267,6 +1304,102 @@ export async function inspectLocalStructuredMirror(): Promise<LocalStructuredMir
         counters: getTableCount(db, "local_counters"),
       },
     };
+  } finally {
+    db.close();
+  }
+}
+
+export async function listStructuredLocalAuditEventsForUser(
+  userId: string,
+  limit = 25,
+): Promise<LocalAuditEventRecord[] | null> {
+  const db = await openDatabase();
+
+  try {
+    if (getStructuredMirrorStatus(db) !== "ready") {
+      return null;
+    }
+
+    const safeLimit = Math.max(1, Math.trunc(limit));
+    const result = db.exec(
+      `
+        SELECT
+          id,
+          user_id,
+          actor_type,
+          actor_id,
+          source,
+          action,
+          entity_type,
+          entity_id,
+          before_json,
+          after_json,
+          context_json,
+          created_at
+        FROM local_audit_events
+        WHERE user_id = ?
+        ORDER BY created_at DESC
+        LIMIT ${safeLimit};
+      `,
+      [userId],
+    );
+
+    return (result[0]?.values ?? []).map((values) => mapAuditEventRow(values));
+  } finally {
+    db.close();
+  }
+}
+
+export async function getStructuredLocalMonthlyInvoiceUsage(
+  userId: string,
+  monthStartIso: string,
+): Promise<number | null> {
+  const db = await openDatabase();
+
+  try {
+    if (getStructuredMirrorStatus(db) !== "ready") {
+      return null;
+    }
+
+    const result = db.exec(
+      `
+        SELECT COUNT(*)
+        FROM local_invoices
+        WHERE user_id = ? AND issue_date >= ?;
+      `,
+      [userId, monthStartIso],
+    );
+
+    const value = result[0]?.values?.[0]?.[0];
+    return typeof value === "number" ? value : Number(value ?? 0);
+  } finally {
+    db.close();
+  }
+}
+
+export async function getStructuredLocalDailyAiUsage(
+  userId: string,
+  usageDate: string,
+): Promise<number | null> {
+  const db = await openDatabase();
+
+  try {
+    if (getStructuredMirrorStatus(db) !== "ready") {
+      return null;
+    }
+
+    const result = db.exec(
+      `
+        SELECT calls_count
+        FROM local_ai_usage
+        WHERE user_id = ? AND date = ?
+        LIMIT 1;
+      `,
+      [userId, usageDate],
+    );
+
+    const value = result[0]?.values?.[0]?.[0];
+    return typeof value === "number" ? value : Number(value ?? 0);
   } finally {
     db.close();
   }

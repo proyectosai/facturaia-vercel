@@ -10,10 +10,12 @@ import {
   createLocalExpenseRecord,
   createLocalInvoiceRecord,
   getLocalCoreSnapshot,
+  incrementLocalDailyAiUsage,
   listLocalFeedbackEntriesForUser,
   getLocalPublicSignatureRequestByToken,
   linkLocalCommercialDocumentToInvoice,
   markLocalSignatureRequestViewed,
+  recordLocalAuditEvent,
   recordLocalInvoiceReminder,
   replaceLocalUserData,
   respondToLocalDocumentSignatureRequest,
@@ -24,6 +26,9 @@ import {
 } from "@/lib/local-core";
 import {
   getLegacyLocalJsonFilePath,
+  getStructuredLocalDailyAiUsage,
+  getStructuredLocalMonthlyInvoiceUsage,
+  listStructuredLocalAuditEventsForUser,
   getLocalDatabaseFilePath,
   inspectLocalStructuredMirror,
 } from "@/lib/local-db";
@@ -218,6 +223,51 @@ describe("local core persistence", () => {
     expect(reopened?.review_status).toBe("draft");
     expect(snapshot.expenses).toHaveLength(1);
     expect(snapshot.expenses[0]?.vendor_name).toBe("Gestoria Externa SL");
+  });
+
+  test("serves audit and usage reads from the structured mirror", async () => {
+    await createLocalInvoiceRecord({
+      userId,
+      payload: {
+        issueDate: "2026-03-20",
+        dueDate: "2026-03-27",
+        issuerName: "Asesoria Martin Fiscal",
+        issuerNif: "B12345678",
+        issuerAddress: "Calle Alcala 100, Madrid",
+        clientName: "Empresa Norte S.L.",
+        clientNif: "B76543210",
+        clientAddress: "Avenida de Europa 15, Pozuelo",
+        clientEmail: "admin@empresanorte.es",
+      },
+      lineItems: buildLineItems(),
+      totals: buildTotals(),
+      issuerLogoUrl: null,
+    });
+
+    await incrementLocalDailyAiUsage(userId, "2026-03-20", null);
+    await recordLocalAuditEvent({
+      userId,
+      actorType: "user",
+      actorId: userId,
+      source: "system",
+      action: "mirror_probe",
+      entityType: "qa",
+      entityId: "mirror",
+      afterJson: {
+        ok: true,
+      },
+    });
+
+    const monthlyInvoices = await getStructuredLocalMonthlyInvoiceUsage(
+      userId,
+      "2026-03-01",
+    );
+    const dailyAiUsage = await getStructuredLocalDailyAiUsage(userId, "2026-03-20");
+    const auditEvents = await listStructuredLocalAuditEventsForUser(userId, 10);
+
+    expect(monthlyInvoices).toBe(1);
+    expect(dailyAiUsage).toBe(1);
+    expect(auditEvents?.some((event) => event.action === "mirror_probe")).toBe(true);
   });
 
   test("keeps a relational SQLite mirror in sync with local snapshot writes", async () => {
