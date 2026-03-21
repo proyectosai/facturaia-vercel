@@ -708,6 +708,61 @@ describe("local core persistence", () => {
     expect(snapshot.commercialDocuments[0]?.status).toBe("accepted");
   });
 
+  test("recovers commercial documents and signature requests from sqlite when snapshot degrades", async () => {
+    const document = await createLocalCommercialDocumentRecord({
+      userId,
+      input: buildCommercialDocumentInput("quote"),
+    });
+
+    await createLocalDocumentSignatureRequest({
+      userId,
+      documentId: document.id,
+      documentType: "quote",
+      requestKind: "quote_acceptance",
+      publicToken: "token-commercial-recovery",
+      requestNote: "Revisa este presupuesto",
+      requestedAt: "2026-03-20T10:00:00.000Z",
+      expiresAt: "2026-04-19T23:59:59.000Z",
+      evidence: {
+        documentSnapshot: {
+          hash: "abc123",
+        },
+      },
+    });
+
+    const staleSnapshot = await getLocalCoreSnapshot();
+    staleSnapshot.commercialDocuments = [];
+    staleSnapshot.documentSignatureRequests = [];
+    staleSnapshot.counters.quote_number = 0;
+    staleSnapshot.counters.delivery_note_number = 0;
+
+    await writeLocalStateText(
+      JSON.stringify(staleSnapshot, null, 2),
+      JSON.stringify(staleSnapshot, null, 2),
+      { structuredMutation: {} },
+    );
+
+    const recovered = await getLocalCoreSnapshot();
+    const recoveredPublicRequest = await getLocalPublicSignatureRequestByToken(
+      "token-commercial-recovery",
+    );
+    const nextQuote = await createLocalCommercialDocumentRecord({
+      userId,
+      input: buildCommercialDocumentInput("quote"),
+    });
+
+    expect(recovered.commercialDocuments).toHaveLength(1);
+    expect(recovered.commercialDocuments[0]).toMatchObject({
+      id: document.id,
+      document_type: "quote",
+      document_number: 1,
+    });
+    expect(recovered.documentSignatureRequests).toHaveLength(1);
+    expect(recoveredPublicRequest?.document_id).toBe(document.id);
+    expect(recoveredPublicRequest?.status).toBe("pending");
+    expect(nextQuote.document_number).toBe(2);
+  });
+
   test("converts accepted quote to invoice and keeps payment/reminder state", async () => {
     const document = await createLocalCommercialDocumentRecord({
       userId,

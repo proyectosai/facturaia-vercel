@@ -13,6 +13,9 @@ import {
   serializeBackupPayload,
 } from "@/lib/backups";
 import {
+  writeLocalStateText,
+} from "@/lib/local-db";
+import {
   createStudyNoteForUser,
   listStudyDocumentsForUser,
 } from "@/lib/document-study";
@@ -253,6 +256,70 @@ describe("local backup export and restore", () => {
     expect(comparison.mismatches.some((item) => item.field.endsWith(".payment_status"))).toBe(true);
     expect(comparison.mismatches.some((item) => item.field.endsWith(".amount_paid"))).toBe(true);
     expect(comparison.mismatches.some((item) => item.field.endsWith(".reminder_count"))).toBe(true);
+  });
+
+  test("exports commercial documents and signatures from sqlite when snapshot degrades", async () => {
+    const document = await createLocalCommercialDocumentRecord({
+      userId,
+      input: {
+        document_type: "quote",
+        status: "draft",
+        issue_date: "2026-03-20",
+        valid_until: "2026-04-19",
+        issuer_name: "Asesoria Martin Fiscal",
+        issuer_nif: "B12345678",
+        issuer_address: "Calle Alcala 100, Madrid",
+        issuer_logo_url: null,
+        client_name: "Empresa Norte S.L.",
+        client_nif: "B76543210",
+        client_address: "Avenida de Europa 15, Pozuelo",
+        client_email: "admin@empresanorte.es",
+        line_items: buildLineItems(),
+        vat_breakdown: buildTotals().vatBreakdown,
+        subtotal: 350,
+        vat_total: 73.5,
+        irpf_rate: 0,
+        irpf_amount: 0,
+        grand_total: 423.5,
+        notes: "Documento local persistente",
+        converted_invoice_id: null,
+      },
+    });
+
+    await createLocalDocumentSignatureRequest({
+      userId,
+      documentId: document.id,
+      documentType: "quote",
+      requestKind: "quote_acceptance",
+      publicToken: "backup-signature-token",
+      requestNote: "Firma este presupuesto",
+      requestedAt: "2026-03-20T10:00:00.000Z",
+      expiresAt: "2026-04-19T23:59:59.000Z",
+      evidence: {
+        documentSnapshot: {
+          hash: "backup-hash",
+        },
+      },
+    });
+
+    const staleSnapshot = await getLocalCoreSnapshot();
+    staleSnapshot.commercialDocuments = [];
+    staleSnapshot.documentSignatureRequests = [];
+
+    await writeLocalStateText(
+      JSON.stringify(staleSnapshot, null, 2),
+      JSON.stringify(staleSnapshot, null, 2),
+      { structuredMutation: {} },
+    );
+
+    const backup = await exportBackupForUser(userId, email);
+
+    expect(backup.commercialDocuments).toHaveLength(1);
+    expect(backup.commercialDocuments[0]?.id).toBe(document.id);
+    expect(backup.documentSignatureRequests).toHaveLength(1);
+    expect(backup.documentSignatureRequests[0]?.public_token).toBe(
+      "backup-signature-token",
+    );
   });
 
   test("exports local data and restores it into a fresh local directory", async () => {
