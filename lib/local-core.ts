@@ -62,6 +62,7 @@ import { getLocalRuntimeEnv, getOptionalPublicEnv } from "@/lib/env";
 import {
   getStructuredClientRepositoryRecord,
   listStructuredClientRepositoryRecords,
+  replaceStructuredClientRepositoryRecords,
   saveStructuredClientRepositoryRecord,
 } from "@/lib/local-repositories/clients";
 import {
@@ -71,6 +72,7 @@ import {
   listStructuredInvoiceRepositoryRecords,
   listStructuredInvoiceRepositoryReminders,
   persistStructuredInvoiceRepositoryState,
+  replaceStructuredInvoiceRepositoryStateForUser,
 } from "@/lib/local-repositories/invoices";
 import { roundCurrency, toNumber } from "@/lib/utils";
 
@@ -2200,6 +2202,20 @@ function syncLocalInvoicePaymentStatusInData(
   userId: string,
   invoiceIds: string[],
 ) {
+  return syncLocalInvoicePaymentStatusWithMovements(
+    data.invoices,
+    data.bankMovements,
+    userId,
+    invoiceIds,
+  );
+}
+
+function syncLocalInvoicePaymentStatusWithMovements(
+  invoices: InvoiceRecord[],
+  bankMovements: BankMovementRecord[],
+  userId: string,
+  invoiceIds: string[],
+) {
   const uniqueInvoiceIds = Array.from(
     new Set(invoiceIds.map((invoiceId) => invoiceId.trim()).filter(Boolean)),
   );
@@ -2211,7 +2227,7 @@ function syncLocalInvoicePaymentStatusInData(
   const synced: InvoiceRecord[] = [];
 
   for (const invoiceId of uniqueInvoiceIds) {
-    const invoice = data.invoices.find(
+    const invoice = invoices.find(
       (candidate) => candidate.user_id === userId && candidate.id === invoiceId,
     );
 
@@ -2219,7 +2235,7 @@ function syncLocalInvoicePaymentStatusInData(
       continue;
     }
 
-    const matchedMovements = data.bankMovements.filter(
+    const matchedMovements = bankMovements.filter(
       (movement) =>
         movement.user_id === userId &&
         movement.status === "reconciled" &&
@@ -2290,13 +2306,10 @@ export async function updateLocalInvoicePaymentStates(
         let resolvedUpdated = targetInvoices;
 
         if (actionKind === "reopen") {
-          const compatibilityData = await readLocalCoreData();
-          compatibilityData.invoices = compatibilityData.invoices.map((invoice) => {
-            const structured = targetInvoices.find((candidate) => candidate.id === invoice.id);
-            return structured ?? invoice;
-          });
-          resolvedUpdated = syncLocalInvoicePaymentStatusInData(
-            compatibilityData,
+          const bankMovements = await listLocalBankMovementsForUser(userId);
+          resolvedUpdated = syncLocalInvoicePaymentStatusWithMovements(
+            targetInvoices,
+            bankMovements,
             userId,
             targetInvoices.map((invoice) => invoice.id),
           );
@@ -3140,7 +3153,8 @@ export async function replaceLocalUserData({
   expenses: ExpenseRecord[];
   aiUsage: LocalAiUsage[];
 }) {
-  return updateLocalCoreData(async (data) => {
+  return runLocalCoreMutation(async () => {
+    const data = await readLocalCoreData();
     const timestamp = nowIso();
     const existingUser = data.users.find((candidate) => candidate.id === userId);
 
@@ -3304,6 +3318,20 @@ export async function replaceLocalUserData({
     data.counters.delivery_note_number = data.commercialDocuments
       .filter((document) => document.document_type === "delivery_note")
       .reduce((max, document) => Math.max(max, document.document_number), 0);
+    const structuredPrimaryPersisted =
+      canUseStructuredLocalRepositories() &&
+      (await replaceStructuredClientRepositoryRecords(userId, data.clients.filter((candidate) => candidate.user_id === userId))) &&
+      (await replaceStructuredInvoiceRepositoryStateForUser({
+        userId,
+        invoices: data.invoices.filter((candidate) => candidate.user_id === userId),
+        invoiceReminders: data.invoiceReminders.filter((candidate) => candidate.user_id === userId),
+        auditEvents: data.auditEvents.filter((candidate) => candidate.user_id === userId),
+        counters: data.counters,
+      }));
+
+    await writeLocalCoreData(data, {
+      skipStructuredMirrorSync: structuredPrimaryPersisted,
+    });
   });
 }
 

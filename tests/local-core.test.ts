@@ -723,6 +723,19 @@ describe("local core persistence", () => {
       aiUsage: [],
     });
 
+    const staleSnapshot = await getLocalCoreSnapshot();
+    staleSnapshot.clients = [];
+    staleSnapshot.invoices = [];
+    staleSnapshot.invoiceReminders = [];
+    staleSnapshot.auditEvents = [];
+    staleSnapshot.counters.invoice_number = 0;
+
+    await writeLocalStateText(
+      JSON.stringify(staleSnapshot, null, 2),
+      JSON.stringify(staleSnapshot, null, 2),
+      { structuredMutation: {} },
+    );
+
     const nextInvoice = await createLocalInvoiceRecord({
       userId,
       payload: {

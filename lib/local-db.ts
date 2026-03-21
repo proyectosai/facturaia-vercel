@@ -1052,6 +1052,10 @@ function upsertStructuredCounters(db: Database, counters: StructuredSnapshot["co
   );
 }
 
+function deleteRowsByUserId(db: Database, tableName: string, userId: string) {
+  db.run(`DELETE FROM ${tableName} WHERE user_id = ?;`, [userId]);
+}
+
 function readSchemaInfo(db: Database, key: string) {
   const result = db.exec(
     "SELECT info_value FROM local_schema_info WHERE info_key = ? LIMIT 1;",
@@ -1876,6 +1880,115 @@ export async function persistStructuredLocalMutation(
     }
 
     applyStructuredMirrorMutation(db, mutation);
+    await persistDatabase(db);
+    return true;
+  } finally {
+    db.close();
+  }
+}
+
+export async function replaceStructuredLocalClientsForUser(
+  userId: string,
+  clients: ClientRecord[],
+): Promise<boolean> {
+  const db = await openDatabase();
+
+  try {
+    if (getStructuredMirrorStatus(db) === "disabled_encrypted") {
+      return false;
+    }
+
+    const syncedAt = new Date().toISOString();
+    const currentSnapshotVersion = Number(readSchemaInfo(db, "structured_mirror_snapshot_version") ?? 0);
+    db.run("BEGIN TRANSACTION;");
+
+    try {
+      deleteRowsByUserId(db, "local_clients", userId);
+
+      if (clients.length > 0) {
+        upsertStructuredClientRows(db, clients);
+      }
+
+      upsertSchemaInfo(db, "structured_mirror_schema_version", String(STRUCTURED_MIRROR_SCHEMA_VERSION));
+      upsertSchemaInfo(
+        db,
+        "structured_mirror_snapshot_version",
+        String(currentSnapshotVersion > 0 ? currentSnapshotVersion : 1),
+      );
+      upsertSchemaInfo(db, "structured_mirror_last_synced_at", syncedAt);
+      upsertSchemaInfo(db, "structured_mirror_status", "ready");
+      db.run("COMMIT;");
+    } catch (error) {
+      db.run("ROLLBACK;");
+      throw error;
+    }
+
+    await persistDatabase(db);
+    return true;
+  } finally {
+    db.close();
+  }
+}
+
+export async function replaceStructuredLocalInvoicesForUser({
+  userId,
+  invoices,
+  invoiceReminders,
+  auditEvents,
+  counters,
+}: {
+  userId: string;
+  invoices: InvoiceRecord[];
+  invoiceReminders: InvoiceReminderRecord[];
+  auditEvents?: LocalAuditEventRecord[];
+  counters?: StructuredSnapshot["counters"];
+}): Promise<boolean> {
+  const db = await openDatabase();
+
+  try {
+    if (getStructuredMirrorStatus(db) === "disabled_encrypted") {
+      return false;
+    }
+
+    const syncedAt = new Date().toISOString();
+    const currentSnapshotVersion = Number(readSchemaInfo(db, "structured_mirror_snapshot_version") ?? 0);
+    db.run("BEGIN TRANSACTION;");
+
+    try {
+      deleteRowsByUserId(db, "local_invoices", userId);
+      deleteRowsByUserId(db, "local_invoice_reminders", userId);
+      deleteRowsByUserId(db, "local_audit_events", userId);
+
+      if (invoices.length > 0) {
+        upsertStructuredInvoiceRows(db, invoices);
+      }
+
+      if (invoiceReminders.length > 0) {
+        upsertStructuredInvoiceReminderRows(db, invoiceReminders);
+      }
+
+      if (auditEvents?.length) {
+        upsertStructuredAuditEventRows(db, auditEvents);
+      }
+
+      if (counters) {
+        upsertStructuredCounters(db, counters);
+      }
+
+      upsertSchemaInfo(db, "structured_mirror_schema_version", String(STRUCTURED_MIRROR_SCHEMA_VERSION));
+      upsertSchemaInfo(
+        db,
+        "structured_mirror_snapshot_version",
+        String(currentSnapshotVersion > 0 ? currentSnapshotVersion : 1),
+      );
+      upsertSchemaInfo(db, "structured_mirror_last_synced_at", syncedAt);
+      upsertSchemaInfo(db, "structured_mirror_status", "ready");
+      db.run("COMMIT;");
+    } catch (error) {
+      db.run("ROLLBACK;");
+      throw error;
+    }
+
     await persistDatabase(db);
     return true;
   } finally {

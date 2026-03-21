@@ -8,6 +8,7 @@ import {
   listStructuredLocalInvoiceRemindersForUser,
   listStructuredLocalInvoicesForUser,
   persistStructuredLocalMutation,
+  replaceStructuredLocalInvoicesForUser,
 } from "@/lib/local-db";
 
 export async function getStructuredInvoiceRepositoryCounters() {
@@ -53,4 +54,30 @@ export async function persistStructuredInvoiceRepositoryState({
   });
 
   return saved;
+}
+
+export async function replaceStructuredInvoiceRepositoryStateForUser({
+  userId,
+  invoices,
+  invoiceReminders,
+  auditEvents,
+  counters,
+}: {
+  userId: string;
+  invoices: InvoiceRecord[];
+  invoiceReminders: InvoiceReminderRecord[];
+  auditEvents?: LocalAuditEventRecord[];
+  counters?: {
+    invoice_number: number;
+    quote_number: number;
+    delivery_note_number: number;
+  };
+}) {
+  return replaceStructuredLocalInvoicesForUser({
+    userId,
+    invoices,
+    invoiceReminders,
+    auditEvents,
+    counters,
+  });
 }

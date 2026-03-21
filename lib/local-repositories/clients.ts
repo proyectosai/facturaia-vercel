@@ -5,6 +5,7 @@ import {
   getStructuredLocalClientById,
   listStructuredLocalClientsForUser,
   persistStructuredLocalMutation,
+  replaceStructuredLocalClientsForUser,
 } from "@/lib/local-db";
 
 export async function listStructuredClientRepositoryRecords(userId: string) {
@@ -28,4 +29,11 @@ export async function saveStructuredClientRepositoryRecord({
   });
 
   return saved ? client : null;
+}
+
+export async function replaceStructuredClientRepositoryRecords(
+  userId: string,
+  clients: ClientRecord[],
+) {
+  return replaceStructuredLocalClientsForUser(userId, clients);
 }
