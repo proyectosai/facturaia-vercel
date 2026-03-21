@@ -271,7 +271,7 @@ export default async function GastosPage({
                 {ocrSupport.providerLabel}
               </p>
               <p className="mt-2 text-sm text-muted-foreground">
-                PDF con texto: sí · imagen automática: no aún.
+                PDF con texto: sí · imagen automática: {ocrSupport.imageText ? "sí" : "no aún"}.
               </p>
             </div>
           </CardContent>
@@ -377,6 +377,7 @@ export default async function GastosPage({
                 <li>PDF con texto incrustado</li>
                 <li>Archivos de texto</li>
                 <li>Pegado manual de texto OCR</li>
+                <li>Imágenes PNG/JPG/WEBP con Ollama GLM-OCR</li>
                 <li>Parseo local con IA o heurística</li>
               </ul>
             </div>
@@ -387,7 +388,7 @@ export default async function GastosPage({
                 <p className="font-semibold text-foreground">Siguiente fase</p>
               </div>
               <ul className="mt-4 space-y-2 text-sm leading-6 text-muted-foreground">
-                <li>OCR automático de imágenes</li>
+                <li>OCR de PDF escaneado por rasterización</li>
                 <li>Previsualización del archivo subido</li>
                 <li>Categorías y exportación de gastos</li>
                 <li>Enlace con conciliación bancaria</li>

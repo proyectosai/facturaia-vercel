@@ -15,6 +15,7 @@
 /playwright-report
 /test-results
 /.facturaia-e2e
+/.facturaia-local
 
 # next.js
 /.next/

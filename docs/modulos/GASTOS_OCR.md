@@ -11,13 +11,14 @@ Evitar que el autónomo tenga que guardar tickets y facturas de proveedor fuera 
 - subir tickets o facturas proveedor
 - guardar el archivo original
 - extraer texto de PDFs que ya contienen texto
+- extraer texto de imágenes `PNG/JPG/WEBP` con Ollama + `glm-ocr:latest`
 - aceptar texto OCR pegado manualmente
 - proponer proveedor, NIF, fecha e importes
 - dejar el gasto como pendiente o revisado
 
 ## Qué no hace todavía
 
-- OCR automático de imágenes escaneadas
+- OCR de PDF escaneado por rasterización local
 - clasificación contable avanzada
 - exportación fiscal o libro de gastos
 - conciliación con movimientos bancarios
@@ -55,6 +56,19 @@ Qué crea:
 5. Si ya tienes texto OCR, pégalo manualmente para mejorar la extracción.
 6. Revisa el resultado y marca el gasto como revisado cuando corresponda.
 
+Si quieres OCR automático de imágenes:
+
+```env
+OLLAMA_BASE_URL=http://127.0.0.1:11434
+OLLAMA_OCR_MODEL=glm-ocr:latest
+```
+
+Y asegúrate de tener Ollama instalado y el modelo descargado:
+
+```bash
+ollama pull glm-ocr:latest
+```
+
 ## Flujo recomendado
 
 1. Importar justificante.
@@ -65,6 +79,7 @@ Qué crea:
 ## Métodos de extracción en esta fase
 
 - `pdf_text`: el PDF ya contenía texto y se ha leído directamente
+- `image_ocr`: una imagen se ha pasado por Ollama GLM-OCR
 - `plain_text`: se ha subido un archivo de texto
 - `manual`: el usuario ha pegado texto OCR manualmente
 - `unavailable`: no se ha podido extraer texto de forma automática
@@ -72,6 +87,8 @@ Qué crea:
 ## Uso de IA local
 
 Si LM Studio está configurado, FacturaIA intenta normalizar los datos del justificante usando IA local.
+
+Si Ollama está configurado con `glm-ocr:latest`, FacturaIA puede leer automáticamente tickets e imágenes de justificantes antes de pasar ese texto al parser local.
 
 Si no lo está, cae a una heurística local basada en:
 
@@ -82,7 +99,7 @@ Si no lo está, cae a una heurística local basada en:
 
 ## Limitaciones actuales
 
-- los tickets o imágenes escaneadas sin texto necesitan OCR manual externo o pegado de texto
+- los PDF escaneados siguen necesitando rasterización previa o pegado manual de texto
 - no hay previsualización del archivo dentro de la app
 - el resultado siempre debe revisarse manualmente
 

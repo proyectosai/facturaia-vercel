@@ -2,9 +2,9 @@ import "server-only";
 
 import path from "node:path";
 
-import { extractExpenseDataFromText } from "@/lib/ai";
+import { extractExpenseDataFromText, extractTextFromImageWithOllama } from "@/lib/ai";
 import { demoExpenses, getDemoExpenseById, isDemoMode, isLocalFileMode } from "@/lib/demo";
-import { hasLocalAiEnv } from "@/lib/env";
+import { hasLocalAiEnv, hasOllamaOcrEnv } from "@/lib/env";
 import { getLocalExpenseById, listLocalExpensesForUser } from "@/lib/local-core";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type {
@@ -28,6 +28,7 @@ export const expenseReviewStatusLabels: Record<ExpenseReviewStatus, string> = {
 export const expenseExtractionLabels: Record<ExpenseExtractionMethod, string> = {
   manual: "Texto pegado manualmente",
   pdf_text: "Texto extraído del PDF",
+  image_ocr: "OCR de imagen con Ollama",
   plain_text: "Texto plano",
   unavailable: "Sin extracción automática",
 };
@@ -43,6 +44,10 @@ function normalizeExpense(expense: ExpenseRecord): ExpenseRecord {
 
 function cleanFilename(fileName: string) {
   return path.basename(fileName).replace(/[^a-zA-Z0-9._-]/g, "-");
+}
+
+function isSupportedExpenseImage(file: File) {
+  return ["image/png", "image/jpeg", "image/webp"].includes(file.type);
 }
 
 export function getExpenseStoragePath(userId: string, fileName: string) {
@@ -97,6 +102,29 @@ export async function extractRawTextFromExpenseInput({
         rawText: "",
         method: "unavailable" as ExpenseExtractionMethod,
       };
+    }
+  }
+
+  if (isSupportedExpenseImage(file) && hasOllamaOcrEnv()) {
+    try {
+      const buffer = Buffer.from(await file.arrayBuffer());
+      const extracted = await extractTextFromImageWithOllama({
+        imageBase64: buffer.toString("base64"),
+        mimeType: file.type,
+        fileName: file.name,
+      });
+
+      return {
+        rawText: extracted.text.trim(),
+        method: extracted.text.trim()
+          ? ("image_ocr" as ExpenseExtractionMethod)
+          : ("unavailable" as ExpenseExtractionMethod),
+      };
+    } catch (error) {
+      console.error(
+        "FacturaIA no ha podido ejecutar OCR de imagen con Ollama:",
+        error,
+      );
     }
   }
 
@@ -410,11 +438,20 @@ export function getExpensesSummary(expenses: ExpenseRecord[]) {
 }
 
 export function getExpensesOcrSupport() {
+  const imageOcrReady = hasOllamaOcrEnv();
+  const aiParsingReady = hasLocalAiEnv();
+
   return {
     pdfText: true,
-    imageText: false,
-    aiParsing: hasLocalAiEnv(),
-    providerLabel: hasLocalAiEnv() ? "LM Studio" : "Heurística local",
+    imageText: imageOcrReady,
+    aiParsing: aiParsingReady,
+    providerLabel: imageOcrReady
+      ? aiParsingReady
+        ? "Ollama GLM-OCR + LM Studio"
+        : "Ollama GLM-OCR"
+      : aiParsingReady
+        ? "LM Studio"
+        : "Heurística local",
   };
 }
 

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { getLocalAiEnv, hasLocalAiEnv } from "@/lib/env";
+import { getLocalAiEnv, getOllamaOcrEnv, hasLocalAiEnv } from "@/lib/env";
 import { TAX_ASSISTANT_OFFICIAL_LINKS } from "@/lib/tax-assistant";
 
 export const AI_DOCUMENT_TYPES = [
@@ -42,6 +42,12 @@ const chatCompletionSchema = z.object({
       }),
     )
     .min(1),
+});
+
+const ollamaChatSchema = z.object({
+  message: z.object({
+    content: z.string().min(1),
+  }),
 });
 
 export function getAiDocumentLabel(documentType: AiDocumentType) {
@@ -87,6 +93,17 @@ function sanitizeAiText(value: string) {
     .replace(/[‘’]/g, "'")
     .replace(/\u2026/g, "...")
     .replace(/[\u00A0\u202F]/g, " ")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function sanitizeOcrText(value: string) {
+  return value
+    .replace(/^```[a-z]*\n?/i, "")
+    .replace(/\n?```$/i, "")
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
     .replace(/[ \t]+\n/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
@@ -173,6 +190,87 @@ export async function callLocalChatModel({
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {
       throw new Error("La IA local ha tardado demasiado en responder.");
+    }
+
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+export async function extractTextFromImageWithOllama({
+  imageBase64,
+  mimeType,
+  fileName,
+}: {
+  imageBase64: string;
+  mimeType: string;
+  fileName?: string;
+}) {
+  const env = getOllamaOcrEnv();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 120_000);
+
+  try {
+    const response = await fetch(`${normalizeBaseUrl(env.OLLAMA_BASE_URL)}/api/chat`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(env.OLLAMA_API_KEY
+          ? {
+              Authorization: `Bearer ${env.OLLAMA_API_KEY}`,
+            }
+          : {}),
+      },
+      body: JSON.stringify({
+        model: env.OLLAMA_OCR_MODEL,
+        stream: false,
+        options: {
+          temperature: 0,
+        },
+        messages: [
+          {
+            role: "system",
+            content:
+              "Eres un motor OCR preciso para tickets y facturas. Transcribe solo el texto visible del documento. No resumas, no expliques, no inventes valores y conserva saltos de linea utiles.",
+          },
+          {
+            role: "user",
+            content: [
+              "Extrae el texto completo visible de esta imagen de ticket o factura.",
+              "Devuelve solo la transcripcion OCR en texto plano.",
+              `Tipo MIME: ${mimeType}`,
+              fileName?.trim() ? `Archivo: ${fileName.trim()}` : null,
+            ]
+              .filter(Boolean)
+              .join("\n"),
+            images: [imageBase64],
+          },
+        ],
+      }),
+      signal: controller.signal,
+    });
+
+    const payload = ollamaChatSchema.parse((await response.json()) as unknown);
+
+    if (!response.ok) {
+      throw new Error("Ollama no ha devuelto una respuesta válida.");
+    }
+
+    const text = sanitizeOcrText(payload.message.content);
+
+    if (!text) {
+      throw new Error("Ollama no ha generado texto OCR útil.");
+    }
+
+    return {
+      text,
+      model: env.OLLAMA_OCR_MODEL,
+      provider: "Ollama",
+    };
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error("Ollama ha tardado demasiado en responder.");
     }
 
     throw error;

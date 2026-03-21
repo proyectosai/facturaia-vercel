@@ -257,6 +257,7 @@ Guías clave:
 - `@react-pdf/renderer`
 - `docx`
 - LM Studio local usando `openai/gpt-oss-20b`
+- Ollama opcional para OCR de imágenes de gastos con `glm-ocr:latest`
 
 ## IA local hoy
 

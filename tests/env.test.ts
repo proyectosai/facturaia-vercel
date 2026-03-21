@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from "vitest";
 
 import {
   getLocalRuntimeEnv,
+  hasOllamaOcrEnv,
   getOptionalPublicEnv,
   getPublicEnv,
   hasLocalAiEnv,
@@ -78,5 +79,19 @@ describe("environment validation", () => {
 
     process.env.LM_STUDIO_BASE_URL = "no-es-una-url";
     expect(hasLocalAiEnv()).toBe(false);
+  });
+
+  test("recognizes ollama OCR env only when endpoint and model are valid", () => {
+    delete process.env.OLLAMA_BASE_URL;
+    delete process.env.OLLAMA_OCR_MODEL;
+
+    expect(hasOllamaOcrEnv()).toBe(false);
+
+    process.env.OLLAMA_BASE_URL = "http://127.0.0.1:11434";
+    process.env.OLLAMA_OCR_MODEL = "glm-ocr:latest";
+    expect(hasOllamaOcrEnv()).toBe(true);
+
+    process.env.OLLAMA_BASE_URL = "no-es-una-url";
+    expect(hasOllamaOcrEnv()).toBe(false);
   });
 });

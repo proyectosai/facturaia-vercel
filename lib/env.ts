@@ -73,6 +73,12 @@ const localAiEnvSchema = z.object({
   LM_STUDIO_API_KEY: optionalStringSchema,
 });
 
+const ollamaOcrEnvSchema = z.object({
+  OLLAMA_BASE_URL: z.preprocess(emptyToUndefined, z.string().url()),
+  OLLAMA_OCR_MODEL: z.preprocess(emptyToUndefined, z.string().min(1)),
+  OLLAMA_API_KEY: optionalStringSchema,
+});
+
 const localRuntimeEnvSchema = z.object({
   FACTURAIA_DEMO_MODE: envFlagSchema,
   FACTURAIA_LOCAL_MODE: envFlagSchema,
@@ -137,6 +143,20 @@ export function hasLocalAiEnv() {
   );
 
   return env.success && Boolean(env.data.LM_STUDIO_BASE_URL) && Boolean(env.data.LM_STUDIO_MODEL);
+}
+
+export function getOllamaOcrEnv() {
+  return ollamaOcrEnvSchema.parse(
+    pickEnv(["OLLAMA_BASE_URL", "OLLAMA_OCR_MODEL", "OLLAMA_API_KEY"] as const),
+  );
+}
+
+export function hasOllamaOcrEnv() {
+  const env = ollamaOcrEnvSchema.safeParse(
+    pickEnv(["OLLAMA_BASE_URL", "OLLAMA_OCR_MODEL", "OLLAMA_API_KEY"] as const),
+  );
+
+  return env.success && Boolean(env.data.OLLAMA_BASE_URL) && Boolean(env.data.OLLAMA_OCR_MODEL);
 }
 
 export function getLocalRuntimeEnv() {

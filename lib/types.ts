@@ -32,6 +32,7 @@ export type ExpenseReviewStatus = "draft" | "reviewed";
 export type ExpenseExtractionMethod =
   | "manual"
   | "pdf_text"
+  | "image_ocr"
   | "plain_text"
   | "unavailable";
 

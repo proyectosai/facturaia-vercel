@@ -88,6 +88,7 @@ const supabaseMissing = getMissingKeys(env, [
 ]);
 const appUrlMissing = getMissingKeys(env, ["NEXT_PUBLIC_APP_URL"]);
 const lmStudioMissing = getMissingKeys(env, ["LM_STUDIO_BASE_URL", "LM_STUDIO_MODEL"]);
+const ollamaOcrMissing = getMissingKeys(env, ["OLLAMA_BASE_URL", "OLLAMA_OCR_MODEL"]);
 
 const mailProvider = String(env.MAIL_PROVIDER || "").trim().toLowerCase();
 const smtpMissing =
@@ -173,6 +174,11 @@ printCheck(
   "LM Studio",
   lmStudioMissing,
   "Opcional, pero recomendado para documentos y ayudas con IA local.",
+);
+printCheck(
+  "Ollama OCR",
+  ollamaOcrMissing,
+  "Opcional para OCR automático de tickets e imágenes de gastos con GLM-OCR.",
 );
 
 if (mailProvider === "smtp" || mailProvider === "resend") {
