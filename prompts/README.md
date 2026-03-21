@@ -16,6 +16,10 @@ La idea no es vender magia, sino dejar un material útil para:
 4. Después de cada fase, valida con `lint`, `typecheck` y tests acordes al alcance.
 5. No prometas features futuras como si ya estuvieran entregadas.
 
+Prompts especializados:
+
+- [Prompts de agentes](./agents/README.md)
+
 ## Orden recomendado
 
 - [00_PRINCIPIOS.md](/Users/c/Desktop/carpeta%20sin%20ti%CC%81tulo%202/facturaia-app/prompts/00_PRINCIPIOS.md)
