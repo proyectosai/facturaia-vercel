@@ -119,6 +119,10 @@ const STRUCTURED_MIRROR_TABLES = [
   "local_counters",
 ] as const;
 
+const STRUCTURED_MIRROR_TABLE_NAMES = new Set<string>(STRUCTURED_MIRROR_TABLES);
+
+type StatementParams = Parameters<Database["prepare"]>[1];
+
 function getSqlJs() {
   if (!sqlJsPromise) {
     const wasmFilePath = path.join(
@@ -505,6 +509,66 @@ function initializeSchema(db: Database) {
       counter_key TEXT PRIMARY KEY,
       counter_value INTEGER NOT NULL
     );
+
+    CREATE INDEX IF NOT EXISTS idx_local_clients_user_updated
+    ON local_clients(user_id, updated_at DESC, created_at DESC);
+
+    CREATE INDEX IF NOT EXISTS idx_local_feedback_entries_user_updated
+    ON local_feedback_entries(user_id, updated_at DESC, created_at DESC);
+
+    CREATE INDEX IF NOT EXISTS idx_local_audit_events_user_created
+    ON local_audit_events(user_id, created_at DESC);
+
+    CREATE INDEX IF NOT EXISTS idx_local_audit_events_entity
+    ON local_audit_events(entity_type, entity_id, created_at DESC);
+
+    CREATE INDEX IF NOT EXISTS idx_local_auth_rate_limits_scope_email
+    ON local_auth_rate_limits(scope, email_key);
+
+    CREATE INDEX IF NOT EXISTS idx_local_auth_rate_limits_locked_until
+    ON local_auth_rate_limits(locked_until);
+
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_local_invoices_public_id
+    ON local_invoices(public_id);
+
+    CREATE INDEX IF NOT EXISTS idx_local_invoices_user_issue_created
+    ON local_invoices(user_id, issue_date DESC, created_at DESC);
+
+    CREATE INDEX IF NOT EXISTS idx_local_invoices_user_number
+    ON local_invoices(user_id, invoice_number DESC);
+
+    CREATE INDEX IF NOT EXISTS idx_local_invoice_reminders_user_sent
+    ON local_invoice_reminders(user_id, sent_at DESC, created_at DESC);
+
+    CREATE INDEX IF NOT EXISTS idx_local_invoice_reminders_invoice
+    ON local_invoice_reminders(invoice_id, sent_at DESC);
+
+    CREATE INDEX IF NOT EXISTS idx_local_bank_movements_user_booking
+    ON local_bank_movements(user_id, booking_date DESC, created_at DESC);
+
+    CREATE INDEX IF NOT EXISTS idx_local_message_threads_user_last_message
+    ON local_message_threads(user_id, last_message_at DESC);
+
+    CREATE INDEX IF NOT EXISTS idx_local_message_records_thread_received
+    ON local_message_records(thread_id, received_at DESC);
+
+    CREATE INDEX IF NOT EXISTS idx_local_mail_threads_user_last_message
+    ON local_mail_threads(user_id, last_message_at DESC);
+
+    CREATE INDEX IF NOT EXISTS idx_local_mail_messages_thread_received
+    ON local_mail_messages(thread_id, received_at DESC);
+
+    CREATE INDEX IF NOT EXISTS idx_local_commercial_documents_user_issue
+    ON local_commercial_documents(user_id, issue_date DESC, created_at DESC);
+
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_local_document_signature_requests_token
+    ON local_document_signature_requests(public_token);
+
+    CREATE INDEX IF NOT EXISTS idx_local_document_signature_requests_document
+    ON local_document_signature_requests(document_id, requested_at DESC);
+
+    CREATE INDEX IF NOT EXISTS idx_local_expenses_user_date
+    ON local_expenses(user_id, expense_date DESC, created_at DESC);
   `);
 }
 
@@ -1814,9 +1878,66 @@ export async function persistStructuredLocalMutation(
 }
 
 function getTableCount(db: Database, tableName: string) {
-  const result = db.exec(`SELECT COUNT(*) FROM ${tableName};`);
-  const value = result[0]?.values?.[0]?.[0];
-  return typeof value === "number" ? value : Number(value ?? 0);
+  if (!STRUCTURED_MIRROR_TABLE_NAMES.has(tableName)) {
+    throw new Error(`Unsupported structured mirror table: ${tableName}`);
+  }
+
+  return queryScalarNumber(db, `SELECT COUNT(*) FROM ${tableName};`);
+}
+
+function queryRows<T>(
+  db: Database,
+  sql: string,
+  params: StatementParams,
+  mapRow: (values: unknown[]) => T,
+): T[] {
+  const statement = db.prepare(sql, params);
+
+  try {
+    const rows: T[] = [];
+
+    while (statement.step()) {
+      rows.push(mapRow(statement.get()));
+    }
+
+    return rows;
+  } finally {
+    statement.free();
+  }
+}
+
+function queryFirstRow<T>(
+  db: Database,
+  sql: string,
+  params: StatementParams,
+  mapRow: (values: unknown[]) => T,
+): T | null {
+  const statement = db.prepare(sql, params);
+
+  try {
+    if (!statement.step()) {
+      return null;
+    }
+
+    return mapRow(statement.get());
+  } finally {
+    statement.free();
+  }
+}
+
+function queryScalarNumber(db: Database, sql: string, params?: StatementParams) {
+  const statement = db.prepare(sql, params);
+
+  try {
+    if (!statement.step()) {
+      return 0;
+    }
+
+    const value = statement.get()?.[0];
+    return typeof value === "number" ? value : Number(value ?? 0);
+  } finally {
+    statement.free();
+  }
 }
 
 export async function inspectLocalStructuredMirror(): Promise<LocalStructuredMirrorSummary> {
@@ -1871,7 +1992,8 @@ export async function listStructuredLocalAuditEventsForUser(
     }
 
     const safeLimit = Math.max(1, Math.trunc(limit));
-    const result = db.exec(
+    return queryRows(
+      db,
       `
         SELECT
           id,
@@ -1892,9 +2014,8 @@ export async function listStructuredLocalAuditEventsForUser(
         LIMIT ${safeLimit};
       `,
       [userId],
+      (values) => mapAuditEventRow(values),
     );
-
-    return (result[0]?.values ?? []).map((values) => mapAuditEventRow(values));
   } finally {
     db.close();
   }
@@ -1910,7 +2031,8 @@ export async function listStructuredLocalClientsForUser(
       return null;
     }
 
-    const result = db.exec(
+    return queryRows(
+      db,
       `
         SELECT
           id,
@@ -1935,9 +2057,8 @@ export async function listStructuredLocalClientsForUser(
         ORDER BY updated_at DESC, created_at DESC;
       `,
       [userId],
+      (values) => mapClientRow(values),
     );
-
-    return (result[0]?.values ?? []).map((values) => mapClientRow(values));
   } finally {
     db.close();
   }
@@ -1954,7 +2075,8 @@ export async function getStructuredLocalClientById(
       return null;
     }
 
-    const result = db.exec(
+    return queryFirstRow(
+      db,
       `
         SELECT
           id,
@@ -1979,10 +2101,8 @@ export async function getStructuredLocalClientById(
         LIMIT 1;
       `,
       [userId, clientId],
+      (values) => mapClientRow(values),
     );
-
-    const row = result[0]?.values?.[0];
-    return row ? mapClientRow(row) : null;
   } finally {
     db.close();
   }
@@ -1998,7 +2118,8 @@ export async function listStructuredLocalInvoicesForUser(
       return null;
     }
 
-    const result = db.exec(
+    return queryRows(
+      db,
       `
         SELECT
           id,
@@ -2035,9 +2156,8 @@ export async function listStructuredLocalInvoicesForUser(
         ORDER BY issue_date DESC, created_at DESC;
       `,
       [userId],
+      (values) => mapInvoiceRow(values),
     );
-
-    return (result[0]?.values ?? []).map((values) => mapInvoiceRow(values));
   } finally {
     db.close();
   }
@@ -2054,7 +2174,8 @@ export async function getStructuredLocalInvoiceById(
       return null;
     }
 
-    const result = db.exec(
+    return queryFirstRow(
+      db,
       `
         SELECT
           id,
@@ -2091,10 +2212,8 @@ export async function getStructuredLocalInvoiceById(
         LIMIT 1;
       `,
       [userId, invoiceId],
+      (values) => mapInvoiceRow(values),
     );
-
-    const row = result[0]?.values?.[0];
-    return row ? mapInvoiceRow(row) : null;
   } finally {
     db.close();
   }
@@ -2110,7 +2229,8 @@ export async function getStructuredLocalInvoiceByPublicId(
       return null;
     }
 
-    const result = db.exec(
+    return queryFirstRow(
+      db,
       `
         SELECT
           id,
@@ -2147,10 +2267,8 @@ export async function getStructuredLocalInvoiceByPublicId(
         LIMIT 1;
       `,
       [publicId],
+      (values) => mapInvoiceRow(values),
     );
-
-    const row = result[0]?.values?.[0];
-    return row ? mapInvoiceRow(row) : null;
   } finally {
     db.close();
   }
@@ -2166,7 +2284,8 @@ export async function listStructuredLocalInvoiceRemindersForUser(
       return null;
     }
 
-    const result = db.exec(
+    return queryRows(
+      db,
       `
         SELECT
           id,
@@ -2186,9 +2305,8 @@ export async function listStructuredLocalInvoiceRemindersForUser(
         ORDER BY sent_at DESC, created_at DESC;
       `,
       [userId],
+      (values) => mapInvoiceReminderRow(values),
     );
-
-    return (result[0]?.values ?? []).map((values) => mapInvoiceReminderRow(values));
   } finally {
     db.close();
   }
@@ -2202,7 +2320,8 @@ export async function readStructuredLocalCoreSlices(): Promise<StructuredLocalCo
       return null;
     }
 
-    const clientsResult = db.exec(
+    const clients = queryRows(
+      db,
       `
         SELECT
           id,
@@ -2225,9 +2344,12 @@ export async function readStructuredLocalCoreSlices(): Promise<StructuredLocalCo
         FROM local_clients
         ORDER BY created_at ASC, updated_at ASC;
       `,
+      undefined,
+      (values) => mapClientRow(values),
     );
 
-    const auditResult = db.exec(
+    const auditEvents = queryRows(
+      db,
       `
         SELECT
           id,
@@ -2245,9 +2367,12 @@ export async function readStructuredLocalCoreSlices(): Promise<StructuredLocalCo
         FROM local_audit_events
         ORDER BY created_at ASC;
       `,
+      undefined,
+      (values) => mapAuditEventRow(values),
     );
 
-    const invoicesResult = db.exec(
+    const invoices = queryRows(
+      db,
       `
         SELECT
           id,
@@ -2282,9 +2407,12 @@ export async function readStructuredLocalCoreSlices(): Promise<StructuredLocalCo
         FROM local_invoices
         ORDER BY invoice_number ASC, created_at ASC;
       `,
+      undefined,
+      (values) => mapInvoiceRow(values),
     );
 
-    const remindersResult = db.exec(
+    const invoiceReminders = queryRows(
+      db,
       `
         SELECT
           id,
@@ -2302,13 +2430,21 @@ export async function readStructuredLocalCoreSlices(): Promise<StructuredLocalCo
         FROM local_invoice_reminders
         ORDER BY created_at ASC, sent_at ASC;
       `,
+      undefined,
+      (values) => mapInvoiceReminderRow(values),
     );
 
-    const countersResult = db.exec(
+    const counterRows = queryRows(
+      db,
       `
         SELECT counter_key, counter_value
         FROM local_counters;
       `,
+      undefined,
+      (values) => ({
+        key: String(values[0] ?? ""),
+        value: Number(values[1] ?? 0),
+      }),
     );
 
     const counters: StructuredSnapshot["counters"] = {
@@ -2317,9 +2453,9 @@ export async function readStructuredLocalCoreSlices(): Promise<StructuredLocalCo
       delivery_note_number: 0,
     };
 
-    for (const row of countersResult[0]?.values ?? []) {
-      const key = String(row[0] ?? "");
-      const value = Number(row[1] ?? 0);
+    for (const row of counterRows) {
+      const key = row.key;
+      const value = row.value;
 
       if (key === "invoice_number") {
         counters.invoice_number = value;
@@ -2331,12 +2467,10 @@ export async function readStructuredLocalCoreSlices(): Promise<StructuredLocalCo
     }
 
     return {
-      clients: (clientsResult[0]?.values ?? []).map((values) => mapClientRow(values)),
-      auditEvents: (auditResult[0]?.values ?? []).map((values) => mapAuditEventRow(values)),
-      invoices: (invoicesResult[0]?.values ?? []).map((values) => mapInvoiceRow(values)),
-      invoiceReminders: (remindersResult[0]?.values ?? []).map((values) =>
-        mapInvoiceReminderRow(values),
-      ),
+      clients,
+      auditEvents,
+      invoices,
+      invoiceReminders,
       counters,
     };
   } finally {
@@ -2355,7 +2489,8 @@ export async function getStructuredLocalMonthlyInvoiceUsage(
       return null;
     }
 
-    const result = db.exec(
+    return queryScalarNumber(
+      db,
       `
         SELECT COUNT(*)
         FROM local_invoices
@@ -2363,9 +2498,6 @@ export async function getStructuredLocalMonthlyInvoiceUsage(
       `,
       [userId, monthStartIso],
     );
-
-    const value = result[0]?.values?.[0]?.[0];
-    return typeof value === "number" ? value : Number(value ?? 0);
   } finally {
     db.close();
   }
@@ -2382,7 +2514,7 @@ export async function getStructuredLocalDailyAiUsage(
       return null;
     }
 
-    const result = db.exec(
+    const statement = db.prepare(
       `
         SELECT calls_count
         FROM local_ai_usage
@@ -2391,9 +2523,16 @@ export async function getStructuredLocalDailyAiUsage(
       `,
       [userId, usageDate],
     );
+    try {
+      if (!statement.step()) {
+        return 0;
+      }
 
-    const value = result[0]?.values?.[0]?.[0];
-    return typeof value === "number" ? value : Number(value ?? 0);
+      const value = statement.get()?.[0];
+      return typeof value === "number" ? value : Number(value ?? 0);
+    } finally {
+      statement.free();
+    }
   } finally {
     db.close();
   }
