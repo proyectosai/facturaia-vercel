@@ -53,7 +53,7 @@ export default async function ProfilePage({
 
       <div className="max-w-3xl space-y-3">
         <p className="section-kicker">Mi Perfil</p>
-        <h1 className="font-display text-5xl leading-none tracking-tight text-foreground">
+        <h1 className="font-display text-4xl leading-none tracking-tight text-foreground sm:text-5xl">
           Datos fiscales y control del entorno privado.
         </h1>
         <p className="text-lg leading-8 text-muted-foreground">
@@ -62,9 +62,9 @@ export default async function ProfilePage({
       </div>
 
       <Tabs defaultValue={defaultTab}>
-        <TabsList>
-          <TabsTrigger value="fiscal">Datos fiscales</TabsTrigger>
-          <TabsTrigger value="environment">Entorno privado</TabsTrigger>
+        <TabsList className="flex w-full max-w-full gap-1 overflow-x-auto rounded-[28px] p-1 sm:grid sm:max-w-xl sm:grid-cols-2">
+          <TabsTrigger className="min-w-[140px] sm:min-w-0" value="fiscal">Datos fiscales</TabsTrigger>
+          <TabsTrigger className="min-w-[150px] sm:min-w-0" value="environment">Entorno privado</TabsTrigger>
         </TabsList>
 
         <TabsContent value="fiscal">
@@ -161,11 +161,11 @@ export default async function ProfilePage({
 
                 <div className="md:col-span-2">
                   {demoMode ? (
-                    <Button type="button" variant="secondary" disabled>
+                    <Button className="w-full sm:w-auto" type="button" variant="secondary" disabled>
                       Guardado desactivado en demo
                     </Button>
                   ) : (
-                    <SubmitButton pendingLabel="Guardando perfil...">
+                    <SubmitButton className="w-full sm:w-auto" pendingLabel="Guardando perfil...">
                       Guardar perfil
                     </SubmitButton>
                   )}
@@ -222,8 +222,8 @@ export default async function ProfilePage({
                   pago ni servicios comerciales obligatorios.
                 </div>
 
-                <div className="flex flex-wrap gap-3">
-                  <Button variant="outline" asChild>
+                <div className="grid gap-3 sm:flex sm:flex-wrap">
+                  <Button className="w-full sm:w-auto" variant="outline" asChild>
                     <Link href="/instalacion">Abrir guía de instalación</Link>
                   </Button>
                 </div>

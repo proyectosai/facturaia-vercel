@@ -106,23 +106,25 @@ export function InvoicesCollection({
             Selecciona varias facturas para revisar volumen, copiar enlaces o centrarte en un lote concreto.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="grid gap-2 sm:flex sm:flex-wrap">
           <Button
             type="button"
             variant={allVisibleSelected ? "secondary" : "outline"}
             size="sm"
+            className="w-full sm:w-auto"
             onClick={toggleSelectVisible}
           >
             <CheckCheck className="h-4 w-4" />
             {allVisibleSelected ? "Quitar selección" : "Seleccionar visibles"}
           </Button>
           {selectedCount ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => setSelectedIds([])}
-            >
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="w-full sm:w-auto"
+                onClick={() => setSelectedIds([])}
+              >
               <X className="h-4 w-4" />
               Vaciar selección
             </Button>
@@ -143,11 +145,12 @@ export function InvoicesCollection({
               </span>
             </div>
 
-            <div className="flex flex-wrap gap-2">
+            <div className="grid gap-2 sm:flex sm:flex-wrap">
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
+                className="w-full sm:w-auto"
                 onClick={() => void copySelectedLinks()}
               >
                 <Copy className="h-4 w-4" />
@@ -156,7 +159,7 @@ export function InvoicesCollection({
 
               {singleSelectedInvoice ? (
                 <>
-                  <Button variant="outline" size="sm" asChild>
+                  <Button className="w-full sm:w-auto" variant="outline" size="sm" asChild>
                     <Link
                       href={`/api/invoices/${singleSelectedInvoice.id}/pdf`}
                       target="_blank"
@@ -166,7 +169,7 @@ export function InvoicesCollection({
                       PDF
                     </Link>
                   </Button>
-                  <Button variant="ghost" size="sm" asChild>
+                  <Button className="w-full sm:w-auto" variant="ghost" size="sm" asChild>
                     <Link
                       href={singleSelectedInvoice.publicUrl}
                       target="_blank"
@@ -189,7 +192,7 @@ export function InvoicesCollection({
             <div className="flex flex-col gap-3 rounded-[30px] border border-white/60 bg-white/70 p-5 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <p className="section-kicker">Bloque mensual</p>
-                <h2 className="font-display text-3xl capitalize text-foreground">
+                <h2 className="font-display text-2xl capitalize text-foreground sm:text-3xl">
                   {group.label}
                 </h2>
               </div>
@@ -304,8 +307,8 @@ export function InvoicesCollection({
                           </p>
                         </div>
 
-                        <div className="flex flex-col gap-3 sm:flex-row xl:flex-wrap xl:justify-end">
-                          <Button variant="outline" asChild>
+                        <div className="grid gap-3 sm:flex sm:flex-row xl:flex-wrap xl:justify-end">
+                          <Button className="w-full sm:w-auto" variant="outline" asChild>
                             <Link
                               href={`/api/invoices/${invoice.id}/pdf`}
                               target="_blank"
@@ -331,7 +334,7 @@ export function InvoicesCollection({
 
                           <CopyLinkButton value={invoice.publicUrl} />
 
-                          <Button variant="ghost" asChild>
+                          <Button className="w-full sm:w-auto" variant="ghost" asChild>
                             <Link
                               href={invoice.publicUrl}
                               target="_blank"
@@ -342,7 +345,7 @@ export function InvoicesCollection({
                             </Link>
                           </Button>
 
-                          <Button variant="ghost" asChild>
+                          <Button className="w-full sm:w-auto" variant="ghost" asChild>
                             <Link
                               href={`/api/invoices/${invoice.id}/pdf`}
                               download={getInvoicePdfFileName(invoice.invoiceNumber)}

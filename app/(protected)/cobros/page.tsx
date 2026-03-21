@@ -278,7 +278,7 @@ export default async function CobrosPage({
 
           <div className="space-y-3">
             <p className="section-kicker">Cobros y vencimientos</p>
-            <h1 className="font-display text-5xl leading-none tracking-tight text-foreground">
+            <h1 className="font-display text-4xl leading-none tracking-tight text-foreground sm:text-5xl">
               Prioriza qué hay que cobrar hoy y cierra el seguimiento sin perder contexto.
             </h1>
             <p className="text-lg leading-8 text-muted-foreground">
@@ -288,14 +288,14 @@ export default async function CobrosPage({
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-3">
-            <Button asChild>
+          <div className="grid gap-3 sm:flex sm:flex-wrap">
+            <Button className="w-full sm:w-auto" asChild>
               <Link href="/banca">
                 <Landmark className="h-4 w-4" />
                 Ir a Banca
               </Link>
             </Button>
-            <Button variant="outline" asChild>
+            <Button className="w-full sm:w-auto" variant="outline" asChild>
               <Link href="/invoices">
                 <ReceiptText className="h-4 w-4" />
                 Ver facturas
@@ -305,28 +305,28 @@ export default async function CobrosPage({
         </div>
 
         <Card className="overflow-hidden bg-[linear-gradient(150deg,rgba(255,255,255,0.95),rgba(238,247,244,0.88))]">
-          <CardContent className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <CardContent className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
             <div className="rounded-[24px] bg-white/80 p-4">
               <p className="text-sm text-muted-foreground">Pendiente</p>
-              <p className="mt-2 font-display text-4xl text-foreground">
+              <p className="mt-2 font-display text-3xl text-foreground sm:text-4xl">
                 {formatCurrency(summary.amountPending)}
               </p>
             </div>
             <div className="rounded-[24px] bg-white/80 p-4">
               <p className="text-sm text-muted-foreground">Parciales</p>
-              <p className="mt-2 font-display text-4xl text-foreground">
+              <p className="mt-2 font-display text-3xl text-foreground sm:text-4xl">
                 {summary.partial}
               </p>
             </div>
             <div className="rounded-[24px] bg-white/80 p-4">
               <p className="text-sm text-muted-foreground">Vencidas</p>
-              <p className="mt-2 font-display text-4xl text-foreground">
+              <p className="mt-2 font-display text-3xl text-foreground sm:text-4xl">
                 {summary.overdue}
               </p>
             </div>
             <div className="rounded-[24px] bg-white/80 p-4">
               <p className="text-sm text-muted-foreground">Cobrado</p>
-              <p className="mt-2 font-display text-4xl text-foreground">
+              <p className="mt-2 font-display text-3xl text-foreground sm:text-4xl">
                 {formatCurrency(summary.amountCollected)}
               </p>
             </div>
@@ -477,12 +477,13 @@ export default async function CobrosPage({
             </div>
           </form>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
             {quickFilters.map((item) => (
               <Button
                 key={item.state}
                 variant={collectionFilter === item.state ? "default" : "outline"}
                 size="sm"
+                className="shrink-0"
                 asChild
               >
                 <Link href={buildCollectionsHref({ q, state: item.state })}>
@@ -645,14 +646,14 @@ export default async function CobrosPage({
                     </div>
                   </div>
 
-                  <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-                    <Button variant="outline" asChild>
+                  <div className="grid gap-3 sm:flex sm:flex-row sm:flex-wrap">
+                    <Button className="w-full sm:w-auto" variant="outline" asChild>
                       <Link href="/invoices">
                         Abrir en historial
                         <ArrowRight className="h-4 w-4" />
                       </Link>
                     </Button>
-                    <Button variant="ghost" asChild>
+                    <Button className="w-full sm:w-auto" variant="ghost" asChild>
                       <Link href="/clientes">
                         Ver cliente
                         <ArrowRight className="h-4 w-4" />
@@ -664,6 +665,7 @@ export default async function CobrosPage({
                         <SubmitButton
                           variant="outline"
                           pendingLabel="Enviando recordatorio..."
+                          className="w-full sm:w-auto"
                           disabled={demoMode}
                         >
                           <Mail className="h-4 w-4" />
@@ -685,6 +687,7 @@ export default async function CobrosPage({
                             ? "Reabriendo..."
                             : "Marcando cobrada..."
                         }
+                        className="w-full sm:w-auto"
                         disabled={demoMode}
                       >
                         {collectionState === "paid" ? (
@@ -711,7 +714,7 @@ export default async function CobrosPage({
           <CardContent className="space-y-5">
             <div className="max-w-2xl space-y-3">
               <p className="section-kicker">Sin resultados</p>
-              <h2 className="font-display text-4xl text-foreground">
+              <h2 className="font-display text-3xl text-foreground sm:text-4xl">
                 No hay facturas en la cola de cobros para ese filtro.
               </h2>
               <p className="text-lg leading-8 text-muted-foreground">

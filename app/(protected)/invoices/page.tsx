@@ -325,7 +325,7 @@ export default async function InvoicesPage({
       <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr] xl:items-end">
         <div className="max-w-3xl space-y-4">
           <p className="section-kicker">Mis facturas</p>
-          <h1 className="font-display text-5xl leading-none tracking-tight text-foreground">
+          <h1 className="font-display text-4xl leading-none tracking-tight text-foreground sm:text-5xl">
             Historial claro, acciones rápidas y control real sobre cada factura.
           </h1>
           <p className="text-lg leading-8 text-muted-foreground">
@@ -333,15 +333,15 @@ export default async function InvoicesPage({
             descarga o copia de enlace público sin salir del listado.
           </p>
 
-          <div className="flex flex-wrap gap-3">
-            <Button asChild>
+          <div className="grid gap-3 sm:flex sm:flex-wrap">
+            <Button className="w-full sm:w-auto" asChild>
               <Link href="/new-invoice">
                 <Plus className="h-4 w-4" />
                 Nueva Factura
               </Link>
             </Button>
             {hasFilters ? (
-              <Button variant="outline" asChild>
+              <Button className="w-full sm:w-auto" variant="outline" asChild>
                 <Link href="/invoices">
                   <FilterX className="h-4 w-4" />
                   Limpiar filtros
@@ -352,16 +352,16 @@ export default async function InvoicesPage({
         </div>
 
         <Card className="overflow-hidden bg-[linear-gradient(150deg,rgba(255,255,255,0.95),rgba(238,247,244,0.88))]">
-          <CardContent className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <CardContent className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
             <div className="rounded-[24px] bg-white/80 p-4">
               <p className="text-sm text-muted-foreground">Facturas visibles</p>
-              <p className="mt-2 font-display text-4xl text-foreground">
+              <p className="mt-2 font-display text-3xl text-foreground sm:text-4xl">
                 {typedInvoices.length}
               </p>
             </div>
             <div className="rounded-[24px] bg-white/80 p-4">
               <p className="text-sm text-muted-foreground">Importe filtrado</p>
-              <p className="mt-2 font-display text-4xl text-foreground">
+              <p className="mt-2 font-display text-3xl text-foreground sm:text-4xl">
                 {formatCurrency(filteredTotal)}
               </p>
             </div>
@@ -438,12 +438,13 @@ export default async function InvoicesPage({
             </div>
           </form>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
             {quickRanges.map((range) => (
               <Button
                 key={range.label}
                 variant={range.active ? "default" : "outline"}
                 size="sm"
+                className="shrink-0"
                 asChild
               >
                 <Link href={range.href}>
@@ -463,7 +464,7 @@ export default async function InvoicesPage({
           <CardContent className="mt-0 space-y-5">
             <div className="max-w-2xl space-y-3">
               <p className="section-kicker">Sin resultados</p>
-              <h2 className="font-display text-4xl text-foreground">
+              <h2 className="font-display text-3xl text-foreground sm:text-4xl">
                 No hay facturas que encajen con los filtros actuales.
               </h2>
               <p className="text-lg leading-8 text-muted-foreground">
@@ -472,15 +473,15 @@ export default async function InvoicesPage({
               </p>
             </div>
 
-            <div className="flex flex-wrap gap-3">
-              <Button asChild>
+            <div className="grid gap-3 sm:flex sm:flex-wrap">
+              <Button className="w-full sm:w-auto" asChild>
                 <Link href="/new-invoice">
                   <Plus className="h-4 w-4" />
                   Crear nueva factura
                 </Link>
               </Button>
               {hasFilters ? (
-                <Button variant="outline" asChild>
+                <Button className="w-full sm:w-auto" variant="outline" asChild>
                   <Link href="/invoices">Quitar filtros</Link>
                 </Button>
               ) : null}
