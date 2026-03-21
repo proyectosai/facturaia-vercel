@@ -15,6 +15,7 @@ Antes de instalar nada:
 
 - [Adopción para clientes](./docs/ADOPCION_CLIENTES.md)
 - [Estado real, módulo por módulo](./docs/ESTADO_REAL.md)
+- [Prompts educativos para reconstruir el repo](./prompts/README.md)
 - [Instalación en Windows](./docs/INSTALACION_WINDOWS.md)
 - [Instalación en macOS](./docs/INSTALACION_MACOS.md)
 - [Instalación en Linux](./docs/INSTALACION_LINUX.md)
