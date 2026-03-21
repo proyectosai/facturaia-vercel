@@ -18,6 +18,7 @@ import {
   reconcileLocalBankMovement,
   syncLocalInvoicePaymentStatusFromBankMatches,
 } from "@/lib/local-core";
+import { writeLocalStateText } from "@/lib/local-db";
 
 const userId = "user-local-banking";
 const email = "asesor@despacho.local";
@@ -204,6 +205,17 @@ describe("local banking", () => {
     expect(refreshedInvoiceA?.amount_paid).toBe(242);
     expect(refreshedInvoiceB?.payment_status).toBe("partial");
     expect(refreshedInvoiceB?.amount_paid).toBe(100);
+
+    snapshot.bankMovements = [];
+    await writeLocalStateText(
+      JSON.stringify(snapshot, null, 2),
+      JSON.stringify(snapshot, null, 2),
+      { structuredMutation: {} },
+    );
+
+    const recoveredSnapshot = await getLocalCoreSnapshot();
+    expect(recoveredSnapshot.bankMovements).toHaveLength(4);
+    expect(recoveredSnapshot.bankMovements.filter((item) => item.status === "reconciled")).toHaveLength(3);
 
     const backup = await exportBackupForUser(userId, email);
     expect(backup.bankMovements).toHaveLength(4);

@@ -1,11 +1,13 @@
 import "server-only";
 
+import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { promises as fs } from "node:fs";
 
 import initSqlJs, { type Database, type SqlJsStatic } from "sql.js";
 import type {
   AppUserRecord,
+  BankMovementRecord,
   ClientRecord,
   CommercialDocumentRecord,
   DocumentSignatureRequestRecord,
@@ -15,13 +17,29 @@ import type {
   InvoiceReminderRecord,
   LocalAuditEventRecord,
   LocalAuthRateLimitRecord,
+  MailMessage,
+  MailSyncRun,
+  MailThread,
+  MessageConnection,
+  MessageRecord,
+  MessageThread,
   Profile,
 } from "@/lib/types";
 import { getLocalRuntimeEnv } from "@/lib/env";
 
 let sqlJsPromise: Promise<SqlJsStatic> | null = null;
+let localDbWriteQueue: Promise<void> = Promise.resolve();
 
 const STRUCTURED_MIRROR_SCHEMA_VERSION = 1;
+
+function runLocalDbWrite<T>(operation: () => Promise<T>): Promise<T> {
+  const next = localDbWriteQueue.then(operation, operation);
+  localDbWriteQueue = next.then(
+    () => undefined,
+    () => undefined,
+  );
+  return next;
+}
 
 type StructuredSnapshot = {
   version: number;
@@ -84,8 +102,15 @@ type StructuredMirrorStatus = "ready" | "disabled_encrypted" | "empty";
 export type StructuredMirrorSection =
   | "clients"
   | "auditEvents"
+  | "bankMovements"
   | "invoices"
   | "invoiceReminders"
+  | "messageConnections"
+  | "messageThreads"
+  | "messageRecords"
+  | "mailThreads"
+  | "mailMessages"
+  | "mailSyncRuns"
   | "expenses"
   | "counters";
 export type StructuredMirrorMutation = {
@@ -97,6 +122,13 @@ export type StructuredMirrorMutation = {
   auditEvents?: LocalAuditEventRecord[];
   invoices?: InvoiceRecord[];
   invoiceReminders?: InvoiceReminderRecord[];
+  bankMovements?: BankMovementRecord[];
+  messageConnections?: MessageConnection[];
+  messageThreads?: MessageThread[];
+  messageRecords?: MessageRecord[];
+  mailThreads?: MailThread[];
+  mailMessages?: MailMessage[];
+  mailSyncRuns?: MailSyncRun[];
   commercialDocuments?: CommercialDocumentRecord[];
   documentSignatureRequests?: DocumentSignatureRequestRecord[];
   expenses?: ExpenseRecord[];
@@ -112,6 +144,13 @@ export type StructuredLocalCoreSlices = {
   authRateLimits: LocalAuthRateLimitRecord[];
   invoices: InvoiceRecord[];
   invoiceReminders: InvoiceReminderRecord[];
+  bankMovements: BankMovementRecord[];
+  messageConnections: MessageConnection[];
+  messageThreads: MessageThread[];
+  messageRecords: MessageRecord[];
+  mailThreads: MailThread[];
+  mailMessages: MailMessage[];
+  mailSyncRuns: MailSyncRun[];
   commercialDocuments: CommercialDocumentRecord[];
   documentSignatureRequests: DocumentSignatureRequestRecord[];
   expenses: ExpenseRecord[];
@@ -1137,6 +1176,217 @@ function upsertStructuredInvoiceReminderRows(db: Database, rows: InvoiceReminder
   }
 }
 
+function upsertStructuredBankMovementRows(db: Database, rows: BankMovementRecord[]) {
+  for (const row of rows) {
+    upsertTableRow(
+      db,
+      "local_bank_movements",
+      [
+        "id",
+        "user_id",
+        "account_label",
+        "booking_date",
+        "value_date",
+        "description",
+        "counterparty_name",
+        "amount",
+        "currency",
+        "direction",
+        "balance",
+        "status",
+        "matched_invoice_id",
+        "matched_expense_id",
+        "notes",
+        "source_file_name",
+        "source_hash",
+        "raw_row_json",
+        "imported_at",
+        "created_at",
+        "updated_at",
+      ],
+      "id",
+      {
+        ...row,
+        raw_row_json: toJsonText(row.raw_row),
+      },
+    );
+  }
+}
+
+function upsertStructuredMessageConnectionRows(db: Database, rows: MessageConnection[]) {
+  for (const row of rows) {
+    upsertTableRow(
+      db,
+      "local_message_connections",
+      [
+        "id",
+        "user_id",
+        "channel",
+        "label",
+        "status",
+        "inbound_key",
+        "verify_token",
+        "metadata_json",
+        "created_at",
+        "updated_at",
+      ],
+      "id",
+      {
+        ...row,
+        metadata_json: toJsonText(row.metadata),
+      },
+    );
+  }
+}
+
+function upsertStructuredMessageThreadRows(db: Database, rows: MessageThread[]) {
+  for (const row of rows) {
+    upsertTableRow(
+      db,
+      "local_message_threads",
+      [
+        "id",
+        "user_id",
+        "connection_id",
+        "channel",
+        "external_chat_id",
+        "external_contact_id",
+        "first_name",
+        "last_name",
+        "full_name",
+        "phone",
+        "telegram_username",
+        "urgency",
+        "urgency_score",
+        "urgency_locked",
+        "unread_count",
+        "last_message_preview",
+        "last_message_direction",
+        "last_message_at",
+        "metadata_json",
+        "created_at",
+        "updated_at",
+      ],
+      "id",
+      {
+        ...row,
+        urgency_locked: row.urgency_locked ? 1 : 0,
+        metadata_json: toJsonText(row.metadata),
+      },
+    );
+  }
+}
+
+function upsertStructuredMessageRecordRows(db: Database, rows: MessageRecord[]) {
+  for (const row of rows) {
+    upsertTableRow(
+      db,
+      "local_message_records",
+      [
+        "id",
+        "user_id",
+        "thread_id",
+        "channel",
+        "external_message_id",
+        "direction",
+        "sender_name",
+        "body",
+        "message_type",
+        "received_at",
+        "raw_payload_json",
+        "created_at",
+      ],
+      "id",
+      {
+        ...row,
+        raw_payload_json: toJsonText(row.raw_payload),
+      },
+    );
+  }
+}
+
+function upsertStructuredMailThreadRows(db: Database, rows: MailThread[]) {
+  for (const row of rows) {
+    upsertTableRow(
+      db,
+      "local_mail_threads",
+      [
+        "id",
+        "user_id",
+        "source",
+        "external_thread_key",
+        "from_name",
+        "from_email",
+        "subject",
+        "urgency",
+        "urgency_score",
+        "unread_count",
+        "last_message_preview",
+        "last_message_at",
+        "metadata_json",
+        "created_at",
+        "updated_at",
+      ],
+      "id",
+      {
+        ...row,
+        metadata_json: toJsonText(row.metadata),
+      },
+    );
+  }
+}
+
+function upsertStructuredMailMessageRows(db: Database, rows: MailMessage[]) {
+  for (const row of rows) {
+    upsertTableRow(
+      db,
+      "local_mail_messages",
+      [
+        "id",
+        "user_id",
+        "thread_id",
+        "source",
+        "external_message_id",
+        "from_name",
+        "from_email",
+        "to_emails_json",
+        "subject",
+        "body_text",
+        "body_html",
+        "received_at",
+        "raw_headers_json",
+        "created_at",
+      ],
+      "id",
+      {
+        ...row,
+        to_emails_json: toJsonText(row.to_emails),
+        raw_headers_json: toJsonText(row.raw_headers),
+      },
+    );
+  }
+}
+
+function upsertStructuredMailSyncRunRows(db: Database, rows: MailSyncRun[]) {
+  for (const row of rows) {
+    upsertTableRow(
+      db,
+      "local_mail_sync_runs",
+      [
+        "id",
+        "user_id",
+        "source",
+        "status",
+        "imported_count",
+        "detail",
+        "created_at",
+      ],
+      "id",
+      row,
+    );
+  }
+}
+
 function upsertStructuredCommercialDocumentRows(
   db: Database,
   rows: CommercialDocumentRecord[],
@@ -1421,6 +1671,141 @@ function mapAuthRateLimitRow(values: unknown[]): LocalAuthRateLimitRecord {
     locked_until: values[6] === null ? null : String(values[6] ?? ""),
     created_at: String(values[7] ?? ""),
     updated_at: String(values[8] ?? ""),
+  };
+}
+
+function mapBankMovementRow(values: unknown[]): BankMovementRecord {
+  return {
+    id: String(values[0] ?? ""),
+    user_id: String(values[1] ?? ""),
+    account_label: String(values[2] ?? ""),
+    booking_date: String(values[3] ?? ""),
+    value_date: values[4] === null ? null : String(values[4] ?? ""),
+    description: String(values[5] ?? ""),
+    counterparty_name: values[6] === null ? null : String(values[6] ?? ""),
+    amount: Number(values[7] ?? 0),
+    currency: String(values[8] ?? "EUR"),
+    direction: String(values[9] ?? "debit") as BankMovementRecord["direction"],
+    balance: values[10] === null ? null : Number(values[10] ?? 0),
+    status: String(values[11] ?? "pending") as BankMovementRecord["status"],
+    matched_invoice_id: values[12] === null ? null : String(values[12] ?? ""),
+    matched_expense_id: values[13] === null ? null : String(values[13] ?? ""),
+    notes: values[14] === null ? null : String(values[14] ?? ""),
+    source_file_name: values[15] === null ? null : String(values[15] ?? ""),
+    source_hash: String(values[16] ?? ""),
+    raw_row: parseJsonObjectField(values[17]) ?? {},
+    imported_at: String(values[18] ?? ""),
+    created_at: String(values[19] ?? ""),
+    updated_at: String(values[20] ?? ""),
+  };
+}
+
+function mapMessageConnectionRow(values: unknown[]): MessageConnection {
+  return {
+    id: String(values[0] ?? ""),
+    user_id: String(values[1] ?? ""),
+    channel: String(values[2] ?? "whatsapp") as MessageConnection["channel"],
+    label: String(values[3] ?? ""),
+    status: String(values[4] ?? "draft") as MessageConnection["status"],
+    inbound_key: String(values[5] ?? ""),
+    verify_token: String(values[6] ?? ""),
+    metadata: parseJsonObjectField(values[7]) ?? {},
+    created_at: String(values[8] ?? ""),
+    updated_at: String(values[9] ?? ""),
+  };
+}
+
+function mapMessageThreadRow(values: unknown[]): MessageThread {
+  return {
+    id: String(values[0] ?? ""),
+    user_id: String(values[1] ?? ""),
+    connection_id: values[2] === null ? null : String(values[2] ?? ""),
+    channel: String(values[3] ?? "whatsapp") as MessageThread["channel"],
+    external_chat_id: String(values[4] ?? ""),
+    external_contact_id: values[5] === null ? null : String(values[5] ?? ""),
+    first_name: values[6] === null ? null : String(values[6] ?? ""),
+    last_name: values[7] === null ? null : String(values[7] ?? ""),
+    full_name: String(values[8] ?? ""),
+    phone: values[9] === null ? null : String(values[9] ?? ""),
+    telegram_username: values[10] === null ? null : String(values[10] ?? ""),
+    urgency: String(values[11] ?? "normal") as MessageThread["urgency"],
+    urgency_score: Number(values[12] ?? 0),
+    urgency_locked: Boolean(values[13]),
+    unread_count: Number(values[14] ?? 0),
+    last_message_preview: values[15] === null ? null : String(values[15] ?? ""),
+    last_message_direction: String(values[16] ?? "inbound") as MessageThread["last_message_direction"],
+    last_message_at: String(values[17] ?? ""),
+    metadata: parseJsonObjectField(values[18]) ?? {},
+    created_at: String(values[19] ?? ""),
+    updated_at: String(values[20] ?? ""),
+  };
+}
+
+function mapMessageRecordRow(values: unknown[]): MessageRecord {
+  return {
+    id: String(values[0] ?? ""),
+    user_id: String(values[1] ?? ""),
+    thread_id: String(values[2] ?? ""),
+    channel: String(values[3] ?? "whatsapp") as MessageRecord["channel"],
+    external_message_id: values[4] === null ? null : String(values[4] ?? ""),
+    direction: String(values[5] ?? "inbound") as MessageRecord["direction"],
+    sender_name: values[6] === null ? null : String(values[6] ?? ""),
+    body: String(values[7] ?? ""),
+    message_type: String(values[8] ?? "text"),
+    received_at: String(values[9] ?? ""),
+    raw_payload: parseJsonObjectField(values[10]) ?? {},
+    created_at: String(values[11] ?? ""),
+  };
+}
+
+function mapMailThreadRow(values: unknown[]): MailThread {
+  return {
+    id: String(values[0] ?? ""),
+    user_id: String(values[1] ?? ""),
+    source: String(values[2] ?? "imap") as MailThread["source"],
+    external_thread_key: String(values[3] ?? ""),
+    from_name: values[4] === null ? null : String(values[4] ?? ""),
+    from_email: String(values[5] ?? ""),
+    subject: values[6] === null ? null : String(values[6] ?? ""),
+    urgency: String(values[7] ?? "normal") as MailThread["urgency"],
+    urgency_score: Number(values[8] ?? 0),
+    unread_count: Number(values[9] ?? 0),
+    last_message_preview: values[10] === null ? null : String(values[10] ?? ""),
+    last_message_at: String(values[11] ?? ""),
+    metadata: parseJsonObjectField(values[12]) ?? {},
+    created_at: String(values[13] ?? ""),
+    updated_at: String(values[14] ?? ""),
+  };
+}
+
+function mapMailMessageRow(values: unknown[]): MailMessage {
+  return {
+    id: String(values[0] ?? ""),
+    user_id: String(values[1] ?? ""),
+    thread_id: String(values[2] ?? ""),
+    source: String(values[3] ?? "imap") as MailMessage["source"],
+    external_message_id: String(values[4] ?? ""),
+    from_name: values[5] === null ? null : String(values[5] ?? ""),
+    from_email: String(values[6] ?? ""),
+    to_emails: parseJsonArrayField(values[7]).map((value) => String(value)),
+    subject: values[8] === null ? null : String(values[8] ?? ""),
+    body_text: String(values[9] ?? ""),
+    body_html: values[10] === null ? null : String(values[10] ?? ""),
+    received_at: String(values[11] ?? ""),
+    raw_headers: parseJsonObjectField(values[12]) ?? {},
+    created_at: String(values[13] ?? ""),
+  };
+}
+
+function mapMailSyncRunRow(values: unknown[]): MailSyncRun {
+  return {
+    id: String(values[0] ?? ""),
+    user_id: String(values[1] ?? ""),
+    source: String(values[2] ?? "imap") as MailSyncRun["source"],
+    status: String(values[3] ?? "success") as MailSyncRun["status"],
+    imported_count: Number(values[4] ?? 0),
+    detail: values[5] === null ? null : String(values[5] ?? ""),
+    created_at: String(values[6] ?? ""),
   };
 }
 
@@ -2131,6 +2516,34 @@ function applyStructuredMirrorMutation(
       upsertStructuredInvoiceReminderRows(db, mutation.invoiceReminders);
     }
 
+    if (mutation.bankMovements?.length) {
+      upsertStructuredBankMovementRows(db, mutation.bankMovements);
+    }
+
+    if (mutation.messageConnections?.length) {
+      upsertStructuredMessageConnectionRows(db, mutation.messageConnections);
+    }
+
+    if (mutation.messageThreads?.length) {
+      upsertStructuredMessageThreadRows(db, mutation.messageThreads);
+    }
+
+    if (mutation.messageRecords?.length) {
+      upsertStructuredMessageRecordRows(db, mutation.messageRecords);
+    }
+
+    if (mutation.mailThreads?.length) {
+      upsertStructuredMailThreadRows(db, mutation.mailThreads);
+    }
+
+    if (mutation.mailMessages?.length) {
+      upsertStructuredMailMessageRows(db, mutation.mailMessages);
+    }
+
+    if (mutation.mailSyncRuns?.length) {
+      upsertStructuredMailSyncRunRows(db, mutation.mailSyncRuns);
+    }
+
     if (mutation.commercialDocuments?.length) {
       upsertStructuredCommercialDocumentRows(db, mutation.commercialDocuments);
     }
@@ -2168,7 +2581,7 @@ function applyStructuredMirrorMutation(
 async function persistDatabase(db: Database) {
   await ensureLocalDataDir();
   const filePath = getLocalDatabaseFilePath();
-  const tempPath = `${filePath}.${process.pid}.${Date.now()}.tmp`;
+  const tempPath = `${filePath}.${process.pid}.${Date.now()}.${randomUUID()}.tmp`;
   const binary = db.export();
 
   await fs.writeFile(tempPath, Buffer.from(binary));
@@ -2250,99 +2663,105 @@ export async function writeLocalStateText(
     skipStructuredMirrorSync?: boolean;
   },
 ) {
-  const db = await openDatabase();
+  return runLocalDbWrite(async () => {
+    const db = await openDatabase();
 
-  try {
-    writePayloadToDatabase(db, payloadText);
-    if (options?.skipStructuredMirrorSync) {
-      // The caller already persisted the targeted structured mutation and only needs to
-      // keep the compatibility snapshot aligned.
-    } else if (isStructuredMirrorEnabled()) {
-      const structuredSections = options?.structuredSections;
-      const structuredMutation = options?.structuredMutation;
+    try {
+      writePayloadToDatabase(db, payloadText);
+      if (options?.skipStructuredMirrorSync) {
+        // The caller already persisted the targeted structured mutation and only needs to
+        // keep the compatibility snapshot aligned.
+      } else if (isStructuredMirrorEnabled()) {
+        const structuredSections = options?.structuredSections;
+        const structuredMutation = options?.structuredMutation;
 
-      if (
-        structuredMutation &&
-        getStructuredMirrorStatus(db) === "ready"
-      ) {
-        applyStructuredMirrorMutation(db, structuredMutation);
-      } else if (
-        Array.isArray(structuredSections) &&
-        structuredSections.length > 0 &&
-        getStructuredMirrorStatus(db) === "ready"
-      ) {
-        syncStructuredMirrorSections(db, snapshotText, structuredSections);
+        if (
+          structuredMutation &&
+          getStructuredMirrorStatus(db) === "ready"
+        ) {
+          applyStructuredMirrorMutation(db, structuredMutation);
+        } else if (
+          Array.isArray(structuredSections) &&
+          structuredSections.length > 0 &&
+          getStructuredMirrorStatus(db) === "ready"
+        ) {
+          syncStructuredMirrorSections(db, snapshotText, structuredSections);
+        } else {
+          syncStructuredMirror(db, snapshotText);
+        }
       } else {
-        syncStructuredMirror(db, snapshotText);
+        resetStructuredMirror(db, "disabled_encrypted", 1);
       }
-    } else {
-      resetStructuredMirror(db, "disabled_encrypted", 1);
+      await persistDatabase(db);
+    } finally {
+      db.close();
     }
-    await persistDatabase(db);
-  } finally {
-    db.close();
-  }
+  });
 }
 
 export async function persistStructuredLocalMutation(
   mutation: StructuredMirrorMutation,
 ): Promise<boolean> {
-  const db = await openDatabase();
+  return runLocalDbWrite(async () => {
+    const db = await openDatabase();
 
-  try {
-    if (getStructuredMirrorStatus(db) === "disabled_encrypted") {
-      return false;
+    try {
+      if (getStructuredMirrorStatus(db) === "disabled_encrypted") {
+        return false;
+      }
+
+      applyStructuredMirrorMutation(db, mutation);
+      await persistDatabase(db);
+      return true;
+    } finally {
+      db.close();
     }
-
-    applyStructuredMirrorMutation(db, mutation);
-    await persistDatabase(db);
-    return true;
-  } finally {
-    db.close();
-  }
+  });
 }
 
 export async function replaceStructuredLocalClientsForUser(
   userId: string,
   clients: ClientRecord[],
 ): Promise<boolean> {
-  const db = await openDatabase();
-
-  try {
-    if (getStructuredMirrorStatus(db) === "disabled_encrypted") {
-      return false;
-    }
-
-    const syncedAt = new Date().toISOString();
-    const currentSnapshotVersion = Number(readSchemaInfo(db, "structured_mirror_snapshot_version") ?? 0);
-    db.run("BEGIN TRANSACTION;");
+  return runLocalDbWrite(async () => {
+    const db = await openDatabase();
 
     try {
-      deleteRowsByUserId(db, "local_clients", userId);
-
-      if (clients.length > 0) {
-        upsertStructuredClientRows(db, clients);
+      if (getStructuredMirrorStatus(db) === "disabled_encrypted") {
+        return false;
       }
 
-      upsertSchemaInfo(db, "structured_mirror_schema_version", String(STRUCTURED_MIRROR_SCHEMA_VERSION));
-      upsertSchemaInfo(
-        db,
-        "structured_mirror_snapshot_version",
-        String(currentSnapshotVersion > 0 ? currentSnapshotVersion : 1),
-      );
-      upsertSchemaInfo(db, "structured_mirror_last_synced_at", syncedAt);
-      upsertSchemaInfo(db, "structured_mirror_status", "ready");
-      db.run("COMMIT;");
-    } catch (error) {
-      db.run("ROLLBACK;");
-      throw error;
-    }
+      const syncedAt = new Date().toISOString();
+      const currentSnapshotVersion = Number(readSchemaInfo(db, "structured_mirror_snapshot_version") ?? 0);
+      db.run("BEGIN TRANSACTION;");
 
-    await persistDatabase(db);
-    return true;
-  } finally {
-    db.close();
-  }
+      try {
+        deleteRowsByUserId(db, "local_clients", userId);
+
+        if (clients.length > 0) {
+          upsertStructuredClientRows(db, clients);
+        }
+
+        upsertSchemaInfo(db, "structured_mirror_schema_version", String(STRUCTURED_MIRROR_SCHEMA_VERSION));
+        upsertSchemaInfo(
+          db,
+          "structured_mirror_snapshot_version",
+          String(currentSnapshotVersion > 0 ? currentSnapshotVersion : 1),
+        );
+        upsertSchemaInfo(db, "structured_mirror_last_synced_at", syncedAt);
+        upsertSchemaInfo(db, "structured_mirror_status", "ready");
+        db.run("COMMIT;");
+      } catch (error) {
+        db.run("ROLLBACK;");
+        throw error;
+      }
+
+      await persistDatabase(db);
+      return true;
+    } finally {
+      db.close();
+    }
+  });
 }
 
 export async function replaceStructuredLocalIdentityForUser({
@@ -2354,12 +2773,13 @@ export async function replaceStructuredLocalIdentityForUser({
   profile: Profile | null;
   authRateLimits: LocalAuthRateLimitRecord[];
 }): Promise<boolean> {
-  const db = await openDatabase();
+  return runLocalDbWrite(async () => {
+    const db = await openDatabase();
 
-  try {
-    if (getStructuredMirrorStatus(db) === "disabled_encrypted") {
-      return false;
-    }
+    try {
+      if (getStructuredMirrorStatus(db) === "disabled_encrypted") {
+        return false;
+      }
 
     const syncedAt = new Date().toISOString();
     const currentSnapshotVersion = Number(
@@ -2405,11 +2825,12 @@ export async function replaceStructuredLocalIdentityForUser({
       throw error;
     }
 
-    await persistDatabase(db);
-    return true;
-  } finally {
-    db.close();
-  }
+      await persistDatabase(db);
+      return true;
+    } finally {
+      db.close();
+    }
+  });
 }
 
 export async function replaceStructuredLocalInvoicesForUser({
@@ -2425,12 +2846,13 @@ export async function replaceStructuredLocalInvoicesForUser({
   auditEvents?: LocalAuditEventRecord[];
   counters?: StructuredSnapshot["counters"];
 }): Promise<boolean> {
-  const db = await openDatabase();
+  return runLocalDbWrite(async () => {
+    const db = await openDatabase();
 
-  try {
-    if (getStructuredMirrorStatus(db) === "disabled_encrypted") {
-      return false;
-    }
+    try {
+      if (getStructuredMirrorStatus(db) === "disabled_encrypted") {
+        return false;
+      }
 
     const syncedAt = new Date().toISOString();
     const currentSnapshotVersion = Number(readSchemaInfo(db, "structured_mirror_snapshot_version") ?? 0);
@@ -2474,23 +2896,25 @@ export async function replaceStructuredLocalInvoicesForUser({
       throw error;
     }
 
-    await persistDatabase(db);
-    return true;
-  } finally {
-    db.close();
-  }
+      await persistDatabase(db);
+      return true;
+    } finally {
+      db.close();
+    }
+  });
 }
 
 export async function replaceStructuredLocalAuditEventsForUser(
   userId: string,
   auditEvents: LocalAuditEventRecord[],
 ): Promise<boolean> {
-  const db = await openDatabase();
+  return runLocalDbWrite(async () => {
+    const db = await openDatabase();
 
-  try {
-    if (getStructuredMirrorStatus(db) === "disabled_encrypted") {
-      return false;
-    }
+    try {
+      if (getStructuredMirrorStatus(db) === "disabled_encrypted") {
+        return false;
+      }
 
     const syncedAt = new Date().toISOString();
     const currentSnapshotVersion = Number(
@@ -2523,23 +2947,25 @@ export async function replaceStructuredLocalAuditEventsForUser(
       throw error;
     }
 
-    await persistDatabase(db);
-    return true;
-  } finally {
-    db.close();
-  }
+      await persistDatabase(db);
+      return true;
+    } finally {
+      db.close();
+    }
+  });
 }
 
 export async function replaceStructuredLocalFeedbackEntriesForUser(
   userId: string,
   feedbackEntries: FeedbackEntryRecord[],
 ): Promise<boolean> {
-  const db = await openDatabase();
+  return runLocalDbWrite(async () => {
+    const db = await openDatabase();
 
-  try {
-    if (getStructuredMirrorStatus(db) === "disabled_encrypted") {
-      return false;
-    }
+    try {
+      if (getStructuredMirrorStatus(db) === "disabled_encrypted") {
+        return false;
+      }
 
     const syncedAt = new Date().toISOString();
     const currentSnapshotVersion = Number(
@@ -2572,11 +2998,12 @@ export async function replaceStructuredLocalFeedbackEntriesForUser(
       throw error;
     }
 
-    await persistDatabase(db);
-    return true;
-  } finally {
-    db.close();
-  }
+      await persistDatabase(db);
+      return true;
+    } finally {
+      db.close();
+    }
+  });
 }
 
 export async function replaceStructuredLocalCommercialStateForUser({
@@ -2588,12 +3015,13 @@ export async function replaceStructuredLocalCommercialStateForUser({
   commercialDocuments: CommercialDocumentRecord[];
   documentSignatureRequests: DocumentSignatureRequestRecord[];
 }): Promise<boolean> {
-  const db = await openDatabase();
+  return runLocalDbWrite(async () => {
+    const db = await openDatabase();
 
-  try {
-    if (getStructuredMirrorStatus(db) === "disabled_encrypted") {
-      return false;
-    }
+    try {
+      if (getStructuredMirrorStatus(db) === "disabled_encrypted") {
+        return false;
+      }
 
     const syncedAt = new Date().toISOString();
     const currentSnapshotVersion = Number(
@@ -2634,23 +3062,25 @@ export async function replaceStructuredLocalCommercialStateForUser({
       throw error;
     }
 
-    await persistDatabase(db);
-    return true;
-  } finally {
-    db.close();
-  }
+      await persistDatabase(db);
+      return true;
+    } finally {
+      db.close();
+    }
+  });
 }
 
 export async function replaceStructuredLocalExpensesForUser(
   userId: string,
   expenses: ExpenseRecord[],
 ): Promise<boolean> {
-  const db = await openDatabase();
+  return runLocalDbWrite(async () => {
+    const db = await openDatabase();
 
-  try {
-    if (getStructuredMirrorStatus(db) === "disabled_encrypted") {
-      return false;
-    }
+    try {
+      if (getStructuredMirrorStatus(db) === "disabled_encrypted") {
+        return false;
+      }
 
     const syncedAt = new Date().toISOString();
     const currentSnapshotVersion = Number(
@@ -2683,11 +3113,195 @@ export async function replaceStructuredLocalExpensesForUser(
       throw error;
     }
 
-    await persistDatabase(db);
-    return true;
-  } finally {
-    db.close();
-  }
+      await persistDatabase(db);
+      return true;
+    } finally {
+      db.close();
+    }
+  });
+}
+
+export async function replaceStructuredLocalBankMovementsForUser(
+  userId: string,
+  bankMovements: BankMovementRecord[],
+): Promise<boolean> {
+  return runLocalDbWrite(async () => {
+    const db = await openDatabase();
+
+    try {
+      if (getStructuredMirrorStatus(db) === "disabled_encrypted") {
+        return false;
+      }
+
+    const syncedAt = new Date().toISOString();
+    const currentSnapshotVersion = Number(
+      readSchemaInfo(db, "structured_mirror_snapshot_version") ?? 0,
+    );
+    db.run("BEGIN TRANSACTION;");
+
+    try {
+      deleteRowsByUserId(db, "local_bank_movements", userId);
+
+      if (bankMovements.length > 0) {
+        upsertStructuredBankMovementRows(db, bankMovements);
+      }
+
+      upsertSchemaInfo(
+        db,
+        "structured_mirror_schema_version",
+        String(STRUCTURED_MIRROR_SCHEMA_VERSION),
+      );
+      upsertSchemaInfo(
+        db,
+        "structured_mirror_snapshot_version",
+        String(currentSnapshotVersion > 0 ? currentSnapshotVersion : 1),
+      );
+      upsertSchemaInfo(db, "structured_mirror_last_synced_at", syncedAt);
+      upsertSchemaInfo(db, "structured_mirror_status", "ready");
+      db.run("COMMIT;");
+    } catch (error) {
+      db.run("ROLLBACK;");
+      throw error;
+    }
+
+      await persistDatabase(db);
+      return true;
+    } finally {
+      db.close();
+    }
+  });
+}
+
+export async function replaceStructuredLocalMessagingStateForUser({
+  userId,
+  messageConnections,
+  messageThreads,
+  messageRecords,
+}: {
+  userId: string;
+  messageConnections: MessageConnection[];
+  messageThreads: MessageThread[];
+  messageRecords: MessageRecord[];
+}): Promise<boolean> {
+  return runLocalDbWrite(async () => {
+    const db = await openDatabase();
+
+    try {
+      if (getStructuredMirrorStatus(db) === "disabled_encrypted") {
+        return false;
+      }
+
+    const syncedAt = new Date().toISOString();
+    const currentSnapshotVersion = Number(
+      readSchemaInfo(db, "structured_mirror_snapshot_version") ?? 0,
+    );
+    db.run("BEGIN TRANSACTION;");
+
+    try {
+      deleteRowsByUserId(db, "local_message_connections", userId);
+      deleteRowsByUserId(db, "local_message_threads", userId);
+      deleteRowsByUserId(db, "local_message_records", userId);
+
+      if (messageConnections.length > 0) {
+        upsertStructuredMessageConnectionRows(db, messageConnections);
+      }
+      if (messageThreads.length > 0) {
+        upsertStructuredMessageThreadRows(db, messageThreads);
+      }
+      if (messageRecords.length > 0) {
+        upsertStructuredMessageRecordRows(db, messageRecords);
+      }
+
+      upsertSchemaInfo(
+        db,
+        "structured_mirror_schema_version",
+        String(STRUCTURED_MIRROR_SCHEMA_VERSION),
+      );
+      upsertSchemaInfo(
+        db,
+        "structured_mirror_snapshot_version",
+        String(currentSnapshotVersion > 0 ? currentSnapshotVersion : 1),
+      );
+      upsertSchemaInfo(db, "structured_mirror_last_synced_at", syncedAt);
+      upsertSchemaInfo(db, "structured_mirror_status", "ready");
+      db.run("COMMIT;");
+    } catch (error) {
+      db.run("ROLLBACK;");
+      throw error;
+    }
+
+      await persistDatabase(db);
+      return true;
+    } finally {
+      db.close();
+    }
+  });
+}
+
+export async function replaceStructuredLocalMailStateForUser({
+  userId,
+  mailThreads,
+  mailMessages,
+  mailSyncRuns,
+}: {
+  userId: string;
+  mailThreads: MailThread[];
+  mailMessages: MailMessage[];
+  mailSyncRuns: MailSyncRun[];
+}): Promise<boolean> {
+  return runLocalDbWrite(async () => {
+    const db = await openDatabase();
+
+    try {
+      if (getStructuredMirrorStatus(db) === "disabled_encrypted") {
+        return false;
+      }
+
+    const syncedAt = new Date().toISOString();
+    const currentSnapshotVersion = Number(
+      readSchemaInfo(db, "structured_mirror_snapshot_version") ?? 0,
+    );
+    db.run("BEGIN TRANSACTION;");
+
+    try {
+      deleteRowsByUserId(db, "local_mail_threads", userId);
+      deleteRowsByUserId(db, "local_mail_messages", userId);
+      deleteRowsByUserId(db, "local_mail_sync_runs", userId);
+
+      if (mailThreads.length > 0) {
+        upsertStructuredMailThreadRows(db, mailThreads);
+      }
+      if (mailMessages.length > 0) {
+        upsertStructuredMailMessageRows(db, mailMessages);
+      }
+      if (mailSyncRuns.length > 0) {
+        upsertStructuredMailSyncRunRows(db, mailSyncRuns);
+      }
+
+      upsertSchemaInfo(
+        db,
+        "structured_mirror_schema_version",
+        String(STRUCTURED_MIRROR_SCHEMA_VERSION),
+      );
+      upsertSchemaInfo(
+        db,
+        "structured_mirror_snapshot_version",
+        String(currentSnapshotVersion > 0 ? currentSnapshotVersion : 1),
+      );
+      upsertSchemaInfo(db, "structured_mirror_last_synced_at", syncedAt);
+      upsertSchemaInfo(db, "structured_mirror_status", "ready");
+      db.run("COMMIT;");
+    } catch (error) {
+      db.run("ROLLBACK;");
+      throw error;
+    }
+
+      await persistDatabase(db);
+      return true;
+    } finally {
+      db.close();
+    }
+  });
 }
 
 export async function replaceStructuredLocalAuthRateLimitsForEmail(
@@ -3257,6 +3871,642 @@ export async function getStructuredLocalExpenseById(
       `,
       [userId, expenseId],
       (values) => mapExpenseRow(values),
+    );
+  } finally {
+    db.close();
+  }
+}
+
+export async function listStructuredLocalBankMovementsForUser(
+  userId: string,
+): Promise<BankMovementRecord[] | null> {
+  const db = await openDatabase();
+
+  try {
+    if (getStructuredMirrorStatus(db) !== "ready") {
+      return null;
+    }
+
+    return queryRows(
+      db,
+      `
+        SELECT
+          id,
+          user_id,
+          account_label,
+          booking_date,
+          value_date,
+          description,
+          counterparty_name,
+          amount,
+          currency,
+          direction,
+          balance,
+          status,
+          matched_invoice_id,
+          matched_expense_id,
+          notes,
+          source_file_name,
+          source_hash,
+          raw_row_json,
+          imported_at,
+          created_at,
+          updated_at
+        FROM local_bank_movements
+        WHERE user_id = ?
+        ORDER BY booking_date DESC, created_at DESC;
+      `,
+      [userId],
+      (values) => mapBankMovementRow(values),
+    );
+  } finally {
+    db.close();
+  }
+}
+
+export async function getStructuredLocalBankMovementById(
+  userId: string,
+  movementId: string,
+): Promise<BankMovementRecord | null> {
+  const db = await openDatabase();
+
+  try {
+    if (getStructuredMirrorStatus(db) !== "ready") {
+      return null;
+    }
+
+    return queryFirstRow(
+      db,
+      `
+        SELECT
+          id,
+          user_id,
+          account_label,
+          booking_date,
+          value_date,
+          description,
+          counterparty_name,
+          amount,
+          currency,
+          direction,
+          balance,
+          status,
+          matched_invoice_id,
+          matched_expense_id,
+          notes,
+          source_file_name,
+          source_hash,
+          raw_row_json,
+          imported_at,
+          created_at,
+          updated_at
+        FROM local_bank_movements
+        WHERE user_id = ? AND id = ?
+        LIMIT 1;
+      `,
+      [userId, movementId],
+      (values) => mapBankMovementRow(values),
+    );
+  } finally {
+    db.close();
+  }
+}
+
+export async function listStructuredLocalMessageConnectionsForUser(
+  userId: string,
+): Promise<MessageConnection[] | null> {
+  const db = await openDatabase();
+
+  try {
+    if (getStructuredMirrorStatus(db) !== "ready") {
+      return null;
+    }
+
+    return queryRows(
+      db,
+      `
+        SELECT
+          id,
+          user_id,
+          channel,
+          label,
+          status,
+          inbound_key,
+          verify_token,
+          metadata_json,
+          created_at,
+          updated_at
+        FROM local_message_connections
+        WHERE user_id = ?
+        ORDER BY updated_at DESC, created_at DESC;
+      `,
+      [userId],
+      (values) => mapMessageConnectionRow(values),
+    );
+  } finally {
+    db.close();
+  }
+}
+
+export async function getStructuredLocalMessageConnectionByInboundKey(
+  inboundKey: string,
+  channel: MessageConnection["channel"],
+): Promise<MessageConnection | null> {
+  const db = await openDatabase();
+
+  try {
+    if (getStructuredMirrorStatus(db) !== "ready") {
+      return null;
+    }
+
+    return queryFirstRow(
+      db,
+      `
+        SELECT
+          id,
+          user_id,
+          channel,
+          label,
+          status,
+          inbound_key,
+          verify_token,
+          metadata_json,
+          created_at,
+          updated_at
+        FROM local_message_connections
+        WHERE channel = ? AND inbound_key = ?
+        LIMIT 1;
+      `,
+      [channel, inboundKey],
+      (values) => mapMessageConnectionRow(values),
+    );
+  } finally {
+    db.close();
+  }
+}
+
+export async function listStructuredLocalMessageThreadsForUser(
+  userId: string,
+): Promise<MessageThread[] | null> {
+  const db = await openDatabase();
+
+  try {
+    if (getStructuredMirrorStatus(db) !== "ready") {
+      return null;
+    }
+
+    return queryRows(
+      db,
+      `
+        SELECT
+          id,
+          user_id,
+          connection_id,
+          channel,
+          external_chat_id,
+          external_contact_id,
+          first_name,
+          last_name,
+          full_name,
+          phone,
+          telegram_username,
+          urgency,
+          urgency_score,
+          urgency_locked,
+          unread_count,
+          last_message_preview,
+          last_message_direction,
+          last_message_at,
+          metadata_json,
+          created_at,
+          updated_at
+        FROM local_message_threads
+        WHERE user_id = ?
+        ORDER BY last_message_at DESC, created_at DESC;
+      `,
+      [userId],
+      (values) => mapMessageThreadRow(values),
+    );
+  } finally {
+    db.close();
+  }
+}
+
+export async function getStructuredLocalMessageThreadById(
+  userId: string,
+  threadId: string,
+): Promise<MessageThread | null> {
+  const db = await openDatabase();
+
+  try {
+    if (getStructuredMirrorStatus(db) !== "ready") {
+      return null;
+    }
+
+    return queryFirstRow(
+      db,
+      `
+        SELECT
+          id,
+          user_id,
+          connection_id,
+          channel,
+          external_chat_id,
+          external_contact_id,
+          first_name,
+          last_name,
+          full_name,
+          phone,
+          telegram_username,
+          urgency,
+          urgency_score,
+          urgency_locked,
+          unread_count,
+          last_message_preview,
+          last_message_direction,
+          last_message_at,
+          metadata_json,
+          created_at,
+          updated_at
+        FROM local_message_threads
+        WHERE user_id = ? AND id = ?
+        LIMIT 1;
+      `,
+      [userId, threadId],
+      (values) => mapMessageThreadRow(values),
+    );
+  } finally {
+    db.close();
+  }
+}
+
+export async function getStructuredLocalMessageThreadByExternalChat(
+  userId: string,
+  channel: MessageThread["channel"],
+  externalChatId: string,
+): Promise<MessageThread | null> {
+  const db = await openDatabase();
+
+  try {
+    if (getStructuredMirrorStatus(db) !== "ready") {
+      return null;
+    }
+
+    return queryFirstRow(
+      db,
+      `
+        SELECT
+          id,
+          user_id,
+          connection_id,
+          channel,
+          external_chat_id,
+          external_contact_id,
+          first_name,
+          last_name,
+          full_name,
+          phone,
+          telegram_username,
+          urgency,
+          urgency_score,
+          urgency_locked,
+          unread_count,
+          last_message_preview,
+          last_message_direction,
+          last_message_at,
+          metadata_json,
+          created_at,
+          updated_at
+        FROM local_message_threads
+        WHERE user_id = ? AND channel = ? AND external_chat_id = ?
+        LIMIT 1;
+      `,
+      [userId, channel, externalChatId],
+      (values) => mapMessageThreadRow(values),
+    );
+  } finally {
+    db.close();
+  }
+}
+
+export async function listStructuredLocalMessageRecordsForThread(
+  userId: string,
+  threadId: string,
+): Promise<MessageRecord[] | null> {
+  const db = await openDatabase();
+
+  try {
+    if (getStructuredMirrorStatus(db) !== "ready") {
+      return null;
+    }
+
+    return queryRows(
+      db,
+      `
+        SELECT
+          id,
+          user_id,
+          thread_id,
+          channel,
+          external_message_id,
+          direction,
+          sender_name,
+          body,
+          message_type,
+          received_at,
+          raw_payload_json,
+          created_at
+        FROM local_message_records
+        WHERE user_id = ? AND thread_id = ?
+        ORDER BY received_at ASC, created_at ASC;
+      `,
+      [userId, threadId],
+      (values) => mapMessageRecordRow(values),
+    );
+  } finally {
+    db.close();
+  }
+}
+
+export async function getStructuredLocalMessageRecordByExternalId(
+  userId: string,
+  channel: MessageRecord["channel"],
+  externalMessageId: string,
+): Promise<MessageRecord | null> {
+  const db = await openDatabase();
+
+  try {
+    if (getStructuredMirrorStatus(db) !== "ready") {
+      return null;
+    }
+
+    return queryFirstRow(
+      db,
+      `
+        SELECT
+          id,
+          user_id,
+          thread_id,
+          channel,
+          external_message_id,
+          direction,
+          sender_name,
+          body,
+          message_type,
+          received_at,
+          raw_payload_json,
+          created_at
+        FROM local_message_records
+        WHERE user_id = ? AND channel = ? AND external_message_id = ?
+        LIMIT 1;
+      `,
+      [userId, channel, externalMessageId],
+      (values) => mapMessageRecordRow(values),
+    );
+  } finally {
+    db.close();
+  }
+}
+
+export async function listStructuredLocalMailThreadsForUser(
+  userId: string,
+): Promise<MailThread[] | null> {
+  const db = await openDatabase();
+
+  try {
+    if (getStructuredMirrorStatus(db) !== "ready") {
+      return null;
+    }
+
+    return queryRows(
+      db,
+      `
+        SELECT
+          id,
+          user_id,
+          source,
+          external_thread_key,
+          from_name,
+          from_email,
+          subject,
+          urgency,
+          urgency_score,
+          unread_count,
+          last_message_preview,
+          last_message_at,
+          metadata_json,
+          created_at,
+          updated_at
+        FROM local_mail_threads
+        WHERE user_id = ?
+        ORDER BY last_message_at DESC, created_at DESC;
+      `,
+      [userId],
+      (values) => mapMailThreadRow(values),
+    );
+  } finally {
+    db.close();
+  }
+}
+
+export async function getStructuredLocalMailThreadById(
+  userId: string,
+  threadId: string,
+): Promise<MailThread | null> {
+  const db = await openDatabase();
+
+  try {
+    if (getStructuredMirrorStatus(db) !== "ready") {
+      return null;
+    }
+
+    return queryFirstRow(
+      db,
+      `
+        SELECT
+          id,
+          user_id,
+          source,
+          external_thread_key,
+          from_name,
+          from_email,
+          subject,
+          urgency,
+          urgency_score,
+          unread_count,
+          last_message_preview,
+          last_message_at,
+          metadata_json,
+          created_at,
+          updated_at
+        FROM local_mail_threads
+        WHERE user_id = ? AND id = ?
+        LIMIT 1;
+      `,
+      [userId, threadId],
+      (values) => mapMailThreadRow(values),
+    );
+  } finally {
+    db.close();
+  }
+}
+
+export async function getStructuredLocalMailThreadByExternalKey(
+  userId: string,
+  source: MailThread["source"],
+  externalThreadKey: string,
+): Promise<MailThread | null> {
+  const db = await openDatabase();
+
+  try {
+    if (getStructuredMirrorStatus(db) !== "ready") {
+      return null;
+    }
+
+    return queryFirstRow(
+      db,
+      `
+        SELECT
+          id,
+          user_id,
+          source,
+          external_thread_key,
+          from_name,
+          from_email,
+          subject,
+          urgency,
+          urgency_score,
+          unread_count,
+          last_message_preview,
+          last_message_at,
+          metadata_json,
+          created_at,
+          updated_at
+        FROM local_mail_threads
+        WHERE user_id = ? AND source = ? AND external_thread_key = ?
+        LIMIT 1;
+      `,
+      [userId, source, externalThreadKey],
+      (values) => mapMailThreadRow(values),
+    );
+  } finally {
+    db.close();
+  }
+}
+
+export async function listStructuredLocalMailMessagesForThread(
+  userId: string,
+  threadId: string,
+): Promise<MailMessage[] | null> {
+  const db = await openDatabase();
+
+  try {
+    if (getStructuredMirrorStatus(db) !== "ready") {
+      return null;
+    }
+
+    return queryRows(
+      db,
+      `
+        SELECT
+          id,
+          user_id,
+          thread_id,
+          source,
+          external_message_id,
+          from_name,
+          from_email,
+          to_emails_json,
+          subject,
+          body_text,
+          body_html,
+          received_at,
+          raw_headers_json,
+          created_at
+        FROM local_mail_messages
+        WHERE user_id = ? AND thread_id = ?
+        ORDER BY received_at ASC, created_at ASC;
+      `,
+      [userId, threadId],
+      (values) => mapMailMessageRow(values),
+    );
+  } finally {
+    db.close();
+  }
+}
+
+export async function getStructuredLocalMailMessageByExternalId(
+  userId: string,
+  source: MailMessage["source"],
+  externalMessageId: string,
+): Promise<MailMessage | null> {
+  const db = await openDatabase();
+
+  try {
+    if (getStructuredMirrorStatus(db) !== "ready") {
+      return null;
+    }
+
+    return queryFirstRow(
+      db,
+      `
+        SELECT
+          id,
+          user_id,
+          thread_id,
+          source,
+          external_message_id,
+          from_name,
+          from_email,
+          to_emails_json,
+          subject,
+          body_text,
+          body_html,
+          received_at,
+          raw_headers_json,
+          created_at
+        FROM local_mail_messages
+        WHERE user_id = ? AND source = ? AND external_message_id = ?
+        LIMIT 1;
+      `,
+      [userId, source, externalMessageId],
+      (values) => mapMailMessageRow(values),
+    );
+  } finally {
+    db.close();
+  }
+}
+
+export async function listStructuredLocalMailSyncRunsForUser(
+  userId: string,
+  limit = 5,
+): Promise<MailSyncRun[] | null> {
+  const db = await openDatabase();
+
+  try {
+    if (getStructuredMirrorStatus(db) !== "ready") {
+      return null;
+    }
+
+    const safeLimit = Math.max(1, Math.trunc(limit));
+    return queryRows(
+      db,
+      `
+        SELECT
+          id,
+          user_id,
+          source,
+          status,
+          imported_count,
+          detail,
+          created_at
+        FROM local_mail_sync_runs
+        WHERE user_id = ?
+        ORDER BY created_at DESC
+        LIMIT ${safeLimit};
+      `,
+      [userId],
+      (values) => mapMailSyncRunRow(values),
     );
   } finally {
     db.close();
@@ -4028,6 +5278,183 @@ export async function readStructuredLocalCoreSlices(): Promise<StructuredLocalCo
       (values) => mapInvoiceReminderRow(values),
     );
 
+    const bankMovements = queryRows(
+      db,
+      `
+        SELECT
+          id,
+          user_id,
+          account_label,
+          booking_date,
+          value_date,
+          description,
+          counterparty_name,
+          amount,
+          currency,
+          direction,
+          balance,
+          status,
+          matched_invoice_id,
+          matched_expense_id,
+          notes,
+          source_file_name,
+          source_hash,
+          raw_row_json,
+          imported_at,
+          created_at,
+          updated_at
+        FROM local_bank_movements
+        ORDER BY booking_date ASC, created_at ASC;
+      `,
+      undefined,
+      (values) => mapBankMovementRow(values),
+    );
+
+    const messageConnections = queryRows(
+      db,
+      `
+        SELECT
+          id,
+          user_id,
+          channel,
+          label,
+          status,
+          inbound_key,
+          verify_token,
+          metadata_json,
+          created_at,
+          updated_at
+        FROM local_message_connections
+        ORDER BY created_at ASC, updated_at ASC;
+      `,
+      undefined,
+      (values) => mapMessageConnectionRow(values),
+    );
+
+    const messageThreads = queryRows(
+      db,
+      `
+        SELECT
+          id,
+          user_id,
+          connection_id,
+          channel,
+          external_chat_id,
+          external_contact_id,
+          first_name,
+          last_name,
+          full_name,
+          phone,
+          telegram_username,
+          urgency,
+          urgency_score,
+          urgency_locked,
+          unread_count,
+          last_message_preview,
+          last_message_direction,
+          last_message_at,
+          metadata_json,
+          created_at,
+          updated_at
+        FROM local_message_threads
+        ORDER BY last_message_at ASC, created_at ASC;
+      `,
+      undefined,
+      (values) => mapMessageThreadRow(values),
+    );
+
+    const messageRecords = queryRows(
+      db,
+      `
+        SELECT
+          id,
+          user_id,
+          thread_id,
+          channel,
+          external_message_id,
+          direction,
+          sender_name,
+          body,
+          message_type,
+          received_at,
+          raw_payload_json,
+          created_at
+        FROM local_message_records
+        ORDER BY received_at ASC, created_at ASC;
+      `,
+      undefined,
+      (values) => mapMessageRecordRow(values),
+    );
+
+    const mailThreads = queryRows(
+      db,
+      `
+        SELECT
+          id,
+          user_id,
+          source,
+          external_thread_key,
+          from_name,
+          from_email,
+          subject,
+          urgency,
+          urgency_score,
+          unread_count,
+          last_message_preview,
+          last_message_at,
+          metadata_json,
+          created_at,
+          updated_at
+        FROM local_mail_threads
+        ORDER BY last_message_at ASC, created_at ASC;
+      `,
+      undefined,
+      (values) => mapMailThreadRow(values),
+    );
+
+    const mailMessages = queryRows(
+      db,
+      `
+        SELECT
+          id,
+          user_id,
+          thread_id,
+          source,
+          external_message_id,
+          from_name,
+          from_email,
+          to_emails_json,
+          subject,
+          body_text,
+          body_html,
+          received_at,
+          raw_headers_json,
+          created_at
+        FROM local_mail_messages
+        ORDER BY received_at ASC, created_at ASC;
+      `,
+      undefined,
+      (values) => mapMailMessageRow(values),
+    );
+
+    const mailSyncRuns = queryRows(
+      db,
+      `
+        SELECT
+          id,
+          user_id,
+          source,
+          status,
+          imported_count,
+          detail,
+          created_at
+        FROM local_mail_sync_runs
+        ORDER BY created_at ASC;
+      `,
+      undefined,
+      (values) => mapMailSyncRunRow(values),
+    );
+
     const commercialDocuments = queryRows(
       db,
       `
@@ -4170,6 +5597,13 @@ export async function readStructuredLocalCoreSlices(): Promise<StructuredLocalCo
       authRateLimits,
       invoices,
       invoiceReminders,
+      bankMovements,
+      messageConnections,
+      messageThreads,
+      messageRecords,
+      mailThreads,
+      mailMessages,
+      mailSyncRuns,
       commercialDocuments,
       documentSignatureRequests,
       expenses,

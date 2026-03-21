@@ -66,6 +66,25 @@ import {
   saveStructuredClientRepositoryRecord,
 } from "@/lib/local-repositories/clients";
 import {
+  getStructuredMailMessageByExternalId,
+  getStructuredMailThreadByExternalKey,
+  getStructuredMailThreadById,
+  getStructuredMessagingConnectionByInboundKey,
+  getStructuredMessagingRecordByExternalId,
+  getStructuredMessagingThreadByExternalChat,
+  getStructuredMessagingThreadById,
+  listStructuredMailMessages,
+  listStructuredMailSyncRuns,
+  listStructuredMailThreads,
+  listStructuredMessagingConnections,
+  listStructuredMessagingRecords,
+  listStructuredMessagingThreads,
+  persistStructuredMailState,
+  persistStructuredMessagingState,
+  replaceStructuredMailStateForUser,
+  replaceStructuredMessagingStateForUser,
+} from "@/lib/local-repositories/communications";
+import {
   getStructuredCommercialRepositoryRecord,
   getStructuredSignatureRepositoryRecordByAnyId,
   getStructuredSignatureRepositoryPublicRecord,
@@ -81,6 +100,12 @@ import {
   replaceStructuredFeedbackRepositoryRecords,
   saveStructuredFeedbackRepositoryRecord,
 } from "@/lib/local-repositories/feedback";
+import {
+  getStructuredBankingRepositoryRecord,
+  listStructuredBankingRepositoryRecords,
+  persistStructuredBankingRepositoryState,
+  replaceStructuredBankingRepositoryRecords,
+} from "@/lib/local-repositories/banking";
 import {
   getStructuredExpenseRepositoryRecord,
   listStructuredExpenseRepositoryRecords,
@@ -267,6 +292,13 @@ async function readLocalCoreData(): Promise<LocalCoreData> {
       authRateLimits: structuredSlices.authRateLimits,
       invoices: structuredSlices.invoices,
       invoiceReminders: structuredSlices.invoiceReminders,
+      bankMovements: structuredSlices.bankMovements,
+      messageConnections: structuredSlices.messageConnections,
+      messageThreads: structuredSlices.messageThreads,
+      messageRecords: structuredSlices.messageRecords,
+      mailThreads: structuredSlices.mailThreads,
+      mailMessages: structuredSlices.mailMessages,
+      mailSyncRuns: structuredSlices.mailSyncRuns,
       commercialDocuments: structuredSlices.commercialDocuments,
       documentSignatureRequests: structuredSlices.documentSignatureRequests,
       expenses: structuredSlices.expenses,
@@ -2764,6 +2796,20 @@ function toPaidAtIso(dateValue: string | null) {
 }
 
 export async function listLocalBankMovementsForUser(userId: string) {
+  const structuredMovements = await listStructuredBankingRepositoryRecords(userId);
+
+  if (structuredMovements) {
+    return [...structuredMovements].sort((left, right) => {
+      const bookingSort = right.booking_date.localeCompare(left.booking_date);
+
+      if (bookingSort !== 0) {
+        return bookingSort;
+      }
+
+      return right.created_at.localeCompare(left.created_at);
+    });
+  }
+
   const data = await readLocalCoreData();
   return [...data.bankMovements]
     .filter((movement) => movement.user_id === userId)
@@ -2779,6 +2825,12 @@ export async function listLocalBankMovementsForUser(userId: string) {
 }
 
 export async function getLocalBankMovementById(userId: string, movementId: string) {
+  const structuredMovement = await getStructuredBankingRepositoryRecord(userId, movementId);
+
+  if (structuredMovement) {
+    return structuredMovement;
+  }
+
   const movements = await listLocalBankMovementsForUser(userId);
   return movements.find((movement) => movement.id === movementId) ?? null;
 }
@@ -2803,6 +2855,75 @@ export async function createLocalBankMovementRecords({
     rawRow: Record<string, unknown>;
   }>;
 }) {
+  if (canUseStructuredLocalRepositories()) {
+    const existingMovements = (await listStructuredBankingRepositoryRecords(userId)) ?? [];
+    const existingHashes = new Set(existingMovements.map((movement) => movement.source_hash));
+    const timestamp = nowIso();
+    const inserted: BankMovementRecord[] = [];
+
+    for (const row of rows) {
+      if (existingHashes.has(row.sourceHash)) {
+        continue;
+      }
+
+      inserted.push({
+        id: randomUUID(),
+        user_id: userId,
+        account_label: row.accountLabel,
+        booking_date: row.bookingDate,
+        value_date: row.valueDate,
+        description: row.description,
+        counterparty_name: row.counterpartyName,
+        amount: row.amount,
+        currency: row.currency,
+        direction: row.direction,
+        balance: row.balance,
+        status: "pending",
+        matched_invoice_id: null,
+        matched_expense_id: null,
+        notes: null,
+        source_file_name: row.sourceFileName,
+        source_hash: row.sourceHash,
+        raw_row: row.rawRow,
+        imported_at: timestamp,
+        created_at: timestamp,
+        updated_at: timestamp,
+      });
+      existingHashes.add(row.sourceHash);
+    }
+
+    if (inserted.length === 0) {
+      return [];
+    }
+
+    const auditEvent = buildLocalAuditEventRecord({
+      userId,
+      actorType: "user",
+      actorId: userId,
+      source: "banking",
+      action: "bank_movements_imported",
+      entityType: "bank_movements",
+      entityId: null,
+      afterJson: {
+        inserted: inserted.length,
+      },
+      contextJson: {
+        sourceFiles: Array.from(
+          new Set(inserted.map((movement) => movement.source_file_name).filter(Boolean)),
+        ),
+        sourceHashes: inserted.map((movement) => movement.source_hash),
+      },
+    });
+    const saved = await persistStructuredBankingRepositoryState({
+      bankMovements: inserted,
+      auditEvents: [auditEvent],
+    });
+
+    if (saved) {
+      return inserted;
+    }
+  }
+
   return updateLocalCoreData(async (data) => {
     const existingHashes = new Set(
       data.bankMovements
@@ -2884,6 +3005,58 @@ export async function reconcileLocalBankMovement({
   targetId?: string;
   notes?: string | null;
 }) {
+  if (canUseStructuredLocalRepositories()) {
+    const movement = await getStructuredBankingRepositoryRecord(userId, movementId);
+
+    if (movement) {
+      const timestamp = nowIso();
+      const beforeMovement = buildBankMovementAuditSnapshot(movement);
+
+      if (actionKind === "match_invoice") {
+        movement.status = "reconciled";
+        movement.matched_invoice_id = targetId ?? null;
+        movement.matched_expense_id = null;
+        movement.notes = notes ?? movement.notes ?? "Conciliado manualmente con una factura.";
+      } else if (actionKind === "match_expense") {
+        movement.status = "reconciled";
+        movement.matched_invoice_id = null;
+        movement.matched_expense_id = targetId ?? null;
+        movement.notes = notes ?? movement.notes ?? "Conciliado manualmente con un gasto.";
+      } else if (actionKind === "ignore") {
+        movement.status = "ignored";
+        movement.matched_invoice_id = null;
+        movement.matched_expense_id = null;
+        movement.notes = notes ?? movement.notes ?? "Marcado como ignorado manualmente.";
+      } else {
+        movement.status = "pending";
+        movement.matched_invoice_id = null;
+        movement.matched_expense_id = null;
+        movement.notes = notes ?? null;
+      }
+
+      movement.updated_at = timestamp;
+      const auditEvent = buildLocalAuditEventRecord({
+        userId,
+        actorType: "user",
+        actorId: userId,
+        source: "banking",
+        action: `bank_movement_${actionKind}`,
+        entityType: "bank_movement",
+        entityId: movement.id,
+        beforeJson: beforeMovement,
+        afterJson: buildBankMovementAuditSnapshot(movement),
+      });
+      const saved = await persistStructuredBankingRepositoryState({
+        bankMovements: [movement],
+        auditEvents: [auditEvent],
+      });
+
+      if (saved) {
+        return movement;
+      }
+    }
+  }
+
   return updateLocalCoreData(async (data) => {
     const movement = data.bankMovements.find(
       (candidate) => candidate.user_id === userId && candidate.id === movementId,
@@ -2938,6 +3111,63 @@ export async function syncLocalInvoicePaymentStatusFromBankMatches(
   userId: string,
   invoiceIds: string[],
 ) {
+  if (canUseStructuredLocalRepositories()) {
+    const allInvoices = await listStructuredInvoiceRepositoryRecords(userId);
+    const bankMovements = await listStructuredBankingRepositoryRecords(userId);
+
+    if (allInvoices && bankMovements) {
+      const beforeSnapshots = new Map<string, ReturnType<typeof buildInvoiceAuditSnapshot>>();
+
+      for (const invoiceId of invoiceIds) {
+        const invoice = allInvoices.find(
+          (candidate) => candidate.user_id === userId && candidate.id === invoiceId,
+        );
+
+        if (invoice) {
+          beforeSnapshots.set(invoice.id, buildInvoiceAuditSnapshot(invoice));
+        }
+      }
+
+      const synced = syncLocalInvoicePaymentStatusWithMovements(
+        allInvoices,
+        bankMovements,
+        userId,
+        invoiceIds,
+      );
+      const changed = synced.filter((invoice) => {
+        const beforeSnapshot = beforeSnapshots.get(invoice.id);
+        const afterSnapshot = buildInvoiceAuditSnapshot(invoice);
+        return JSON.stringify(beforeSnapshot) !== JSON.stringify(afterSnapshot);
+      });
+
+      if (changed.length > 0) {
+        const auditEvents = changed.map((invoice) =>
+          buildLocalAuditEventRecord({
+            userId,
+            actorType: "system",
+            actorId: "banking-sync",
+            source: "collections",
+            action: "invoice_payment_synced_from_banking",
+            entityType: "invoice",
+            entityId: invoice.id,
+            beforeJson: beforeSnapshots.get(invoice.id) ?? null,
+            afterJson: buildInvoiceAuditSnapshot(invoice),
+          }),
+        );
+        const saved = await persistStructuredInvoiceRepositoryState({
+          invoices: changed,
+          auditEvents,
+        });
+
+        if (saved) {
+          return changed;
+        }
+      }
+
+      return changed;
+    }
+  }
+
   return updateLocalCoreData(async (data) => {
     const beforeSnapshots = new Map<string, ReturnType<typeof buildInvoiceAuditSnapshot>>();
 
@@ -3204,6 +3434,12 @@ export async function updateLocalInvoicePaymentStates(
 }
 
 export async function listLocalMessageConnectionsForUser(userId: string) {
+  const structuredConnections = await listStructuredMessagingConnections(userId);
+
+  if (structuredConnections) {
+    return sortByUpdatedAtDescending(structuredConnections);
+  }
+
   const data = await readLocalCoreData();
   return sortByUpdatedAtDescending(
     data.messageConnections.filter((connection) => connection.user_id === userId),
@@ -3227,6 +3463,82 @@ export async function ensureLocalMessageConnection({
   status?: MessageConnectionStatus;
   metadata?: Record<string, unknown>;
 }) {
+  if (canUseStructuredLocalRepositories()) {
+    const timestamp = nowIso();
+    const existingConnections = (await listStructuredMessagingConnections(userId)) ?? [];
+    const existing = existingConnections.find((candidate) => candidate.channel === channel);
+
+    if (existing) {
+      const beforeConnection = buildMessageConnectionAuditSnapshot(existing);
+      existing.label = label;
+      existing.inbound_key = inboundKey;
+      existing.verify_token = verifyToken;
+      existing.status = status;
+      existing.metadata = {
+        ...existing.metadata,
+        ...metadata,
+      };
+      existing.updated_at = timestamp;
+
+      const afterConnection = buildMessageConnectionAuditSnapshot(existing);
+      const auditEvents =
+        JSON.stringify(beforeConnection) !== JSON.stringify(afterConnection)
+          ? [
+              buildLocalAuditEventRecord({
+                userId,
+                actorType: "user",
+                actorId: userId,
+                source: "messaging",
+                action: "message_connection_updated",
+                entityType: "message_connection",
+                entityId: existing.id,
+                beforeJson: beforeConnection,
+                afterJson: afterConnection,
+              }),
+            ]
+          : [];
+      const saved = await persistStructuredMessagingState({
+        messageConnections: [existing],
+        auditEvents,
+      });
+
+      if (saved) {
+        return existing;
+      }
+    } else {
+      const connection: MessageConnection = {
+        id: randomUUID(),
+        user_id: userId,
+        channel,
+        label,
+        status,
+        inbound_key: inboundKey,
+        verify_token: verifyToken,
+        metadata,
+        created_at: timestamp,
+        updated_at: timestamp,
+      };
+      const auditEvent = buildLocalAuditEventRecord({
+        userId,
+        actorType: "user",
+        actorId: userId,
+        source: "messaging",
+        action: "message_connection_created",
+        entityType: "message_connection",
+        entityId: connection.id,
+        afterJson: buildMessageConnectionAuditSnapshot(connection),
+      });
+      const saved = await persistStructuredMessagingState({
+        messageConnections: [connection],
+        auditEvents: [auditEvent],
+      });
+
+      if (saved) {
+        return connection;
+      }
+    }
+  }
+
   return updateLocalCoreData(async (data) => {
     const timestamp = nowIso();
     const existing = data.messageConnections.find(
@@ -3294,6 +3606,15 @@ export async function getLocalMessageConnectionByInboundKey(
   inboundKey: string,
   channel: MessageChannel,
 ) {
+  const structuredConnection = await getStructuredMessagingConnectionByInboundKey(
+    inboundKey,
+    channel,
+  );
+
+  if (structuredConnection) {
+    return structuredConnection;
+  }
+
   const data = await readLocalCoreData();
   return (
     data.messageConnections.find(
@@ -3304,6 +3625,12 @@ export async function getLocalMessageConnectionByInboundKey(
 }
 
 export async function listLocalMessageThreadsForUser(userId: string) {
+  const structuredThreads = await listStructuredMessagingThreads(userId);
+
+  if (structuredThreads) {
+    return sortByPrimaryDateDescending(structuredThreads, (thread) => thread.last_message_at);
+  }
+
   const data = await readLocalCoreData();
   return sortByPrimaryDateDescending(
     data.messageThreads.filter((thread) => thread.user_id === userId),
@@ -3312,11 +3639,23 @@ export async function listLocalMessageThreadsForUser(userId: string) {
 }
 
 export async function getLocalMessageThreadById(userId: string, threadId: string) {
+  const structuredThread = await getStructuredMessagingThreadById(userId, threadId);
+
+  if (structuredThread) {
+    return structuredThread;
+  }
+
   const threads = await listLocalMessageThreadsForUser(userId);
   return threads.find((thread) => thread.id === threadId) ?? null;
 }
 
 export async function listLocalMessageRecordsForThread(userId: string, threadId: string) {
+  const structuredRecords = await listStructuredMessagingRecords(userId, threadId);
+
+  if (structuredRecords) {
+    return structuredRecords.sort((left, right) => left.received_at.localeCompare(right.received_at));
+  }
+
   const data = await readLocalCoreData();
   return data.messageRecords
     .filter((record) => record.user_id === userId && record.thread_id === threadId)
@@ -3349,6 +3688,146 @@ export async function upsertLocalInboundMessage({
   urgency: MessageUrgency;
   urgencyScore: number;
 }) {
+  if (canUseStructuredLocalRepositories()) {
+    const preview = parsedMessage.body.slice(0, 180);
+    let createdThread = false;
+    let thread = await getStructuredMessagingThreadByExternalChat(
+      connection.user_id,
+      parsedMessage.channel,
+      parsedMessage.externalChatId,
+    );
+
+    if (!thread) {
+      thread = {
+        id: randomUUID(),
+        user_id: connection.user_id,
+        connection_id: connection.id,
+        channel: parsedMessage.channel,
+        external_chat_id: parsedMessage.externalChatId,
+        external_contact_id: parsedMessage.externalContactId,
+        first_name: parsedMessage.firstName,
+        last_name: parsedMessage.lastName,
+        full_name: parsedMessage.fullName,
+        phone: parsedMessage.phone,
+        telegram_username: parsedMessage.telegramUsername,
+        urgency,
+        urgency_score: urgencyScore,
+        urgency_locked: false,
+        unread_count: 1,
+        last_message_preview: preview,
+        last_message_direction: "inbound",
+        last_message_at: parsedMessage.receivedAt,
+        metadata: {},
+        created_at: parsedMessage.receivedAt,
+        updated_at: parsedMessage.receivedAt,
+      };
+      createdThread = true;
+    } else {
+      thread.connection_id = connection.id;
+      thread.external_contact_id =
+        parsedMessage.externalContactId ?? thread.external_contact_id;
+      thread.first_name = parsedMessage.firstName ?? thread.first_name;
+      thread.last_name = parsedMessage.lastName ?? thread.last_name;
+      thread.full_name = parsedMessage.fullName || thread.full_name;
+      thread.phone = parsedMessage.phone ?? thread.phone;
+      thread.telegram_username = parsedMessage.telegramUsername ?? thread.telegram_username;
+      if (!thread.urgency_locked) {
+        thread.urgency = urgency;
+        thread.urgency_score = Math.max(thread.urgency_score, urgencyScore);
+      }
+      thread.unread_count += 1;
+      thread.last_message_preview = preview;
+      thread.last_message_direction = "inbound";
+      thread.last_message_at = parsedMessage.receivedAt;
+      thread.updated_at = parsedMessage.receivedAt;
+    }
+
+    if (parsedMessage.externalMessageId) {
+      const existingMessage = await getStructuredMessagingRecordByExternalId(
+        connection.user_id,
+        parsedMessage.channel,
+        parsedMessage.externalMessageId,
+      );
+
+      if (existingMessage) {
+        return thread;
+      }
+    }
+
+    const messageRecord: MessageRecord = {
+      id: randomUUID(),
+      user_id: connection.user_id,
+      thread_id: thread.id,
+      channel: parsedMessage.channel,
+      external_message_id: parsedMessage.externalMessageId,
+      direction: "inbound",
+      sender_name: parsedMessage.senderName,
+      body: parsedMessage.body,
+      message_type: parsedMessage.messageType,
+      received_at: parsedMessage.receivedAt,
+      raw_payload: parsedMessage.rawPayload,
+      created_at: parsedMessage.receivedAt,
+    };
+
+    connection.status = "active";
+    connection.updated_at = nowIso();
+
+    const auditEvents: LocalAuditEventRecord[] = [];
+
+    if (createdThread) {
+      auditEvents.push(
+        buildLocalAuditEventRecord({
+          userId: connection.user_id,
+          actorType: "system",
+          actorId: connection.channel,
+          source: "messaging",
+          action: "message_thread_created",
+          entityType: "message_thread",
+          entityId: thread.id,
+          afterJson: buildMessageThreadAuditSnapshot(thread),
+          contextJson: {
+            connectionId: connection.id,
+          },
+        }),
+      );
+    }
+
+    auditEvents.push(
+      buildLocalAuditEventRecord({
+        userId: connection.user_id,
+        actorType: "system",
+        actorId: connection.channel,
+        source: "messaging",
+        action: "message_inbound_received",
+        entityType: "message_record",
+        entityId: messageRecord.id,
+        afterJson: {
+          channel: messageRecord.channel,
+          threadId: messageRecord.thread_id,
+          senderName: messageRecord.sender_name,
+          messageType: messageRecord.message_type,
+          receivedAt: messageRecord.received_at,
+        },
+        contextJson: {
+          connectionId: connection.id,
+          externalMessageId: messageRecord.external_message_id,
+          threadUrgency: thread.urgency,
+        },
+      }),
+    );
+
+    const saved = await persistStructuredMessagingState({
+      messageConnections: [connection],
+      messageThreads: [thread],
+      messageRecords: [messageRecord],
+      auditEvents,
+    });
+
+    if (saved) {
+      return thread;
+    }
+  }
+
   return updateLocalCoreData(async (data) => {
     const preview = parsedMessage.body.slice(0, 180);
     let createdThread = false;
@@ -3481,6 +3960,35 @@ export async function upsertLocalInboundMessage({
 }
 
 export async function markLocalMessageThreadRead(userId: string, threadId: string) {
+  if (canUseStructuredLocalRepositories()) {
+    const thread = await getStructuredMessagingThreadById(userId, threadId);
+
+    if (thread) {
+      const beforeThread = buildMessageThreadAuditSnapshot(thread);
+      thread.unread_count = 0;
+      thread.updated_at = nowIso();
+      const auditEvent = buildLocalAuditEventRecord({
+        userId,
+        actorType: "user",
+        actorId: userId,
+        source: "messaging",
+        action: "message_thread_marked_read",
+        entityType: "message_thread",
+        entityId: thread.id,
+        beforeJson: beforeThread,
+        afterJson: buildMessageThreadAuditSnapshot(thread),
+      });
+      const saved = await persistStructuredMessagingState({
+        messageThreads: [thread],
+        auditEvents: [auditEvent],
+      });
+
+      if (saved) {
+        return thread;
+      }
+    }
+  }
+
   return updateLocalCoreData(async (data) => {
     const thread = data.messageThreads.find(
       (candidate) => candidate.user_id === userId && candidate.id === threadId,
@@ -3514,6 +4022,37 @@ export async function setLocalMessageThreadUrgency(
   urgency: MessageUrgency,
   urgencyScore: number,
 ) {
+  if (canUseStructuredLocalRepositories()) {
+    const thread = await getStructuredMessagingThreadById(userId, threadId);
+
+    if (thread) {
+      const beforeThread = buildMessageThreadAuditSnapshot(thread);
+      thread.urgency = urgency;
+      thread.urgency_score = urgencyScore;
+      thread.urgency_locked = true;
+      thread.updated_at = nowIso();
+      const auditEvent = buildLocalAuditEventRecord({
+        userId,
+        actorType: "user",
+        actorId: userId,
+        source: "messaging",
+        action: "message_thread_urgency_set",
+        entityType: "message_thread",
+        entityId: thread.id,
+        beforeJson: beforeThread,
+        afterJson: buildMessageThreadAuditSnapshot(thread),
+      });
+      const saved = await persistStructuredMessagingState({
+        messageThreads: [thread],
+        auditEvents: [auditEvent],
+      });
+
+      if (saved) {
+        return thread;
+      }
+    }
+  }
+
   return updateLocalCoreData(async (data) => {
     const thread = data.messageThreads.find(
       (candidate) => candidate.user_id === userId && candidate.id === threadId,
@@ -3544,6 +4083,35 @@ export async function setLocalMessageThreadUrgency(
 }
 
 export async function unlockLocalMessageThreadUrgency(userId: string, threadId: string) {
+  if (canUseStructuredLocalRepositories()) {
+    const thread = await getStructuredMessagingThreadById(userId, threadId);
+
+    if (thread) {
+      const beforeThread = buildMessageThreadAuditSnapshot(thread);
+      thread.urgency_locked = false;
+      thread.updated_at = nowIso();
+      const auditEvent = buildLocalAuditEventRecord({
+        userId,
+        actorType: "user",
+        actorId: userId,
+        source: "messaging",
+        action: "message_thread_urgency_unlocked",
+        entityType: "message_thread",
+        entityId: thread.id,
+        beforeJson: beforeThread,
+        afterJson: buildMessageThreadAuditSnapshot(thread),
+      });
+      const saved = await persistStructuredMessagingState({
+        messageThreads: [thread],
+        auditEvents: [auditEvent],
+      });
+
+      if (saved) {
+        return thread;
+      }
+    }
+  }
+
   return updateLocalCoreData(async (data) => {
     const thread = data.messageThreads.find(
       (candidate) => candidate.user_id === userId && candidate.id === threadId,
@@ -3572,6 +4140,12 @@ export async function unlockLocalMessageThreadUrgency(userId: string, threadId: 
 }
 
 export async function listLocalMailThreadsForUser(userId: string) {
+  const structuredThreads = await listStructuredMailThreads(userId);
+
+  if (structuredThreads) {
+    return sortByPrimaryDateDescending(structuredThreads, (thread) => thread.last_message_at);
+  }
+
   const data = await readLocalCoreData();
   return sortByPrimaryDateDescending(
     data.mailThreads.filter((thread) => thread.user_id === userId),
@@ -3580,11 +4154,23 @@ export async function listLocalMailThreadsForUser(userId: string) {
 }
 
 export async function getLocalMailThreadById(userId: string, threadId: string) {
+  const structuredThread = await getStructuredMailThreadById(userId, threadId);
+
+  if (structuredThread) {
+    return structuredThread;
+  }
+
   const threads = await listLocalMailThreadsForUser(userId);
   return threads.find((thread) => thread.id === threadId) ?? null;
 }
 
 export async function listLocalMailMessagesForThread(userId: string, threadId: string) {
+  const structuredMessages = await listStructuredMailMessages(userId, threadId);
+
+  if (structuredMessages) {
+    return structuredMessages.sort((left, right) => left.received_at.localeCompare(right.received_at));
+  }
+
   const data = await readLocalCoreData();
   return data.mailMessages
     .filter((message) => message.user_id === userId && message.thread_id === threadId)
@@ -3592,6 +4178,12 @@ export async function listLocalMailMessagesForThread(userId: string, threadId: s
 }
 
 export async function listLocalMailSyncRunsForUser(userId: string, limit = 5) {
+  const structuredRuns = await listStructuredMailSyncRuns(userId, limit);
+
+  if (structuredRuns) {
+    return structuredRuns;
+  }
+
   const data = await readLocalCoreData();
   return [...data.mailSyncRuns]
     .filter((run) => run.user_id === userId)
@@ -3612,6 +4204,26 @@ export async function logLocalMailSyncRun({
   importedCount: number;
   detail: string | null;
 }) {
+  if (canUseStructuredLocalRepositories()) {
+    const timestamp = nowIso();
+    const run: MailSyncRun = {
+      id: randomUUID(),
+      user_id: userId,
+      source,
+      status,
+      imported_count: importedCount,
+      detail,
+      created_at: timestamp,
+    };
+    const saved = await persistStructuredMailState({
+      mailSyncRuns: [run],
+    });
+
+    if (saved) {
+      return run;
+    }
+  }
+
   return updateLocalCoreData(async (data) => {
     const timestamp = nowIso();
     const run: MailSyncRun = {
@@ -3650,6 +4262,94 @@ export async function upsertLocalMailEntries({
   }>;
   source?: MailThread["source"];
 }) {
+  if (canUseStructuredLocalRepositories()) {
+    let importedCount = 0;
+    const mailThreadsToPersist = new Map<string, MailThread>();
+    const mailMessagesToPersist: MailMessage[] = [];
+
+    for (const entry of entries) {
+      const existingMessage = await getStructuredMailMessageByExternalId(
+        userId,
+        source,
+        entry.messageId,
+      );
+
+      if (existingMessage) {
+        continue;
+      }
+
+      const preview = entry.bodyText.slice(0, 220);
+      const threadKey = `${source}:${entry.fromEmail}`;
+      let thread =
+        mailThreadsToPersist.get(threadKey) ??
+        (await getStructuredMailThreadByExternalKey(userId, source, entry.fromEmail));
+
+      if (!thread) {
+        thread = {
+          id: randomUUID(),
+          user_id: userId,
+          source,
+          external_thread_key: entry.fromEmail,
+          from_name: entry.fromName,
+          from_email: entry.fromEmail,
+          subject: entry.subject,
+          urgency: entry.urgency,
+          urgency_score: entry.urgencyScore,
+          unread_count: 0,
+          last_message_preview: preview,
+          last_message_at: entry.receivedAt,
+          metadata: {},
+          created_at: entry.receivedAt,
+          updated_at: entry.receivedAt,
+        };
+      }
+
+      const isNewest =
+        new Date(entry.receivedAt).getTime() >= new Date(thread.last_message_at).getTime();
+      thread.from_name = entry.fromName ?? thread.from_name;
+      thread.subject = isNewest ? entry.subject : thread.subject;
+      thread.urgency =
+        entry.urgencyScore >= thread.urgency_score ? entry.urgency : thread.urgency;
+      thread.urgency_score = Math.max(thread.urgency_score, entry.urgencyScore);
+      thread.unread_count += 1;
+      thread.last_message_preview = isNewest ? preview : thread.last_message_preview;
+      thread.last_message_at = isNewest ? entry.receivedAt : thread.last_message_at;
+      thread.updated_at = entry.receivedAt;
+      mailThreadsToPersist.set(threadKey, thread);
+
+      mailMessagesToPersist.push({
+        id: randomUUID(),
+        user_id: userId,
+        thread_id: thread.id,
+        source,
+        external_message_id: entry.messageId,
+        from_name: entry.fromName,
+        from_email: entry.fromEmail,
+        to_emails: entry.toEmails,
+        subject: entry.subject,
+        body_text: entry.bodyText,
+        body_html: entry.bodyHtml,
+        received_at: entry.receivedAt,
+        raw_headers: entry.rawHeaders,
+        created_at: entry.receivedAt,
+      });
+      importedCount += 1;
+    }
+
+    if (importedCount === 0) {
+      return 0;
+    }
+
+    const saved = await persistStructuredMailState({
+      mailThreads: Array.from(mailThreadsToPersist.values()),
+      mailMessages: mailMessagesToPersist,
+    });
+
+    if (saved) {
+      return importedCount;
+    }
+  }
+
   return updateLocalCoreData(async (data) => {
     let importedCount = 0;
 
@@ -3730,6 +4430,22 @@ export async function upsertLocalMailEntries({
 }
 
 export async function markLocalMailThreadRead(userId: string, threadId: string) {
+  if (canUseStructuredLocalRepositories()) {
+    const thread = await getStructuredMailThreadById(userId, threadId);
+
+    if (thread) {
+      thread.unread_count = 0;
+      thread.updated_at = nowIso();
+      const saved = await persistStructuredMailState({
+        mailThreads: [thread],
+      });
+
+      if (saved) {
+        return thread;
+      }
+    }
+  }
+
   return updateLocalCoreData(async (data) => {
     const thread = data.mailThreads.find(
       (candidate) => candidate.user_id === userId && candidate.id === threadId,
@@ -4124,6 +4840,30 @@ export async function replaceLocalUserData({
         documentSignatureRequests: data.documentSignatureRequests.filter(
           (candidate) => candidate.user_id === userId,
         ),
+      })) &&
+      (await replaceStructuredBankingRepositoryRecords(
+        userId,
+        data.bankMovements.filter((candidate) => candidate.user_id === userId),
+      )) &&
+      (await replaceStructuredMessagingStateForUser({
+        userId,
+        messageConnections: data.messageConnections.filter(
+          (candidate) => candidate.user_id === userId,
+        ),
+        messageThreads: data.messageThreads.filter(
+          (candidate) => candidate.user_id === userId,
+        ),
+        messageRecords: data.messageRecords.filter(
+          (candidate) => candidate.user_id === userId,
+        ),
+      })) &&
+      (await replaceStructuredMailStateForUser({
+        userId,
+        mailThreads: data.mailThreads.filter((candidate) => candidate.user_id === userId),
+        mailMessages: data.mailMessages.filter(
+          (candidate) => candidate.user_id === userId,
+        ),
+        mailSyncRuns: data.mailSyncRuns.filter((candidate) => candidate.user_id === userId),
       })) &&
       (await replaceStructuredExpenseRepositoryRecords(
         userId,

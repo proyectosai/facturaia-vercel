@@ -86,10 +86,10 @@ Responsabilidades:
 - mantener el snapshot funcional del modo local
 - poblar un mirror relacional dentro de `core.sqlite` como puente hacia un esquema SQLite real
 - servir ya lecturas estructuradas de auditoría, uso, clientes y facturas desde ese mirror cuando no hay cifrado local activo
-- aplicar también upserts dirigidos de bootstrap/login, perfil, feedback, clientes, facturas, cobros, gastos, presupuestos/albaranes, firmas y recordatorios sobre ese mirror para reducir resincronizados completos
+- aplicar también upserts dirigidos de bootstrap/login, perfil, feedback, clientes, facturas, cobros, gastos, banca, mensajería, correo, presupuestos/albaranes, firmas y recordatorios sobre ese mirror para reducir resincronizados completos
 - tratar ya `clientes`, `facturas`, `recordatorios`, `auditoría` y `contadores` como secciones con SQLite prioritaria al reconstruir el núcleo en modo local
 - usar ya repositorios locales separados para clientes, facturas, auditoría y contadores en restore/export y en varias mutaciones críticas
-- usar ya también repositorios locales separados para perfil, feedback, gastos, documentos comerciales y firmas en los flujos principales del modo local
+- usar ya también repositorios locales separados para perfil, feedback, gastos, banca, mensajería, correo, documentos comerciales y firmas en los flujos principales del modo local
 - intentar ya persistir primero esas mutaciones en SQLite y usar el snapshot como consolidación compatible
 - recalcular contadores y estado base del usuario local
 - preservar compatibilidad con instalaciones antiguas que todavía arranquen desde `core.json`

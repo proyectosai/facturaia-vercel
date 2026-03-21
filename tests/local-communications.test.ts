@@ -29,6 +29,7 @@ import {
   unlockLocalMessageThreadUrgency,
   upsertLocalMailEntries,
 } from "@/lib/local-core";
+import { writeLocalStateText } from "@/lib/local-db";
 
 const userId = "user-local-communications";
 const email = "asesor@despacho.local";
@@ -217,6 +218,28 @@ describe("local communications persistence", () => {
     await markMailThreadReadForUser(userId, mailThreads[0]!.id);
     const readMailThread = await getMailThreadForUser(userId, mailThreads[0]!.id);
     expect(readMailThread?.unread_count).toBe(0);
+
+    const staleSnapshot = await getLocalCoreSnapshot();
+    staleSnapshot.messageConnections = [];
+    staleSnapshot.messageThreads = [];
+    staleSnapshot.messageRecords = [];
+    staleSnapshot.mailThreads = [];
+    staleSnapshot.mailMessages = [];
+    staleSnapshot.mailSyncRuns = [];
+
+    await writeLocalStateText(
+      JSON.stringify(staleSnapshot, null, 2),
+      JSON.stringify(staleSnapshot, null, 2),
+      { structuredMutation: {} },
+    );
+
+    const recoveredThreads = await getMessageThreadsForUser(userId, { sort: "recent" });
+    const recoveredMailThreads = await getMailThreadsForUser(userId, { sort: "recent" });
+    const recoveredMailRuns = await getMailSyncRunsForUser(userId, 5);
+
+    expect(recoveredThreads).toHaveLength(2);
+    expect(recoveredMailThreads).toHaveLength(1);
+    expect(recoveredMailRuns).toHaveLength(1);
 
     const backup = await exportBackupForUser(userId, email);
     expect(backup.messages.connections).toHaveLength(2);

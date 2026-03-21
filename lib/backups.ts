@@ -211,34 +211,40 @@ async function getLocalBackupView(userId: string) {
       structured?.invoiceReminders.filter(
         (candidate) => candidate.user_id === userId,
       ) ?? snapshot.invoiceReminders.filter((candidate) => candidate.user_id === userId),
+    bankMovements:
+      structured?.bankMovements.filter((candidate) => candidate.user_id === userId) ??
+      snapshot.bankMovements.filter((candidate) => candidate.user_id === userId),
+    commercialDocuments:
+      structured?.commercialDocuments.filter((candidate) => candidate.user_id === userId) ??
+      snapshot.commercialDocuments.filter((candidate) => candidate.user_id === userId),
+    documentSignatureRequests:
+      structured?.documentSignatureRequests.filter(
+        (candidate) => candidate.user_id === userId,
+      ) ??
+      snapshot.documentSignatureRequests.filter((candidate) => candidate.user_id === userId),
     expenses:
       structured?.expenses.filter((candidate) => candidate.user_id === userId) ??
       snapshot.expenses.filter((candidate) => candidate.user_id === userId),
+    messageConnections:
+      structured?.messageConnections.filter((candidate) => candidate.user_id === userId) ??
+      snapshot.messageConnections.filter((candidate) => candidate.user_id === userId),
+    messageThreads:
+      structured?.messageThreads.filter((candidate) => candidate.user_id === userId) ??
+      snapshot.messageThreads.filter((candidate) => candidate.user_id === userId),
+    messageRecords:
+      structured?.messageRecords.filter((candidate) => candidate.user_id === userId) ??
+      snapshot.messageRecords.filter((candidate) => candidate.user_id === userId),
+    mailThreads:
+      structured?.mailThreads.filter((candidate) => candidate.user_id === userId) ??
+      snapshot.mailThreads.filter((candidate) => candidate.user_id === userId),
+    mailMessages:
+      structured?.mailMessages.filter((candidate) => candidate.user_id === userId) ??
+      snapshot.mailMessages.filter((candidate) => candidate.user_id === userId),
+    mailSyncRuns:
+      structured?.mailSyncRuns.filter((candidate) => candidate.user_id === userId) ??
+      snapshot.mailSyncRuns.filter((candidate) => candidate.user_id === userId),
     snapshotOnly: {
-      bankMovements: snapshot.bankMovements.filter(
-        (candidate) => candidate.user_id === userId,
-      ),
-      commercialDocuments: snapshot.commercialDocuments.filter(
-        (candidate) => candidate.user_id === userId,
-      ),
-      documentSignatureRequests: snapshot.documentSignatureRequests.filter(
-        (candidate) => candidate.user_id === userId,
-      ),
       aiUsage: snapshot.aiUsage.filter((candidate) => candidate.user_id === userId),
-      messageConnections: snapshot.messageConnections.filter(
-        (candidate) => candidate.user_id === userId,
-      ),
-      messageThreads: snapshot.messageThreads.filter(
-        (candidate) => candidate.user_id === userId,
-      ),
-      messageRecords: snapshot.messageRecords.filter(
-        (candidate) => candidate.user_id === userId,
-      ),
-      mailThreads: snapshot.mailThreads.filter((candidate) => candidate.user_id === userId),
-      mailMessages: snapshot.mailMessages.filter(
-        (candidate) => candidate.user_id === userId,
-      ),
-      mailSyncRuns: snapshot.mailSyncRuns.filter((candidate) => candidate.user_id === userId),
     },
   };
 }
@@ -592,17 +598,17 @@ export async function getBackupSummary(userId: string): Promise<BackupSummary> {
       auditEvents: localView.auditEvents.length,
       invoices: localView.invoices.length,
       invoiceReminders: localView.invoiceReminders.length,
-      bankMovements: localView.snapshotOnly.bankMovements.length,
-      commercialDocuments: localView.snapshotOnly.commercialDocuments.length,
-      documentSignatureRequests: localView.snapshotOnly.documentSignatureRequests.length,
+      bankMovements: localView.bankMovements.length,
+      commercialDocuments: localView.commercialDocuments.length,
+      documentSignatureRequests: localView.documentSignatureRequests.length,
       studyDocuments: (await exportStudyDocumentsForUser(userId)).length,
       expenses: localView.expenses.length,
       aiUsageRows: localView.snapshotOnly.aiUsage.length,
-      messageConnections: localView.snapshotOnly.messageConnections.length,
-      messageThreads: localView.snapshotOnly.messageThreads.length,
-      messageRecords: localView.snapshotOnly.messageRecords.length,
-      mailThreads: localView.snapshotOnly.mailThreads.length,
-      mailMessages: localView.snapshotOnly.mailMessages.length,
+      messageConnections: localView.messageConnections.length,
+      messageThreads: localView.messageThreads.length,
+      messageRecords: localView.messageRecords.length,
+      mailThreads: localView.mailThreads.length,
+      mailMessages: localView.mailMessages.length,
     };
   }
 
@@ -739,21 +745,21 @@ export async function exportBackupForUser(
       auditEvents: localView.auditEvents,
       invoices,
       invoiceReminders,
-      bankMovements: localView.snapshotOnly.bankMovements,
-      commercialDocuments: localView.snapshotOnly.commercialDocuments,
-      documentSignatureRequests: localView.snapshotOnly.documentSignatureRequests,
+      bankMovements: localView.bankMovements,
+      commercialDocuments: localView.commercialDocuments,
+      documentSignatureRequests: localView.documentSignatureRequests,
       studyDocuments,
       expenses: localView.expenses,
       aiUsage,
       messages: {
-        connections: localView.snapshotOnly.messageConnections,
-        threads: localView.snapshotOnly.messageThreads,
-        records: localView.snapshotOnly.messageRecords,
+        connections: localView.messageConnections,
+        threads: localView.messageThreads,
+        records: localView.messageRecords,
       },
       mail: {
-        threads: localView.snapshotOnly.mailThreads,
-        messages: localView.snapshotOnly.mailMessages,
-        syncRuns: localView.snapshotOnly.mailSyncRuns,
+        threads: localView.mailThreads,
+        messages: localView.mailMessages,
+        syncRuns: localView.mailSyncRuns,
       },
     };
   }
