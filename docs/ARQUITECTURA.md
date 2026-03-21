@@ -97,6 +97,7 @@ Responsabilidades:
 Nota:
 
 - si `FACTURAIA_ENCRYPT_LOCAL_DATA=1`, el mirror relacional se desactiva para no duplicar datos sensibles en claro dentro de SQLite
+- lectura honesta: esta capa ya es mucho más robusta que el snapshot inicial, pero sigue siendo una arquitectura transicional; todavía no debe presentarse como backend local final completamente relacional
 
 ## 2. Facturación
 

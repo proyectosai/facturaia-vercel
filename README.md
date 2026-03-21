@@ -15,25 +15,53 @@ La línea principal es reforzar la instalación privada del cliente:
 - simplificación progresiva del despliegue
 - endurecimiento de auth local, auditoría y backup/restore
 
-## Qué incluye
+## Estado real a 21 de marzo de 2026
+
+Lectura honesta, sin marketing:
+
+- **Listo para uso diario prudente**: perfil fiscal, facturas, PDF, vista pública, cobros básicos, correo saliente, backups locales y auditoría operativa básica.
+- **En piloto**: presupuestos, albaranes, firma documental, CRM ligero, gastos, banca CSV, correo entrante, mensajería y estudio documental local.
+- **Experimental**: OCR de gastos y Facturae / VeriFactu.
+- **Documentado pero no entregado todavía**: memoria local multi-año para LLM, embeddings persistentes y RAG completo.
+
+Conclusión práctica:
+
+- si quieres usar FacturaIA hoy, empieza por el núcleo local
+- no actives todos los módulos avanzados el primer día
+- no leas la documentación de memoria/RAG como algo ya implementado
+
+## Superficie actual del repo
+
+La lista siguiente describe lo que existe en el árbol del proyecto. No significa que todo tenga la misma madurez.
+
+### Núcleo usable hoy
 
 - Autenticación local por email y contraseña en modo privado, con compatibilidad opcional con Supabase y magic link en despliegues remotos.
 - Dashboard protegido con sidebar en español.
 - Gestión de perfil fiscal del emisor.
 - Creación de facturas con IVA, IRPF, numeración automática y PDF profesional.
+- Historial de facturas con descarga de PDF y envío por email con SMTP o Resend.
+- Página pública de factura con QR.
+- Seguimiento de cobros y vencimientos con centro dedicado, marcado manual y acciones por lote, recordatorios individuales y por lote, historial de avisos y sincronización básica con banca.
+- Bandeja interna de feedback para registrar incidencias y peticiones de pilotos o uso interno.
+- Vista de auditoría operativa con filtros y export JSON para revisar cambios locales.
+- Centro de backups para exportar, restaurar y sincronizar copias remotas por WebDAV / Nextcloud, con manifest, checksum, `dry-run` y validación post-restore en modo local.
+- Guía de instalación privada dentro de la propia app.
+- Asistente de primeros pasos dentro del panel para instalaciones no técnicas.
+- Script `npm run doctor` para validar la instalación local.
+- Rate limiting en login local, expiración real de sesión, fail-closed en producción para secretos/cifrado y auditoría persistente de accesos, facturas, cobros, firmas, banca y restores.
+- Suite de tests unitarios, suite masiva local, smoke tests y harness e2e local.
+
+### Módulos disponibles, pero no todos con la misma madurez
+
 - Módulo de presupuestos y albaranes con conversión posterior a factura.
 - Módulo de firma documental para aceptar presupuestos y firmar albaranes desde un enlace público.
 - Evidencia de firma reforzada con hash de integridad del documento y validación de cambios posteriores al enlace.
 - Módulo de gastos con importación de justificantes, extracción de texto y revisión.
 - Módulo de conciliación bancaria con importación CSV y enlace manual de movimientos con facturas o gastos.
-- Seguimiento de cobros y vencimientos con centro dedicado, marcado manual y acciones por lote, recordatorios individuales y por lote, historial de avisos y sincronización básica con banca.
 - Módulo Facturae / VeriFactu con panel de preparación y exportación inicial XML Facturae 3.2.2 sin firma.
 - Revisión Facturae más estricta con validación básica de NIF y vencimiento, más detalle de pago en el XML.
 - Módulo CRM ligero para centralizar fichas de cliente y proveedor con actividad relacionada.
-- Bandeja interna de feedback para registrar incidencias y peticiones de pilotos o uso interno.
-- Vista de auditoría operativa con filtros y export JSON para revisar cambios locales en CRM, gastos, facturas, cobros, firmas, banca, mensajería y restauraciones.
-- Historial de facturas con descarga de PDF y envío por email con SMTP o Resend.
-- Página pública de factura con QR.
 - Redacción documental local con LM Studio para propuestas, presupuestos, contratos y mensajes.
 - Estudio documental local con notas, TXT, Markdown y PDF extraído, recuperación por fragmentos y respuestas con citas.
 - Módulo de apoyo IRPF / Renta para preparar expedientes con checklist, fuentes oficiales y asistencia local.
@@ -41,19 +69,15 @@ La línea principal es reforzar la instalación privada del cliente:
 - Módulo de correo saliente con pantalla de prueba y soporte SMTP / Resend.
 - Módulo de correo entrante con importación IMAP manual y bandeja interna.
 - Módulo opcional de mensajería unificada para WhatsApp Business y Telegram por webhook.
-- Centro de backups para exportar, restaurar y sincronizar copias remotas por WebDAV / Nextcloud, con manifest y checksum de integridad en el JSON, validación `dry-run` y comparación visible antes y después de restaurar.
 - Catálogo de módulos opcionales con estado e instalación en `/modules`.
-- Guía de instalación privada dentro de la propia app.
-- Asistente de primeros pasos dentro del panel para instalaciones no técnicas.
-- Script `npm run doctor` para validar la instalación local.
-- Cabeceras de seguridad y validación estricta de uploads en puntos sensibles.
-- Rate limiting en login local, expiración real de sesión, fail-closed en producción para secretos/cifrado y auditoría persistente de accesos, facturas, cobros, firmas, banca y restores.
-- Suite de tests unitarios para cobros, seguridad, Facturae y firma.
-- Suite unitaria específica para el núcleo local y su persistencia.
-- Suite masiva local para facturación, banca, comunicaciones, cifrado y módulos.
-- Smoke tests de rutas clave sobre `next start` real.
-- Harness e2e local con Playwright para endurecer login, perfil, factura, cobro y backup sobre SQLite temporal.
 - Modo demo local para revisar la interfaz sin servicios reales.
+
+### Lo que todavía no debes leer como “terminado”
+
+- Facturae / VeriFactu no equivalen todavía a cumplimiento fiscal cerrado.
+- El estudio documental actual no es una memoria multi-año tipo NotebookLM.
+- El backend local ya está mucho más endurecido, pero sigue en transición desde snapshot compatible a SQLite más primaria.
+- El proyecto ya es serio para pilotos prudentes; todavía no es un SaaS multiusuario cerrado ni una herramienta fiscal “sin red”.
 
 ## Filosofía del proyecto
 

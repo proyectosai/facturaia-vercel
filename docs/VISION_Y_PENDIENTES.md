@@ -75,6 +75,12 @@ Hay bastante trabajo hecho en:
 
 Todavía faltan piezas importantes para considerarlo un producto completamente maduro.
 
+Lectura honesta a 21 de marzo de 2026:
+
+- la fase de hardening local ya ha avanzado mucho y se ha cortado como `0.2.0`
+- el núcleo local es bastante más defendible que al inicio del proyecto
+- sigue habiendo módulos en piloto y una transición técnica en curso del snapshot compatible hacia una base SQLite más primaria
+
 ## 5. Qué está hecho
 
 ### Interfaz y estructura
@@ -169,7 +175,7 @@ Estas partes existen, pero no están cerradas del todo:
 
 - ya existe una suite seria de tests unitarios, smoke y endurecimiento local
 - CI multiplataforma sobre Linux, macOS y Windows
-- sigue faltando cerrar mejor los e2e críticos de navegador como gate estable
+- el e2e local de navegador ya está integrado como job dedicado en CI
 - falta observabilidad más formal
 - falta semilla de datos y más utilidades de onboarding técnico
 
@@ -210,11 +216,10 @@ Esto forma parte de la visión, pero hoy no está implementado o no está comple
 
 ### Infraestructura
 
-- la base de tests unitarios e integración ya existe, pero conviene ampliarla
-- faltan e2e críticos estables como gate principal
-- healthchecks más formales
-- monitorización de errores y eventos críticos
-- pipeline de despliegue más completo
+- la base de tests unitarios e integración ya existe y ahora cubre también el núcleo local endurecido
+- siguen faltando healthchecks más formales
+- sigue faltando monitorización de errores y eventos críticos
+- sigue faltando un pipeline de despliegue más completo
 
 ## 8. Qué no queremos que sea
 
@@ -250,13 +255,12 @@ El criterio es simple: menos funciones vacías y más flujos útiles que ahorren
 - estados vacíos y ayudas
 - UX más consistente entre escritorio y móvil
 
-### Prioridad 4. Endurecer la base técnica
+### Prioridad 4. Cerrar la transición del backend local
 
-- más cobertura de tests críticos
-- e2e estables por flujo
-- observabilidad
-- scripts de setup
-- despliegue más formal
+- reducir todavía más el papel del snapshot compatible
+- seguir llevando slices y restore a una base SQLite más primaria
+- observar mejor el estado del backend local
+- decidir si la siguiente fase mantiene `sql.js` temporalmente o da el salto a una base SQLite más madura para Node
 
 ## 10. Cómo se puede contribuir mejor
 
