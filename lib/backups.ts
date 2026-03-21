@@ -929,7 +929,7 @@ export async function restoreBackupForUser(
       },
     });
 
-    return;
+    return getBackupCounts(backup);
   }
 
   const admin = createAdminSupabaseClient();
@@ -1197,20 +1197,5 @@ export async function restoreBackupForUser(
     throw new Error("La restauración terminó, pero no se pudo resincronizar la numeración.");
   }
 
-  return {
-    clients: backup.clients.length,
-    feedbackEntries: backup.feedbackEntries.length,
-    invoices: backup.invoices.length,
-    invoiceReminders: backup.invoiceReminders.length,
-    commercialDocuments: backup.commercialDocuments.length,
-    documentSignatureRequests: backup.documentSignatureRequests.length,
-    expenses: backup.expenses.length,
-    bankMovements: backup.bankMovements.length,
-    aiUsageRows: backup.aiUsage.length,
-    messageConnections: backup.messages.connections.length,
-    messageThreads: backup.messages.threads.length,
-    messageRecords: backup.messages.records.length,
-    mailThreads: backup.mail.threads.length,
-    mailMessages: backup.mail.messages.length,
-  };
+  return getBackupCounts(backup);
 }

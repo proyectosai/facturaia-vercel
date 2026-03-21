@@ -446,6 +446,72 @@ function buildBankMovementAuditSnapshot(movement: BankMovementRecord | null | un
   };
 }
 
+function buildClientAuditSnapshot(client: ClientRecord | null | undefined) {
+  if (!client) {
+    return null;
+  }
+
+  return {
+    relationKind: client.relation_kind,
+    status: client.status,
+    priority: client.priority,
+    displayName: client.display_name,
+    email: client.email,
+    phone: client.phone,
+    nif: client.nif,
+    tags: [...client.tags].sort(),
+  };
+}
+
+function buildExpenseAuditSnapshot(expense: ExpenseRecord | null | undefined) {
+  if (!expense) {
+    return null;
+  }
+
+  return {
+    expenseKind: expense.expense_kind,
+    reviewStatus: expense.review_status,
+    vendorName: expense.vendor_name,
+    expenseDate: expense.expense_date,
+    totalAmount: expense.total_amount === null ? null : toNumber(expense.total_amount),
+    currency: expense.currency,
+    extractionMethod: expense.text_extraction_method,
+    sourceFileName: expense.source_file_name,
+  };
+}
+
+function buildMessageConnectionAuditSnapshot(connection: MessageConnection | null | undefined) {
+  if (!connection) {
+    return null;
+  }
+
+  return {
+    channel: connection.channel,
+    label: connection.label,
+    status: connection.status,
+    inboundKey: connection.inbound_key,
+    hasVerifyToken: Boolean(connection.verify_token),
+    metadata: connection.metadata,
+  };
+}
+
+function buildMessageThreadAuditSnapshot(thread: MessageThread | null | undefined) {
+  if (!thread) {
+    return null;
+  }
+
+  return {
+    channel: thread.channel,
+    fullName: thread.full_name,
+    urgency: thread.urgency,
+    urgencyScore: thread.urgency_score,
+    urgencyLocked: thread.urgency_locked,
+    unreadCount: thread.unread_count,
+    lastMessageDirection: thread.last_message_direction,
+    lastMessageAt: thread.last_message_at,
+  };
+}
+
 function hashPassword(password: string, salt = randomBytes(16).toString("hex")) {
   const derived = scryptSync(password, salt, 64).toString("hex");
   return `${salt}:${derived}`;
@@ -1050,6 +1116,7 @@ export async function saveLocalClientRecord({
       : null;
 
     if (existing) {
+      const beforeClient = buildClientAuditSnapshot(existing);
       existing.relation_kind = relationKind;
       existing.status = status;
       existing.priority = priority;
@@ -1064,6 +1131,18 @@ export async function saveLocalClientRecord({
       existing.notes = notes;
       existing.tags = tags;
       existing.updated_at = timestamp;
+
+      createLocalAuditEvent(data, {
+        userId,
+        actorType: "user",
+        actorId: userId,
+        source: "clients",
+        action: "client_updated",
+        entityType: "client",
+        entityId: existing.id,
+        beforeJson: beforeClient,
+        afterJson: buildClientAuditSnapshot(existing),
+      });
       return existing;
     }
 
@@ -1088,6 +1167,16 @@ export async function saveLocalClientRecord({
     };
 
     data.clients.push(client);
+    createLocalAuditEvent(data, {
+      userId,
+      actorType: "user",
+      actorId: userId,
+      source: "clients",
+      action: "client_created",
+      entityType: "client",
+      entityId: client.id,
+      afterJson: buildClientAuditSnapshot(client),
+    });
     return client;
   });
 }
@@ -1356,6 +1445,16 @@ export async function createLocalExpenseRecord({
     };
 
     data.expenses.push(expense);
+    createLocalAuditEvent(data, {
+      userId,
+      actorType: "user",
+      actorId: userId,
+      source: "expenses",
+      action: "expense_created",
+      entityType: "expense",
+      entityId: expense.id,
+      afterJson: buildExpenseAuditSnapshot(expense),
+    });
     return expense;
   });
 }
@@ -1370,8 +1469,23 @@ export async function toggleLocalExpenseReview(userId: string, expenseId: string
       return null;
     }
 
+    const beforeExpense = buildExpenseAuditSnapshot(expense);
     expense.review_status = expense.review_status === "draft" ? "reviewed" : "draft";
     expense.updated_at = nowIso();
+    createLocalAuditEvent(data, {
+      userId,
+      actorType: "user",
+      actorId: userId,
+      source: "expenses",
+      action:
+        expense.review_status === "reviewed"
+          ? "expense_marked_reviewed"
+          : "expense_reopened",
+      entityType: "expense",
+      entityId: expense.id,
+      beforeJson: beforeExpense,
+      afterJson: buildExpenseAuditSnapshot(expense),
+    });
     return expense;
   });
 }
@@ -2036,6 +2150,7 @@ export async function ensureLocalMessageConnection({
     );
 
     if (existing) {
+      const beforeConnection = buildMessageConnectionAuditSnapshot(existing);
       existing.label = label;
       existing.inbound_key = inboundKey;
       existing.verify_token = verifyToken;
@@ -2045,6 +2160,21 @@ export async function ensureLocalMessageConnection({
         ...metadata,
       };
       existing.updated_at = timestamp;
+
+      const afterConnection = buildMessageConnectionAuditSnapshot(existing);
+      if (JSON.stringify(beforeConnection) !== JSON.stringify(afterConnection)) {
+        createLocalAuditEvent(data, {
+          userId,
+          actorType: "user",
+          actorId: userId,
+          source: "messaging",
+          action: "message_connection_updated",
+          entityType: "message_connection",
+          entityId: existing.id,
+          beforeJson: beforeConnection,
+          afterJson: afterConnection,
+        });
+      }
       return existing;
     }
 
@@ -2062,6 +2192,16 @@ export async function ensureLocalMessageConnection({
     };
 
     data.messageConnections.push(connection);
+    createLocalAuditEvent(data, {
+      userId,
+      actorType: "user",
+      actorId: userId,
+      source: "messaging",
+      action: "message_connection_created",
+      entityType: "message_connection",
+      entityId: connection.id,
+      afterJson: buildMessageConnectionAuditSnapshot(connection),
+    });
     return connection;
   });
 }
@@ -2127,6 +2267,7 @@ export async function upsertLocalInboundMessage({
 }) {
   return updateLocalCoreData(async (data) => {
     const preview = parsedMessage.body.slice(0, 180);
+    let createdThread = false;
     let thread = data.messageThreads.find(
       (candidate) =>
         candidate.user_id === connection.user_id &&
@@ -2159,6 +2300,7 @@ export async function upsertLocalInboundMessage({
         updated_at: parsedMessage.receivedAt,
       };
       data.messageThreads.push(thread);
+      createdThread = true;
     } else {
       thread.connection_id = connection.id;
       thread.external_contact_id =
@@ -2192,7 +2334,7 @@ export async function upsertLocalInboundMessage({
       }
     }
 
-    data.messageRecords.push({
+    const messageRecord: MessageRecord = {
       id: randomUUID(),
       user_id: connection.user_id,
       thread_id: thread.id,
@@ -2205,10 +2347,50 @@ export async function upsertLocalInboundMessage({
       received_at: parsedMessage.receivedAt,
       raw_payload: parsedMessage.rawPayload,
       created_at: parsedMessage.receivedAt,
-    });
+    };
+
+    data.messageRecords.push(messageRecord);
 
     connection.status = "active";
     connection.updated_at = nowIso();
+
+    if (createdThread) {
+      createLocalAuditEvent(data, {
+        userId: connection.user_id,
+        actorType: "system",
+        actorId: connection.channel,
+        source: "messaging",
+        action: "message_thread_created",
+        entityType: "message_thread",
+        entityId: thread.id,
+        afterJson: buildMessageThreadAuditSnapshot(thread),
+        contextJson: {
+          connectionId: connection.id,
+        },
+      });
+    }
+
+    createLocalAuditEvent(data, {
+      userId: connection.user_id,
+      actorType: "system",
+      actorId: connection.channel,
+      source: "messaging",
+      action: "message_inbound_received",
+      entityType: "message_record",
+      entityId: messageRecord.id,
+      afterJson: {
+        channel: messageRecord.channel,
+        threadId: messageRecord.thread_id,
+        senderName: messageRecord.sender_name,
+        messageType: messageRecord.message_type,
+        receivedAt: messageRecord.received_at,
+      },
+      contextJson: {
+        connectionId: connection.id,
+        externalMessageId: messageRecord.external_message_id,
+        threadUrgency: thread.urgency,
+      },
+    });
 
     return thread;
   });
@@ -2224,8 +2406,20 @@ export async function markLocalMessageThreadRead(userId: string, threadId: strin
       return null;
     }
 
+    const beforeThread = buildMessageThreadAuditSnapshot(thread);
     thread.unread_count = 0;
     thread.updated_at = nowIso();
+    createLocalAuditEvent(data, {
+      userId,
+      actorType: "user",
+      actorId: userId,
+      source: "messaging",
+      action: "message_thread_marked_read",
+      entityType: "message_thread",
+      entityId: thread.id,
+      beforeJson: beforeThread,
+      afterJson: buildMessageThreadAuditSnapshot(thread),
+    });
     return thread;
   });
 }
@@ -2245,10 +2439,22 @@ export async function setLocalMessageThreadUrgency(
       return null;
     }
 
+    const beforeThread = buildMessageThreadAuditSnapshot(thread);
     thread.urgency = urgency;
     thread.urgency_score = urgencyScore;
     thread.urgency_locked = true;
     thread.updated_at = nowIso();
+    createLocalAuditEvent(data, {
+      userId,
+      actorType: "user",
+      actorId: userId,
+      source: "messaging",
+      action: "message_thread_urgency_set",
+      entityType: "message_thread",
+      entityId: thread.id,
+      beforeJson: beforeThread,
+      afterJson: buildMessageThreadAuditSnapshot(thread),
+    });
     return thread;
   });
 }
@@ -2263,8 +2469,20 @@ export async function unlockLocalMessageThreadUrgency(userId: string, threadId: 
       return null;
     }
 
+    const beforeThread = buildMessageThreadAuditSnapshot(thread);
     thread.urgency_locked = false;
     thread.updated_at = nowIso();
+    createLocalAuditEvent(data, {
+      userId,
+      actorType: "user",
+      actorId: userId,
+      source: "messaging",
+      action: "message_thread_urgency_unlocked",
+      entityType: "message_thread",
+      entityId: thread.id,
+      beforeJson: beforeThread,
+      afterJson: buildMessageThreadAuditSnapshot(thread),
+    });
     return thread;
   });
 }

@@ -22,6 +22,7 @@ import {
 } from "@/lib/messages";
 import {
   getLocalCoreSnapshot,
+  listLocalAuditEventsForUser,
   logLocalMailSyncRun,
   markLocalMessageThreadRead,
   setLocalMessageThreadUrgency,
@@ -49,6 +50,7 @@ afterEach(async () => {
 describe("local communications persistence", () => {
   test("stores messaging and inbound mail locally and preserves them across backup restore", async () => {
     const connections = await getCurrentMessageConnections(userId);
+    await getCurrentMessageConnections(userId);
 
     expect(connections.whatsapp.channel).toBe("whatsapp");
     expect(connections.telegram.channel).toBe("telegram");
@@ -132,6 +134,25 @@ describe("local communications persistence", () => {
     expect(updatedWhatsappThread?.unread_count).toBe(0);
     expect(updatedWhatsappThread?.urgency).toBe("medium");
     expect(updatedWhatsappThread?.urgency_locked).toBe(false);
+
+    const auditEvents = await listLocalAuditEventsForUser(userId, 50);
+    expect(
+      auditEvents.filter((event) => event.action === "message_connection_created"),
+    ).toHaveLength(2);
+    expect(auditEvents.some((event) => event.action === "message_connection_updated")).toBe(
+      false,
+    );
+    expect(auditEvents.some((event) => event.action === "message_thread_created")).toBe(true);
+    expect(auditEvents.some((event) => event.action === "message_inbound_received")).toBe(true);
+    expect(
+      auditEvents.some((event) => event.action === "message_thread_marked_read"),
+    ).toBe(true);
+    expect(
+      auditEvents.some((event) => event.action === "message_thread_urgency_set"),
+    ).toBe(true);
+    expect(
+      auditEvents.some((event) => event.action === "message_thread_urgency_unlocked"),
+    ).toBe(true);
 
     const importedMailCount = await upsertLocalMailEntries({
       userId,

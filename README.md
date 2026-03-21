@@ -31,7 +31,7 @@ La línea principal es reforzar la instalación privada del cliente:
 - Revisión Facturae más estricta con validación básica de NIF y vencimiento, más detalle de pago en el XML.
 - Módulo CRM ligero para centralizar fichas de cliente y proveedor con actividad relacionada.
 - Bandeja interna de feedback para registrar incidencias y peticiones de pilotos o uso interno.
-- Vista de auditoría operativa con filtros y export JSON para revisar cambios locales en facturas, cobros, firmas, banca y restauraciones.
+- Vista de auditoría operativa con filtros y export JSON para revisar cambios locales en CRM, gastos, facturas, cobros, firmas, banca, mensajería y restauraciones.
 - Historial de facturas con descarga de PDF y envío por email con SMTP o Resend.
 - Página pública de factura con QR.
 - Estudio documental con IA local vía LM Studio para propuestas, presupuestos, contratos y mensajes.
@@ -40,7 +40,7 @@ La línea principal es reforzar la instalación privada del cliente:
 - Módulo de correo saliente con pantalla de prueba y soporte SMTP / Resend.
 - Módulo de correo entrante con importación IMAP manual y bandeja interna.
 - Módulo opcional de mensajería unificada para WhatsApp Business y Telegram por webhook.
-- Centro de backups para exportar, restaurar y sincronizar copias remotas por WebDAV / Nextcloud, con manifest y checksum de integridad en el JSON y validación `dry-run` antes de restaurar.
+- Centro de backups para exportar, restaurar y sincronizar copias remotas por WebDAV / Nextcloud, con manifest y checksum de integridad en el JSON, validación `dry-run` y comparación visible antes y después de restaurar.
 - Catálogo de módulos opcionales con estado e instalación en `/modules`.
 - Guía de instalación privada dentro de la propia app.
 - Asistente de primeros pasos dentro del panel para instalaciones no técnicas.

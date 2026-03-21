@@ -32,6 +32,13 @@ No está pensado como SIEM ni como cumplimiento avanzado. Está pensado para un 
   - marcar cobrada
   - reabrir
   - sincronización de pago desde conciliación bancaria
+- CRM:
+  - alta de ficha
+  - actualización de ficha
+- gastos:
+  - alta de gasto
+  - marcar revisado
+  - reabrir revisión
 - firmas:
   - creación de solicitud
   - revocación
@@ -39,6 +46,12 @@ No está pensado como SIEM ni como cumplimiento avanzado. Está pensado para un 
 - banca:
   - importación de movimientos
   - conciliación manual
+- mensajería:
+  - creación y actualización de conexiones
+  - creación de hilo
+  - recepción de mensajes entrantes
+  - marcar leído
+  - fijar y desbloquear urgencia
 - backups:
   - restauración completada
 

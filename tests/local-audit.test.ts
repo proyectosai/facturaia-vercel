@@ -4,6 +4,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
 import {
+  createLocalExpenseRecord,
   createLocalBankMovementRecords,
   createLocalCommercialDocumentRecord,
   createLocalDocumentSignatureRequest,
@@ -12,7 +13,9 @@ import {
   listLocalAuditEventsForUser,
   reconcileLocalBankMovement,
   respondToLocalDocumentSignatureRequest,
+  saveLocalClientRecord,
   syncLocalInvoicePaymentStatusFromBankMatches,
+  toggleLocalExpenseReview,
   updateLocalInvoicePaymentState,
 } from "@/lib/local-core";
 import type { CommercialDocumentRecord } from "@/lib/types";
@@ -144,6 +147,94 @@ describe("local audit trail", () => {
       paymentStatus: "pending",
       amountPaid: 0,
     });
+  });
+
+  test("records crm and expense state changes", async () => {
+    const client = await saveLocalClientRecord({
+      userId,
+      relationKind: "client",
+      status: "active",
+      priority: "high",
+      displayName: "Cliente QA S.L.",
+      firstName: "Cliente",
+      lastName: "QA",
+      companyName: "Cliente QA S.L.",
+      email: "facturas@clienteqa.es",
+      phone: "600111222",
+      nif: "B99887766",
+      address: "Calle Serrano 10, Madrid",
+      notes: "Cliente piloto",
+      tags: ["piloto", "fiscal"],
+    });
+
+    await saveLocalClientRecord({
+      userId,
+      clientId: client.id,
+      relationKind: "mixed",
+      status: "paused",
+      priority: "medium",
+      displayName: "Cliente QA Holding",
+      firstName: "Cliente",
+      lastName: "QA",
+      companyName: "Cliente QA Holding",
+      email: "direccion@clienteqa.es",
+      phone: "600111333",
+      nif: "B99887766",
+      address: "Calle Serrano 10, Madrid",
+      notes: "Actualizado para QA",
+      tags: ["holding"],
+    });
+
+    const expense = await createLocalExpenseRecord({
+      userId,
+      expenseKind: "supplier_invoice",
+      reviewStatus: "draft",
+      vendorName: "Proveedor QA S.L.",
+      vendorNif: "B55443322",
+      expenseDate: "2026-03-20",
+      currency: "EUR",
+      baseAmount: 100,
+      vatAmount: 21,
+      totalAmount: 121,
+      notes: "Gasto de prueba",
+      sourceFileName: "proveedor-qa.pdf",
+      sourceFilePath: "/tmp/proveedor-qa.pdf",
+      sourceFileMimeType: "application/pdf",
+      extractionMethod: "pdf_text",
+      rawText: "Factura proveedor QA",
+      extractedPayload: {
+        total: 121,
+      },
+    });
+
+    await toggleLocalExpenseReview(userId, expense.id);
+    await toggleLocalExpenseReview(userId, expense.id);
+
+    const events = await listLocalAuditEventsForUser(userId, 50);
+
+    expect(events.find((event) => event.action === "client_created")?.after_json).toMatchObject({
+      displayName: "Cliente QA S.L.",
+      status: "active",
+    });
+    expect(events.find((event) => event.action === "client_updated")?.after_json).toMatchObject({
+      displayName: "Cliente QA Holding",
+      status: "paused",
+      relationKind: "mixed",
+    });
+    expect(events.find((event) => event.action === "expense_created")?.after_json).toMatchObject({
+      vendorName: "Proveedor QA S.L.",
+      reviewStatus: "draft",
+    });
+    expect(
+      events.find((event) => event.action === "expense_marked_reviewed")?.after_json,
+    ).toMatchObject({
+      reviewStatus: "reviewed",
+    });
+    expect(events.find((event) => event.action === "expense_reopened")?.after_json).toMatchObject(
+      {
+        reviewStatus: "draft",
+      },
+    );
   });
 
   test("records signature and banking audit events with context", async () => {

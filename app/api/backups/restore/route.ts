@@ -3,7 +3,11 @@ import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { z } from "zod";
 
 import type { FacturaIaBackup } from "@/lib/backups";
-import { inspectBackupPayload, restoreBackupForUser } from "@/lib/backups";
+import {
+  getBackupSummary,
+  inspectBackupPayload,
+  restoreBackupForUser,
+} from "@/lib/backups";
 import { requireUser } from "@/lib/auth";
 import { isLocalFileMode } from "@/lib/demo";
 import { getLocalSecurityReadiness } from "@/lib/local-core";
@@ -437,20 +441,28 @@ export async function POST(request: Request) {
     const text = await file.text();
     const inspected = inspectBackupPayload(text);
     const parsed = backupSchema.parse(inspected.payload) as FacturaIaBackup;
+    const currentSummary = await getBackupSummary(user.id);
+    const incomingSummary = inspected.manifest.counts;
 
     if (String(formData.get("dryRun") ?? "").trim() === "1") {
       return NextResponse.json({
         ok: true,
         dryRun: true,
         manifest: inspected.manifest,
+        currentSummary,
+        incomingSummary,
       });
     }
 
-    const restored = await restoreBackupForUser(user.id, user.email ?? "", parsed);
+    await restoreBackupForUser(user.id, user.email ?? "", parsed);
+    const restoredSummary = await getBackupSummary(user.id);
 
     return NextResponse.json({
       ok: true,
-      restored,
+      manifest: inspected.manifest,
+      currentSummary,
+      incomingSummary,
+      restoredSummary,
     });
   } catch (error) {
     if (isRedirectError(error)) {

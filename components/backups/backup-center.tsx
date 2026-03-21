@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useRef, useState, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
@@ -31,6 +31,7 @@ import type { RemoteBackupRun } from "@/lib/types";
 type BackupSummary = {
   clients: number;
   feedbackEntries: number;
+  auditEvents: number;
   invoices: number;
   invoiceReminders: number;
   commercialDocuments: number;
@@ -43,6 +44,27 @@ type BackupSummary = {
   messageRecords: number;
   mailThreads: number;
   mailMessages: number;
+};
+
+type BackupManifest = {
+  schemaVersion: 1;
+  appVersion: string;
+  exportedAt: string;
+  source: "demo" | "live";
+  appUrl: string;
+  checksumAlgorithm: "sha256";
+  modulesIncluded: string[];
+  counts: BackupSummary;
+};
+
+type RestorePreviewPayload = {
+  manifest: BackupManifest;
+  currentSummary: BackupSummary;
+  incomingSummary: BackupSummary;
+};
+
+type RestoreAppliedPayload = RestorePreviewPayload & {
+  restoredSummary: BackupSummary;
 };
 
 type RemoteBackupState = {
@@ -83,6 +105,41 @@ function formatRunDate(value: string) {
   }).format(new Date(value));
 }
 
+const summaryLabels: Record<keyof BackupSummary, string> = {
+  clients: "Fichas CRM",
+  feedbackEntries: "Feedback",
+  auditEvents: "Eventos auditoría",
+  invoices: "Facturas",
+  invoiceReminders: "Recordatorios",
+  commercialDocuments: "Pre-facturación",
+  documentSignatureRequests: "Solicitudes firma",
+  expenses: "Gastos",
+  bankMovements: "Mov. banca",
+  aiUsageRows: "Registros IA",
+  messageConnections: "Conexiones",
+  messageThreads: "Conversaciones",
+  messageRecords: "Mensajes",
+  mailThreads: "Hilos correo",
+  mailMessages: "Emails",
+};
+
+const summaryOrder = Object.keys(summaryLabels) as Array<keyof BackupSummary>;
+
+function getSummaryComparisonRows(current: BackupSummary, incoming: BackupSummary) {
+  return summaryOrder.map((key) => {
+    const currentValue = current[key];
+    const incomingValue = incoming[key];
+
+    return {
+      key,
+      label: summaryLabels[key],
+      currentValue,
+      incomingValue,
+      delta: incomingValue - currentValue,
+    };
+  });
+}
+
 export function BackupCenter({
   summary,
   demoMode,
@@ -95,9 +152,16 @@ export function BackupCenter({
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [isPreviewing, setIsPreviewing] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
   const [isPushingRemote, setIsPushingRemote] = useState(false);
   const [selectedFileName, setSelectedFileName] = useState("");
+  const [restorePreview, setRestorePreview] = useState<RestorePreviewPayload | null>(
+    null,
+  );
+  const [appliedRestore, setAppliedRestore] = useState<RestoreAppliedPayload | null>(
+    null,
+  );
 
   async function handleExport() {
     setIsExporting(true);
@@ -150,7 +214,7 @@ export function BackupCenter({
 
       const payload = (await response.json().catch(() => null)) as
         | { error?: string }
-        | { restored?: BackupSummary };
+        | (RestorePreviewPayload & { restoredSummary: BackupSummary });
 
       if (!response.ok) {
         throw new Error(
@@ -160,7 +224,28 @@ export function BackupCenter({
         );
       }
 
-      toast.success("Copia restaurada. Recarga la página para ver el nuevo estado.");
+      if (
+        !payload ||
+        !("manifest" in payload) ||
+        !("restoredSummary" in payload) ||
+        !payload.manifest
+      ) {
+        throw new Error("La restauración terminó sin devolver un resumen válido.");
+      }
+
+      setAppliedRestore({
+        manifest: payload.manifest,
+        currentSummary: payload.currentSummary,
+        incomingSummary: payload.incomingSummary,
+        restoredSummary: payload.restoredSummary,
+      });
+      setRestorePreview({
+        manifest: payload.manifest,
+        currentSummary: payload.currentSummary,
+        incomingSummary: payload.incomingSummary,
+      });
+
+      toast.success("Copia restaurada correctamente. Revisa el resumen aplicado.");
       router.refresh();
     } catch (error) {
       toast.error(
@@ -171,6 +256,68 @@ export function BackupCenter({
     } finally {
       setIsRestoring(false);
     }
+  }
+
+  async function inspectBackupFile(file: File) {
+    setIsPreviewing(true);
+    setRestorePreview(null);
+    setAppliedRestore(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("backup", file);
+      formData.append("dryRun", "1");
+
+      const response = await fetch("/api/backups/restore", {
+        method: "POST",
+        body: formData,
+      });
+
+      const payload = (await response.json().catch(() => null)) as
+        | { error?: string }
+        | (RestorePreviewPayload & { dryRun?: boolean });
+
+      if (!response.ok) {
+        throw new Error(
+          "error" in (payload ?? {})
+            ? (payload as { error?: string }).error
+            : "No se ha podido validar la copia de seguridad.",
+        );
+      }
+
+      if (!payload || !("manifest" in payload) || !payload.manifest) {
+        throw new Error("La validación del backup no devolvió un manifest válido.");
+      }
+
+      setRestorePreview({
+        manifest: payload.manifest,
+        currentSummary: payload.currentSummary,
+        incomingSummary: payload.incomingSummary,
+      });
+      toast.success("Copia validada. Ya puedes revisar el impacto antes de restaurar.");
+    } catch (error) {
+      setRestorePreview(null);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "No se ha podido validar la copia de seguridad.",
+      );
+    } finally {
+      setIsPreviewing(false);
+    }
+  }
+
+  async function handleBackupFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0] ?? null;
+    setSelectedFileName(file?.name ?? "");
+    setRestorePreview(null);
+    setAppliedRestore(null);
+
+    if (!file || demoMode) {
+      return;
+    }
+
+    await inspectBackupFile(file);
   }
 
   async function handleRemotePush() {
@@ -208,22 +355,17 @@ export function BackupCenter({
     }
   }
 
-  const stats = [
-    { label: "Fichas CRM", value: summary.clients },
-    { label: "Feedback", value: summary.feedbackEntries },
-    { label: "Facturas", value: summary.invoices },
-    { label: "Recordatorios", value: summary.invoiceReminders },
-    { label: "Pre-facturación", value: summary.commercialDocuments },
-    { label: "Solicitudes firma", value: summary.documentSignatureRequests },
-    { label: "Gastos", value: summary.expenses },
-    { label: "Mov. banca", value: summary.bankMovements },
-    { label: "Registros IA", value: summary.aiUsageRows },
-    { label: "Conexiones", value: summary.messageConnections },
-    { label: "Conversaciones", value: summary.messageThreads },
-    { label: "Mensajes", value: summary.messageRecords },
-    { label: "Hilos correo", value: summary.mailThreads },
-    { label: "Emails", value: summary.mailMessages },
-  ];
+  const visibleSummary = appliedRestore?.restoredSummary ?? summary;
+  const stats = summaryOrder.map((key) => ({
+    label: summaryLabels[key],
+    value: visibleSummary[key],
+  }));
+  const previewRows = restorePreview
+    ? getSummaryComparisonRows(restorePreview.currentSummary, restorePreview.incomingSummary)
+    : [];
+  const appliedRows = appliedRestore
+    ? getSummaryComparisonRows(appliedRestore.currentSummary, appliedRestore.restoredSummary)
+    : [];
 
   return (
     <div className="space-y-6">
@@ -317,10 +459,8 @@ export function BackupCenter({
                 ref={fileInputRef}
                 type="file"
                 accept="application/json,.json"
-                onChange={(event) =>
-                  setSelectedFileName(event.target.files?.[0]?.name ?? "")
-                }
-                disabled={demoMode || isRestoring}
+                onChange={handleBackupFileChange}
+                disabled={demoMode || isRestoring || isPreviewing}
               />
               <p className="text-sm text-muted-foreground">
                 {selectedFileName
@@ -330,7 +470,10 @@ export function BackupCenter({
             </div>
 
             <div className="flex flex-wrap gap-3">
-              <Button onClick={handleRestore} disabled={demoMode || isRestoring}>
+              <Button
+                onClick={handleRestore}
+                disabled={demoMode || isRestoring || isPreviewing}
+              >
                 {isRestoring ? (
                   <LoaderCircle className="h-4 w-4 animate-spin" />
                 ) : (
@@ -338,11 +481,131 @@ export function BackupCenter({
                 )}
                 Restaurar copia
               </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  const file = fileInputRef.current?.files?.[0];
+
+                  if (!file) {
+                    toast.error("Selecciona antes un archivo JSON de copia de seguridad.");
+                    return;
+                  }
+
+                  void inspectBackupFile(file);
+                }}
+                disabled={demoMode || isRestoring || isPreviewing}
+              >
+                {isPreviewing ? (
+                  <LoaderCircle className="h-4 w-4 animate-spin" />
+                ) : (
+                  <ShieldCheck className="h-4 w-4" />
+                )}
+                Validar impacto
+              </Button>
               <div className="inline-flex items-center gap-2 rounded-full bg-[color:var(--color-panel)] px-4 py-2 text-sm text-muted-foreground">
                 <ShieldCheck className="h-4 w-4 text-[color:var(--color-success)]" />
                 Operación pensada para instalaciones privadas
               </div>
             </div>
+
+            {restorePreview ? (
+              <div className="space-y-4 rounded-[26px] border border-border/60 bg-white/78 p-5">
+                <div className="space-y-2">
+                  <p className="text-sm font-semibold text-foreground">
+                    Validación previa del backup
+                  </p>
+                  <p className="text-sm leading-6 text-muted-foreground">
+                    Exportado el {formatRunDate(restorePreview.manifest.exportedAt)} desde{" "}
+                    {restorePreview.manifest.appUrl}. Incluye los módulos:{" "}
+                    {restorePreview.manifest.modulesIncluded.join(", ")}.
+                  </p>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  {previewRows.map((row) => (
+                    <div
+                      key={row.key}
+                      className="rounded-[20px] bg-[color:var(--color-panel)] p-4"
+                    >
+                      <p className="text-sm text-muted-foreground">{row.label}</p>
+                      <div className="mt-3 flex items-end justify-between gap-3">
+                        <div>
+                          <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">
+                            Actual
+                          </p>
+                          <p className="font-display text-2xl text-foreground">
+                            {row.currentValue}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">
+                            Backup
+                          </p>
+                          <p className="font-display text-2xl text-foreground">
+                            {row.incomingValue}
+                          </p>
+                        </div>
+                      </div>
+                      <p className="mt-3 text-sm text-muted-foreground">
+                        Cambio:{" "}
+                        <span
+                          className={
+                            row.delta === 0
+                              ? "text-foreground"
+                              : row.delta > 0
+                                ? "text-[color:var(--color-success)]"
+                                : "text-[color:#a6451a]"
+                          }
+                        >
+                          {row.delta > 0 ? `+${row.delta}` : row.delta}
+                        </span>
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {appliedRestore ? (
+              <div className="space-y-4 rounded-[26px] border border-[color:rgba(45,137,94,0.18)] bg-[color:rgba(225,244,236,0.7)] p-5">
+                <div className="space-y-2">
+                  <p className="text-sm font-semibold text-[color:#1f5b3f]">
+                    Restauración aplicada
+                  </p>
+                  <p className="text-sm leading-6 text-[color:#355847]">
+                    FacturaIA ha reemplazado el estado actual con la copia validada y ha
+                    recalculado el resumen operativo de esta instalación.
+                  </p>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  {appliedRows.map((row) => (
+                    <div key={row.key} className="rounded-[20px] bg-white/82 p-4">
+                      <p className="text-sm text-muted-foreground">{row.label}</p>
+                      <div className="mt-3 flex items-end justify-between gap-3">
+                        <div>
+                          <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">
+                            Antes
+                          </p>
+                          <p className="font-display text-2xl text-foreground">
+                            {row.currentValue}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">
+                            Ahora
+                          </p>
+                          <p className="font-display text-2xl text-foreground">
+                            {row.incomingValue}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </CardContent>
         </Card>
 

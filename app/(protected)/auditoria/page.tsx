@@ -33,10 +33,13 @@ const auditSourceLabels: Record<LocalAuditSource, string> = {
   backup: "Backups",
   system: "Sistema",
   profile: "Perfil",
+  clients: "CRM",
+  expenses: "Gastos",
   invoices: "Facturas",
   collections: "Cobros",
   signatures: "Firmas",
   banking: "Banca",
+  messaging: "Mensajería",
 };
 
 function getSingleSearchParam(value: string | string[] | undefined, fallback = "") {

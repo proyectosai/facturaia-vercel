@@ -77,10 +77,13 @@ export type LocalAuditSource =
   | "backup"
   | "system"
   | "profile"
+  | "clients"
+  | "expenses"
   | "invoices"
   | "collections"
   | "signatures"
-  | "banking";
+  | "banking"
+  | "messaging";
 
 export type LocalAuthRateLimitScope = "local_login";
 
