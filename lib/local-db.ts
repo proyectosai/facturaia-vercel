@@ -2190,7 +2190,10 @@ export async function replaceStructuredLocalInvoicesForUser({
     try {
       deleteRowsByUserId(db, "local_invoices", userId);
       deleteRowsByUserId(db, "local_invoice_reminders", userId);
-      deleteRowsByUserId(db, "local_audit_events", userId);
+
+      if (auditEvents !== undefined) {
+        deleteRowsByUserId(db, "local_audit_events", userId);
+      }
 
       if (invoices.length > 0) {
         upsertStructuredInvoiceRows(db, invoices);
@@ -2209,6 +2212,55 @@ export async function replaceStructuredLocalInvoicesForUser({
       }
 
       upsertSchemaInfo(db, "structured_mirror_schema_version", String(STRUCTURED_MIRROR_SCHEMA_VERSION));
+      upsertSchemaInfo(
+        db,
+        "structured_mirror_snapshot_version",
+        String(currentSnapshotVersion > 0 ? currentSnapshotVersion : 1),
+      );
+      upsertSchemaInfo(db, "structured_mirror_last_synced_at", syncedAt);
+      upsertSchemaInfo(db, "structured_mirror_status", "ready");
+      db.run("COMMIT;");
+    } catch (error) {
+      db.run("ROLLBACK;");
+      throw error;
+    }
+
+    await persistDatabase(db);
+    return true;
+  } finally {
+    db.close();
+  }
+}
+
+export async function replaceStructuredLocalAuditEventsForUser(
+  userId: string,
+  auditEvents: LocalAuditEventRecord[],
+): Promise<boolean> {
+  const db = await openDatabase();
+
+  try {
+    if (getStructuredMirrorStatus(db) === "disabled_encrypted") {
+      return false;
+    }
+
+    const syncedAt = new Date().toISOString();
+    const currentSnapshotVersion = Number(
+      readSchemaInfo(db, "structured_mirror_snapshot_version") ?? 0,
+    );
+    db.run("BEGIN TRANSACTION;");
+
+    try {
+      deleteRowsByUserId(db, "local_audit_events", userId);
+
+      if (auditEvents.length > 0) {
+        upsertStructuredAuditEventRows(db, auditEvents);
+      }
+
+      upsertSchemaInfo(
+        db,
+        "structured_mirror_schema_version",
+        String(STRUCTURED_MIRROR_SCHEMA_VERSION),
+      );
       upsertSchemaInfo(
         db,
         "structured_mirror_snapshot_version",
@@ -2386,7 +2438,8 @@ export async function listStructuredLocalAuditEventsForUser(
       return null;
     }
 
-    const safeLimit = Math.max(1, Math.trunc(limit));
+    const safeLimit =
+      typeof limit === "number" ? Math.max(1, Math.trunc(limit)) : null;
     return queryRows(
       db,
       `
@@ -2406,7 +2459,7 @@ export async function listStructuredLocalAuditEventsForUser(
         FROM local_audit_events
         WHERE user_id = ?
         ORDER BY created_at DESC
-        LIMIT ${safeLimit};
+        ${safeLimit === null ? "" : `LIMIT ${safeLimit}`};
       `,
       [userId],
       (values) => mapAuditEventRow(values),

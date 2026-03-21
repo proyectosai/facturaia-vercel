@@ -50,7 +50,6 @@ import {
 import {
   getStructuredLocalDailyAiUsage,
   getStructuredLocalMonthlyInvoiceUsage,
-  listStructuredLocalAuditEventsForUser,
   readStructuredLocalCoreSlices,
   getLocalDataDir as getLocalDataDirFromDb,
   replaceStructuredLocalIdentityForUser,
@@ -75,6 +74,11 @@ import {
   persistStructuredInvoiceRepositoryState,
   replaceStructuredInvoiceRepositoryStateForUser,
 } from "@/lib/local-repositories/invoices";
+import {
+  getStructuredCounterRepositoryState,
+  listStructuredAuditRepositoryRecords,
+  replaceStructuredAuditRepositoryRecords,
+} from "@/lib/local-repositories/system";
 import { roundCurrency, toNumber } from "@/lib/utils";
 
 type LocalCoreAuthUser = AppUserRecord & {
@@ -655,7 +659,7 @@ export function verifyLocalSessionToken(token: string | undefined | null) {
 }
 
 export async function listLocalAuditEventsForUser(userId: string, limit = 25) {
-  const mirrored = await listStructuredLocalAuditEventsForUser(userId, limit);
+  const mirrored = await listStructuredAuditRepositoryRecords(userId, limit);
 
   if (mirrored) {
     return mirrored;
@@ -1526,8 +1530,14 @@ export async function createLocalCommercialDocumentRecord({
     const timestamp = nowIso();
     const counterKey =
       input.document_type === "quote" ? "quote_number" : "delivery_note_number";
-    const documentNumber = data.counters[counterKey] + 1;
-    data.counters[counterKey] = documentNumber;
+    const counters = canUseStructuredLocalRepositories()
+      ? (await getStructuredCounterRepositoryState()) ?? data.counters
+      : data.counters;
+    const documentNumber = counters[counterKey] + 1;
+    data.counters = {
+      ...counters,
+      [counterKey]: documentNumber,
+    };
 
     const document: CommercialDocumentRecord = {
       id: randomUUID(),
@@ -3339,11 +3349,14 @@ export async function replaceLocalUserData({
         ),
       })) &&
       (await replaceStructuredClientRepositoryRecords(userId, data.clients.filter((candidate) => candidate.user_id === userId))) &&
+      (await replaceStructuredAuditRepositoryRecords(
+        userId,
+        data.auditEvents.filter((candidate) => candidate.user_id === userId),
+      )) &&
       (await replaceStructuredInvoiceRepositoryStateForUser({
         userId,
         invoices: data.invoices.filter((candidate) => candidate.user_id === userId),
         invoiceReminders: data.invoiceReminders.filter((candidate) => candidate.user_id === userId),
-        auditEvents: data.auditEvents.filter((candidate) => candidate.user_id === userId),
         counters: data.counters,
       }));
 

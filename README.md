@@ -138,6 +138,7 @@ Comportamiento:
 - el mirror ya alimenta lecturas reales de auditoría, uso, clientes y facturas cuando está disponible
 - las mutaciones locales de clientes, facturas, cobros y recordatorios ya actualizan el mirror SQLite con upserts dirigidos, sin resincronizarlo completo en cada cambio
 - `clientes`, `facturas`, `recordatorios`, `auditoría` y `contadores` ya se recuperan desde SQLite como fuente principal en modo local; el snapshot queda como compatibilidad, backup y restore
+- restore y export de backups ya reconstruyen identidad, feedback, clientes, facturas, recordatorios y auditoría priorizando SQLite cuando el mirror está activo
 - esas mutaciones ya intentan persistirse primero en SQLite y solo después consolidan el snapshot compatible
 - el acceso local aplica expiración real de sesión, bloqueo temporal por intentos fallidos y auditoría persistente de eventos sensibles
 - en producción, si falta `FACTURAIA_LOCAL_SESSION_SECRET` o activas cifrado sin `FACTURAIA_ENCRYPTION_PASSPHRASE`, FacturaIA bloquea acceso protegido, exportación y restauración hasta corregir la instalación

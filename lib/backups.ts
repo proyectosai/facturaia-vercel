@@ -31,6 +31,7 @@ import {
   recordLocalAuditEvent,
   replaceLocalUserData,
 } from "@/lib/local-core";
+import { readStructuredLocalCoreSlices } from "@/lib/local-db";
 import {
   decryptEncryptedEnvelope,
   encryptTextForScope,
@@ -178,6 +179,65 @@ function getBackupCounts(backup: FacturaIaBackup): BackupSummary {
     messageRecords: backup.messages.records.length,
     mailThreads: backup.mail.threads.length,
     mailMessages: backup.mail.messages.length,
+  };
+}
+
+async function getLocalBackupView(userId: string) {
+  const [snapshot, structured] = await Promise.all([
+    getLocalCoreSnapshot(),
+    readStructuredLocalCoreSlices(),
+  ]);
+
+  return {
+    snapshot,
+    profile:
+      structured?.profiles.find((candidate) => candidate.id === userId) ??
+      snapshot.profiles.find((candidate) => candidate.id === userId) ??
+      null,
+    clients:
+      structured?.clients.filter((candidate) => candidate.user_id === userId) ??
+      snapshot.clients.filter((candidate) => candidate.user_id === userId),
+    feedbackEntries:
+      structured?.feedbackEntries.filter(
+        (candidate) => candidate.user_id === userId,
+      ) ?? snapshot.feedbackEntries.filter((candidate) => candidate.user_id === userId),
+    auditEvents:
+      structured?.auditEvents.filter((candidate) => candidate.user_id === userId) ??
+      snapshot.auditEvents.filter((candidate) => candidate.user_id === userId),
+    invoices:
+      structured?.invoices.filter((candidate) => candidate.user_id === userId) ??
+      snapshot.invoices.filter((candidate) => candidate.user_id === userId),
+    invoiceReminders:
+      structured?.invoiceReminders.filter(
+        (candidate) => candidate.user_id === userId,
+      ) ?? snapshot.invoiceReminders.filter((candidate) => candidate.user_id === userId),
+    snapshotOnly: {
+      bankMovements: snapshot.bankMovements.filter(
+        (candidate) => candidate.user_id === userId,
+      ),
+      commercialDocuments: snapshot.commercialDocuments.filter(
+        (candidate) => candidate.user_id === userId,
+      ),
+      documentSignatureRequests: snapshot.documentSignatureRequests.filter(
+        (candidate) => candidate.user_id === userId,
+      ),
+      expenses: snapshot.expenses.filter((candidate) => candidate.user_id === userId),
+      aiUsage: snapshot.aiUsage.filter((candidate) => candidate.user_id === userId),
+      messageConnections: snapshot.messageConnections.filter(
+        (candidate) => candidate.user_id === userId,
+      ),
+      messageThreads: snapshot.messageThreads.filter(
+        (candidate) => candidate.user_id === userId,
+      ),
+      messageRecords: snapshot.messageRecords.filter(
+        (candidate) => candidate.user_id === userId,
+      ),
+      mailThreads: snapshot.mailThreads.filter((candidate) => candidate.user_id === userId),
+      mailMessages: snapshot.mailMessages.filter(
+        (candidate) => candidate.user_id === userId,
+      ),
+      mailSyncRuns: snapshot.mailSyncRuns.filter((candidate) => candidate.user_id === userId),
+    },
   };
 }
 
@@ -523,34 +583,24 @@ export async function getBackupSummary(userId: string): Promise<BackupSummary> {
   }
 
   if (isLocalFileMode()) {
-    const snapshot = await getLocalCoreSnapshot();
+    const localView = await getLocalBackupView(userId);
     return {
-      clients: snapshot.clients.filter((client) => client.user_id === userId).length,
-      feedbackEntries: snapshot.feedbackEntries.filter((entry) => entry.user_id === userId).length,
-      auditEvents: snapshot.auditEvents.filter((event) => event.user_id === userId).length,
-      invoices: snapshot.invoices.filter((invoice) => invoice.user_id === userId).length,
-      invoiceReminders: snapshot.invoiceReminders.filter((reminder) => reminder.user_id === userId)
-        .length,
-      bankMovements: snapshot.bankMovements.filter((movement) => movement.user_id === userId)
-        .length,
-      commercialDocuments: snapshot.commercialDocuments.filter((document) => document.user_id === userId)
-        .length,
-      documentSignatureRequests: snapshot.documentSignatureRequests.filter(
-        (request) => request.user_id === userId,
-      ).length,
+      clients: localView.clients.length,
+      feedbackEntries: localView.feedbackEntries.length,
+      auditEvents: localView.auditEvents.length,
+      invoices: localView.invoices.length,
+      invoiceReminders: localView.invoiceReminders.length,
+      bankMovements: localView.snapshotOnly.bankMovements.length,
+      commercialDocuments: localView.snapshotOnly.commercialDocuments.length,
+      documentSignatureRequests: localView.snapshotOnly.documentSignatureRequests.length,
       studyDocuments: (await exportStudyDocumentsForUser(userId)).length,
-      expenses: snapshot.expenses.filter((expense) => expense.user_id === userId).length,
-      aiUsageRows: snapshot.aiUsage.filter((entry) => entry.user_id === userId).length,
-      messageConnections: snapshot.messageConnections.filter(
-        (connection) => connection.user_id === userId,
-      ).length,
-      messageThreads: snapshot.messageThreads.filter((thread) => thread.user_id === userId)
-        .length,
-      messageRecords: snapshot.messageRecords.filter((record) => record.user_id === userId)
-        .length,
-      mailThreads: snapshot.mailThreads.filter((thread) => thread.user_id === userId).length,
-      mailMessages: snapshot.mailMessages.filter((message) => message.user_id === userId)
-        .length,
+      expenses: localView.snapshotOnly.expenses.length,
+      aiUsageRows: localView.snapshotOnly.aiUsage.length,
+      messageConnections: localView.snapshotOnly.messageConnections.length,
+      messageThreads: localView.snapshotOnly.messageThreads.length,
+      messageRecords: localView.snapshotOnly.messageRecords.length,
+      mailThreads: localView.snapshotOnly.mailThreads.length,
+      mailMessages: localView.snapshotOnly.mailMessages.length,
     };
   }
 
@@ -662,17 +712,12 @@ export async function exportBackupForUser(
   }
 
   if (isLocalFileMode()) {
-    const snapshot = await getLocalCoreSnapshot();
-    const profile =
-      snapshot.profiles.find((candidate) => candidate.id === userId) ?? null;
-    const invoices = snapshot.invoices
-      .filter((invoice) => invoice.user_id === userId)
+    const localView = await getLocalBackupView(userId);
+    const invoices = localView.invoices
       .sort((left, right) => left.issue_date.localeCompare(right.issue_date));
-    const invoiceReminders = snapshot.invoiceReminders
-      .filter((reminder) => reminder.user_id === userId)
+    const invoiceReminders = localView.invoiceReminders
       .sort((left, right) => right.sent_at.localeCompare(left.sent_at));
-    const aiUsage = snapshot.aiUsage
-      .filter((entry) => entry.user_id === userId)
+    const aiUsage = localView.snapshotOnly.aiUsage
       .map((entry) => ({
         user_id: entry.user_id,
         date: entry.date,
@@ -686,31 +731,27 @@ export async function exportBackupForUser(
       source: "live",
       appUrl: getAppUrl(),
       user: { id: userId, email },
-      profile,
-      clients: snapshot.clients.filter((client) => client.user_id === userId),
-      feedbackEntries: snapshot.feedbackEntries.filter((entry) => entry.user_id === userId),
-      auditEvents: snapshot.auditEvents.filter((event) => event.user_id === userId),
+      profile: localView.profile,
+      clients: localView.clients,
+      feedbackEntries: localView.feedbackEntries,
+      auditEvents: localView.auditEvents,
       invoices,
       invoiceReminders,
-      bankMovements: snapshot.bankMovements.filter((movement) => movement.user_id === userId),
-      commercialDocuments: snapshot.commercialDocuments.filter((document) => document.user_id === userId),
-      documentSignatureRequests: snapshot.documentSignatureRequests.filter(
-        (request) => request.user_id === userId,
-      ),
+      bankMovements: localView.snapshotOnly.bankMovements,
+      commercialDocuments: localView.snapshotOnly.commercialDocuments,
+      documentSignatureRequests: localView.snapshotOnly.documentSignatureRequests,
       studyDocuments,
-      expenses: snapshot.expenses.filter((expense) => expense.user_id === userId),
+      expenses: localView.snapshotOnly.expenses,
       aiUsage,
       messages: {
-        connections: snapshot.messageConnections.filter(
-          (connection) => connection.user_id === userId,
-        ),
-        threads: snapshot.messageThreads.filter((thread) => thread.user_id === userId),
-        records: snapshot.messageRecords.filter((record) => record.user_id === userId),
+        connections: localView.snapshotOnly.messageConnections,
+        threads: localView.snapshotOnly.messageThreads,
+        records: localView.snapshotOnly.messageRecords,
       },
       mail: {
-        threads: snapshot.mailThreads.filter((thread) => thread.user_id === userId),
-        messages: snapshot.mailMessages.filter((message) => message.user_id === userId),
-        syncRuns: snapshot.mailSyncRuns.filter((run) => run.user_id === userId),
+        threads: localView.snapshotOnly.mailThreads,
+        messages: localView.snapshotOnly.mailMessages,
+        syncRuns: localView.snapshotOnly.mailSyncRuns,
       },
     };
   }
