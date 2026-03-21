@@ -53,6 +53,7 @@ import {
   listStructuredLocalAuditEventsForUser,
   readStructuredLocalCoreSlices,
   getLocalDataDir as getLocalDataDirFromDb,
+  replaceStructuredLocalIdentityForUser,
   readLocalStateText,
   type StructuredMirrorMutation,
   type StructuredMirrorSection,
@@ -219,8 +220,12 @@ async function readLocalCoreData(): Promise<LocalCoreData> {
 
     return {
       ...baseData,
+      users: structuredSlices.users,
+      profiles: structuredSlices.profiles,
+      feedbackEntries: structuredSlices.feedbackEntries,
       clients: structuredSlices.clients,
       auditEvents: structuredSlices.auditEvents,
+      authRateLimits: structuredSlices.authRateLimits,
       invoices: structuredSlices.invoices,
       invoiceReminders: structuredSlices.invoiceReminders,
       counters: {
@@ -3320,6 +3325,19 @@ export async function replaceLocalUserData({
       .reduce((max, document) => Math.max(max, document.document_number), 0);
     const structuredPrimaryPersisted =
       canUseStructuredLocalRepositories() &&
+      (await replaceStructuredLocalIdentityForUser({
+        user:
+          data.users.find((candidate) => candidate.id === userId) ??
+          data.users[data.users.length - 1]!,
+        profile:
+          data.profiles.find((candidate) => candidate.id === userId) ?? null,
+        feedbackEntries: data.feedbackEntries.filter(
+          (candidate) => candidate.user_id === userId,
+        ),
+        authRateLimits: data.authRateLimits.filter(
+          (candidate) => candidate.email_key === getNormalizedEmail(email),
+        ),
+      })) &&
       (await replaceStructuredClientRepositoryRecords(userId, data.clients.filter((candidate) => candidate.user_id === userId))) &&
       (await replaceStructuredInvoiceRepositoryStateForUser({
         userId,

@@ -5,10 +5,14 @@ import { promises as fs } from "node:fs";
 
 import initSqlJs, { type Database, type SqlJsStatic } from "sql.js";
 import type {
+  AppUserRecord,
   ClientRecord,
+  FeedbackEntryRecord,
   InvoiceRecord,
   InvoiceReminderRecord,
   LocalAuditEventRecord,
+  LocalAuthRateLimitRecord,
+  Profile,
 } from "@/lib/types";
 import { getLocalRuntimeEnv } from "@/lib/env";
 
@@ -89,8 +93,12 @@ export type StructuredMirrorMutation = {
 };
 
 export type StructuredLocalCoreSlices = {
+  users: Array<AppUserRecord & { password_hash: string }>;
+  profiles: Profile[];
+  feedbackEntries: FeedbackEntryRecord[];
   clients: ClientRecord[];
   auditEvents: LocalAuditEventRecord[];
+  authRateLimits: LocalAuthRateLimitRecord[];
   invoices: InvoiceRecord[];
   invoiceReminders: InvoiceReminderRecord[];
   counters: StructuredSnapshot["counters"];
@@ -927,6 +935,93 @@ function upsertStructuredClientRows(db: Database, rows: ClientRecord[]) {
   }
 }
 
+function upsertStructuredUserRows(
+  db: Database,
+  rows: Array<AppUserRecord & { password_hash: string }>,
+) {
+  for (const row of rows) {
+    upsertTableRow(
+      db,
+      "local_users",
+      ["id", "email", "password_hash", "created_at", "updated_at"],
+      "id",
+      row,
+    );
+  }
+}
+
+function upsertStructuredProfileRows(db: Database, rows: Profile[]) {
+  for (const row of rows) {
+    upsertTableRow(
+      db,
+      "local_profiles",
+      [
+        "id",
+        "email",
+        "full_name",
+        "nif",
+        "address",
+        "logo_path",
+        "logo_url",
+        "created_at",
+        "updated_at",
+      ],
+      "id",
+      row,
+    );
+  }
+}
+
+function upsertStructuredFeedbackRows(db: Database, rows: FeedbackEntryRecord[]) {
+  for (const row of rows) {
+    upsertTableRow(
+      db,
+      "local_feedback_entries",
+      [
+        "id",
+        "user_id",
+        "source_type",
+        "module_key",
+        "severity",
+        "status",
+        "title",
+        "message",
+        "reporter_name",
+        "contact_email",
+        "created_at",
+        "updated_at",
+      ],
+      "id",
+      row,
+    );
+  }
+}
+
+function upsertStructuredAuthRateLimitRows(
+  db: Database,
+  rows: LocalAuthRateLimitRecord[],
+) {
+  for (const row of rows) {
+    upsertTableRow(
+      db,
+      "local_auth_rate_limits",
+      [
+        "id",
+        "scope",
+        "email_key",
+        "ip_address",
+        "failed_attempts",
+        "last_failed_at",
+        "locked_until",
+        "created_at",
+        "updated_at",
+      ],
+      "id",
+      row,
+    );
+  }
+}
+
 function upsertStructuredAuditEventRows(db: Database, rows: LocalAuditEventRecord[]) {
   for (const row of rows) {
     upsertTableRow(
@@ -1056,6 +1151,15 @@ function deleteRowsByUserId(db: Database, tableName: string, userId: string) {
   db.run(`DELETE FROM ${tableName} WHERE user_id = ?;`, [userId]);
 }
 
+function deleteRowsByColumn(
+  db: Database,
+  tableName: string,
+  columnName: string,
+  value: string,
+) {
+  db.run(`DELETE FROM ${tableName} WHERE ${columnName} = ?;`, [value]);
+}
+
 function readSchemaInfo(db: Database, key: string) {
   const result = db.exec(
     "SELECT info_value FROM local_schema_info WHERE info_key = ? LIMIT 1;",
@@ -1120,6 +1224,61 @@ function mapClientRow(values: unknown[]): ClientRecord {
     tags: parseJsonArrayField<string>(values[14]),
     created_at: String(values[15] ?? ""),
     updated_at: String(values[16] ?? ""),
+  };
+}
+
+function mapUserRow(values: unknown[]) {
+  return {
+    id: String(values[0] ?? ""),
+    email: String(values[1] ?? ""),
+    password_hash: String(values[2] ?? ""),
+    created_at: String(values[3] ?? ""),
+    updated_at: String(values[4] ?? ""),
+  } satisfies AppUserRecord & { password_hash: string };
+}
+
+function mapProfileRow(values: unknown[]): Profile {
+  return {
+    id: String(values[0] ?? ""),
+    email: String(values[1] ?? ""),
+    full_name: values[2] === null ? null : String(values[2] ?? ""),
+    nif: values[3] === null ? null : String(values[3] ?? ""),
+    address: values[4] === null ? null : String(values[4] ?? ""),
+    logo_path: values[5] === null ? null : String(values[5] ?? ""),
+    logo_url: values[6] === null ? null : String(values[6] ?? ""),
+    created_at: values[7] === null ? undefined : String(values[7] ?? ""),
+    updated_at: values[8] === null ? undefined : String(values[8] ?? ""),
+  };
+}
+
+function mapFeedbackEntryRow(values: unknown[]): FeedbackEntryRecord {
+  return {
+    id: String(values[0] ?? ""),
+    user_id: String(values[1] ?? ""),
+    source_type: String(values[2] ?? "self") as FeedbackEntryRecord["source_type"],
+    module_key: String(values[3] ?? ""),
+    severity: String(values[4] ?? "medium") as FeedbackEntryRecord["severity"],
+    status: String(values[5] ?? "open") as FeedbackEntryRecord["status"],
+    title: String(values[6] ?? ""),
+    message: String(values[7] ?? ""),
+    reporter_name: values[8] === null ? null : String(values[8] ?? ""),
+    contact_email: values[9] === null ? null : String(values[9] ?? ""),
+    created_at: String(values[10] ?? ""),
+    updated_at: String(values[11] ?? ""),
+  };
+}
+
+function mapAuthRateLimitRow(values: unknown[]): LocalAuthRateLimitRecord {
+  return {
+    id: String(values[0] ?? ""),
+    scope: String(values[1] ?? "local_login") as LocalAuthRateLimitRecord["scope"],
+    email_key: String(values[2] ?? ""),
+    ip_address: values[3] === null ? null : String(values[3] ?? ""),
+    failed_attempts: Number(values[4] ?? 0),
+    last_failed_at: values[5] === null ? null : String(values[5] ?? ""),
+    locked_until: values[6] === null ? null : String(values[6] ?? ""),
+    created_at: String(values[7] ?? ""),
+    updated_at: String(values[8] ?? ""),
   };
 }
 
@@ -1930,6 +2089,80 @@ export async function replaceStructuredLocalClientsForUser(
   }
 }
 
+export async function replaceStructuredLocalIdentityForUser({
+  user,
+  profile,
+  feedbackEntries,
+  authRateLimits,
+}: {
+  user: AppUserRecord & { password_hash: string };
+  profile: Profile | null;
+  feedbackEntries: FeedbackEntryRecord[];
+  authRateLimits: LocalAuthRateLimitRecord[];
+}): Promise<boolean> {
+  const db = await openDatabase();
+
+  try {
+    if (getStructuredMirrorStatus(db) === "disabled_encrypted") {
+      return false;
+    }
+
+    const syncedAt = new Date().toISOString();
+    const currentSnapshotVersion = Number(
+      readSchemaInfo(db, "structured_mirror_snapshot_version") ?? 0,
+    );
+    db.run("BEGIN TRANSACTION;");
+
+    try {
+      deleteRowsByColumn(db, "local_users", "id", user.id);
+      deleteRowsByColumn(db, "local_profiles", "id", user.id);
+      deleteRowsByUserId(db, "local_feedback_entries", user.id);
+      deleteRowsByColumn(
+        db,
+        "local_auth_rate_limits",
+        "email_key",
+        user.email.trim().toLowerCase(),
+      );
+
+      upsertStructuredUserRows(db, [user]);
+
+      if (profile) {
+        upsertStructuredProfileRows(db, [profile]);
+      }
+
+      if (feedbackEntries.length > 0) {
+        upsertStructuredFeedbackRows(db, feedbackEntries);
+      }
+
+      if (authRateLimits.length > 0) {
+        upsertStructuredAuthRateLimitRows(db, authRateLimits);
+      }
+
+      upsertSchemaInfo(
+        db,
+        "structured_mirror_schema_version",
+        String(STRUCTURED_MIRROR_SCHEMA_VERSION),
+      );
+      upsertSchemaInfo(
+        db,
+        "structured_mirror_snapshot_version",
+        String(currentSnapshotVersion > 0 ? currentSnapshotVersion : 1),
+      );
+      upsertSchemaInfo(db, "structured_mirror_last_synced_at", syncedAt);
+      upsertSchemaInfo(db, "structured_mirror_status", "ready");
+      db.run("COMMIT;");
+    } catch (error) {
+      db.run("ROLLBACK;");
+      throw error;
+    }
+
+    await persistDatabase(db);
+    return true;
+  } finally {
+    db.close();
+  }
+}
+
 export async function replaceStructuredLocalInvoicesForUser({
   userId,
   invoices,
@@ -2482,6 +2715,65 @@ export async function readStructuredLocalCoreSlices(): Promise<StructuredLocalCo
       return null;
     }
 
+    const users = queryRows(
+      db,
+      `
+        SELECT
+          id,
+          email,
+          password_hash,
+          created_at,
+          updated_at
+        FROM local_users
+        ORDER BY created_at ASC;
+      `,
+      undefined,
+      (values) => mapUserRow(values),
+    );
+
+    const profiles = queryRows(
+      db,
+      `
+        SELECT
+          id,
+          email,
+          full_name,
+          nif,
+          address,
+          logo_path,
+          logo_url,
+          created_at,
+          updated_at
+        FROM local_profiles
+        ORDER BY created_at ASC, updated_at ASC;
+      `,
+      undefined,
+      (values) => mapProfileRow(values),
+    );
+
+    const feedbackEntries = queryRows(
+      db,
+      `
+        SELECT
+          id,
+          user_id,
+          source_type,
+          module_key,
+          severity,
+          status,
+          title,
+          message,
+          reporter_name,
+          contact_email,
+          created_at,
+          updated_at
+        FROM local_feedback_entries
+        ORDER BY created_at ASC, updated_at ASC;
+      `,
+      undefined,
+      (values) => mapFeedbackEntryRow(values),
+    );
+
     const clients = queryRows(
       db,
       `
@@ -2531,6 +2823,26 @@ export async function readStructuredLocalCoreSlices(): Promise<StructuredLocalCo
       `,
       undefined,
       (values) => mapAuditEventRow(values),
+    );
+
+    const authRateLimits = queryRows(
+      db,
+      `
+        SELECT
+          id,
+          scope,
+          email_key,
+          ip_address,
+          failed_attempts,
+          last_failed_at,
+          locked_until,
+          created_at,
+          updated_at
+        FROM local_auth_rate_limits
+        ORDER BY created_at ASC, updated_at ASC;
+      `,
+      undefined,
+      (values) => mapAuthRateLimitRow(values),
     );
 
     const invoices = queryRows(
@@ -2629,8 +2941,12 @@ export async function readStructuredLocalCoreSlices(): Promise<StructuredLocalCo
     }
 
     return {
+      users,
+      profiles,
+      feedbackEntries,
       clients,
       auditEvents,
+      authRateLimits,
       invoices,
       invoiceReminders,
       counters,

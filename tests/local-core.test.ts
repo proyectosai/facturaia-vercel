@@ -4,11 +4,13 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
 import {
+  authenticateLocalUser,
   createLocalFeedbackEntry,
   createLocalCommercialDocumentRecord,
   createLocalDocumentSignatureRequest,
   createLocalExpenseRecord,
   createLocalInvoiceRecord,
+  ensureInitialLocalUser,
   getLocalClientById,
   getLocalCoreSnapshot,
   getLocalInvoiceById,
@@ -548,6 +550,60 @@ describe("local core persistence", () => {
     expect(entries).toHaveLength(1);
     expect(entries[0]?.title).toBe("Error en bandeja local");
     expect(snapshot.feedbackEntries[0]?.contact_email).toBe("asesor@despacho.local");
+  });
+
+  test("recovers users, profiles, feedback and auth limits from sqlite when snapshot degrades", async () => {
+    const bootstrappedUser = await ensureInitialLocalUser(
+      userEmail,
+      "ClaveSegura123",
+    );
+
+    await createLocalFeedbackEntry({
+      userId: bootstrappedUser.id,
+      sourceType: "pilot",
+      moduleKey: "feedback",
+      severity: "medium",
+      title: "Feedback persistente",
+      message: "Debe sobrevivir aunque el snapshot quede incompleto.",
+      reporterName: "Asesoria Martin Fiscal",
+      contactEmail: userEmail,
+    });
+
+    const failedLogin = await authenticateLocalUser(
+      userEmail,
+      "ClaveIncorrecta123",
+      {
+        ipAddress: "127.0.0.1",
+        userAgent: "Vitest",
+      },
+    );
+
+    expect(failedLogin.status).toBe("invalid");
+
+    const staleSnapshot = await getLocalCoreSnapshot();
+    staleSnapshot.users = [];
+    staleSnapshot.profiles = [];
+    staleSnapshot.feedbackEntries = [];
+    staleSnapshot.authRateLimits = [];
+    staleSnapshot.auditEvents = [];
+
+    await writeLocalStateText(
+      JSON.stringify(staleSnapshot, null, 2),
+      JSON.stringify(staleSnapshot, null, 2),
+      { structuredMutation: {} },
+    );
+
+    const recovered = await getLocalCoreSnapshot();
+
+    expect(recovered.users).toHaveLength(1);
+    expect(recovered.users[0]?.email).toBe(userEmail);
+    expect(recovered.profiles).toHaveLength(1);
+    expect(recovered.profiles[0]?.id).toBe(bootstrappedUser.id);
+    expect(recovered.feedbackEntries).toHaveLength(1);
+    expect(recovered.feedbackEntries[0]?.title).toBe("Feedback persistente");
+    expect(recovered.authRateLimits).toHaveLength(1);
+    expect(recovered.authRateLimits[0]?.failed_attempts).toBe(1);
+    expect(recovered.auditEvents.length).toBeGreaterThan(0);
   });
 
   test("uses separate counters for quotes and delivery notes", async () => {
