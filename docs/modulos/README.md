@@ -33,6 +33,7 @@ Eso te da el contexto correcto:
 
 - `PRESUPUESTOS_ALBARANES.md`
 - `FIRMA_DOCUMENTAL.md`
+- `ESTUDIO_DOCUMENTAL_LOCAL.md`
 
 ### Finanzas y operativa
 

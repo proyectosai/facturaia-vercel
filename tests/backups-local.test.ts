@@ -13,6 +13,10 @@ import {
   serializeBackupPayload,
 } from "@/lib/backups";
 import {
+  createStudyNoteForUser,
+  listStudyDocumentsForUser,
+} from "@/lib/document-study";
+import {
   createLocalBankMovementRecords,
   createLocalCommercialDocumentRecord,
   createLocalDocumentSignatureRequest,
@@ -154,6 +158,12 @@ describe("local backup export and restore", () => {
         ipAddress: "127.0.0.1",
       },
     });
+    await createStudyNoteForUser({
+      userId,
+      title: "Notas cierre marzo",
+      text:
+        "Estas notas internas recuerdan que la factura de marzo debe revisarse junto con el vencimiento del cliente y la documentacion bancaria adjunta.",
+    });
 
     const backup = await exportBackupForUser(userId, email);
     const serialized = serializeBackupPayload(backup);
@@ -164,11 +174,14 @@ describe("local backup export and restore", () => {
     expect(inspected.manifest.checksumAlgorithm).toBe("sha256");
     expect(inspected.manifest.modulesIncluded).toContain("core");
     expect(inspected.manifest.modulesIncluded).toContain("security");
+    expect(inspected.manifest.modulesIncluded).toContain("document-study");
     expect(inspected.manifest.counts.auditEvents).toBe(backup.auditEvents.length);
     expect(inspected.manifest.counts.auditEvents).toBeGreaterThanOrEqual(3);
     expect(inspected.manifest.counts.invoices).toBe(1);
+    expect(inspected.manifest.counts.studyDocuments).toBe(1);
     expect(inspected.checksum).toHaveLength(64);
     expect(parseBackupPayload(serialized).invoices).toHaveLength(1);
+    expect(parseBackupPayload(serialized).studyDocuments).toHaveLength(1);
   });
 
   test("rejects tampered backup payloads", async () => {
@@ -290,6 +303,12 @@ describe("local backup export and restore", () => {
         confidence: 1,
       },
     });
+    await createStudyNoteForUser({
+      userId,
+      title: "Acta cliente Norte",
+      text:
+        "En la reunion con Empresa Norte se confirma que la aceptacion del presupuesto se hizo por correo y que el cobro debe revisarse antes del cierre trimestral.",
+    });
 
     await createLocalFeedbackEntry({
       userId,
@@ -400,12 +419,14 @@ describe("local backup export and restore", () => {
     expect(envelope.manifest.counts.auditEvents).toBeGreaterThanOrEqual(5);
     expect(envelope.manifest.modulesIncluded).toContain("crm");
     expect(envelope.manifest.modulesIncluded).toContain("commercial-documents");
+    expect(envelope.manifest.modulesIncluded).toContain("document-study");
     expect(envelope.manifest.modulesIncluded).toContain("security");
     expect(backup.clients).toHaveLength(1);
     expect(backup.feedbackEntries).toHaveLength(1);
     expect(backup.expenses).toHaveLength(1);
     expect(backup.commercialDocuments).toHaveLength(1);
     expect(backup.documentSignatureRequests).toHaveLength(1);
+    expect(backup.studyDocuments).toHaveLength(1);
     expect(backup.invoices).toHaveLength(1);
 
     const restoreDir = await mkdtemp(path.join(os.tmpdir(), "facturaia-backup-restore-"));
@@ -415,6 +436,7 @@ describe("local backup export and restore", () => {
       await restoreBackupForUser(userId, email, backup);
 
       const restored = await getLocalCoreSnapshot();
+      const restoredStudyDocuments = await listStudyDocumentsForUser(userId);
       const restoredUserAuditEvents = restored.auditEvents.filter((event) => event.user_id === userId);
 
       expect(restored.profiles).toHaveLength(1);
@@ -427,6 +449,7 @@ describe("local backup export and restore", () => {
       expect(restored.expenses).toHaveLength(1);
       expect(restored.commercialDocuments).toHaveLength(1);
       expect(restored.documentSignatureRequests).toHaveLength(1);
+      expect(restoredStudyDocuments).toHaveLength(1);
       expect(restored.invoices).toHaveLength(1);
       expect(restored.feedbackEntries[0]?.title).toBe("Feedback exportado");
       expect(restored.commercialDocuments[0]?.status).toBe("accepted");

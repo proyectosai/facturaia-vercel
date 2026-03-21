@@ -28,6 +28,7 @@ Estas piezas tienen valor, pero todavía conviene tratarlas como módulos de val
 
 - presupuestos y albaranes
 - firma documental básica
+- documentos con IA local y estudio documental con citas
 - correo entrante por IMAP
 - backups remotos WebDAV / Nextcloud
 - CRM ligero
@@ -52,6 +53,20 @@ Interpretación práctica:
 - no conviene venderlas como cumplimiento cerrado
 - no deben sustituir revisión humana
 - no son todavía una base suficiente para delegar tranquilidad fiscal
+
+## Documentado, pero no implementado todavía
+
+Estas piezas existen como arquitectura, roadmap o documento técnico, pero no deben leerse como funcionalidad cerrada:
+
+- memoria local multi-capa para LLM
+- vector store / RAG persistente de varios años
+- embeddings locales integrados en el flujo principal
+
+Interpretación práctica:
+
+- sirven para entender hacia dónde va FacturaIA
+- no conviene presentarlas como algo ya entregado
+- si el proyecto se instala hoy, la capa real es la de recuperación por fragmentos y citas, no una memoria completa tipo NotebookLM
 
 ## Qué le falta al proyecto para dar más confianza
 

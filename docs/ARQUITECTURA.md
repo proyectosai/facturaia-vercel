@@ -191,7 +191,31 @@ Funciones:
 - exportación a Word
 - plantillas listas para propuesta, presupuesto y contrato
 
-## 7.1. Memoria local y RAG propuestos
+## 7.1. Estudio documental local implementado
+
+Archivos clave:
+
+- `app/(protected)/estudio-ia/page.tsx`
+- `components/ai/document-study-lab.tsx`
+- `app/api/ai/study/documents/route.ts`
+- `app/api/ai/study/query/route.ts`
+- `lib/document-study.ts`
+
+Funciones:
+
+- ingesta local de notas, TXT, Markdown y PDF extraído
+- persistencia local de texto y metadatos por usuario
+- recuperación por fragmentos relevantes
+- respuesta con citas visibles
+- fallback sin LLM cuando LM Studio no está disponible
+
+Lectura correcta:
+
+- esto ya es una pieza real y usable
+- no usa todavía embeddings ni vector DB persistente
+- no debe llamarse aún memoria multi-año ni RAG completo
+
+## 7.2. Memoria local y RAG propuestos
 
 Documento de referencia:
 

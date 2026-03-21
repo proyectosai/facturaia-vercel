@@ -22,6 +22,7 @@ export default async function DocumentsAiPage() {
           Esta zona usa el modelo local <strong className="text-foreground">{aiEnv.LM_STUDIO_MODEL}</strong> en
           <strong className="text-foreground"> LM Studio</strong> como sustituto de una API externa.
           Sirve para generar piezas reales, afinarlas en el editor y exportarlas a PDF o Word dentro de una instalación privada y autogestionada.
+          Si lo que necesitas es consultar documentación con citas, esa parte vive ahora en <strong className="text-foreground">/estudio-ia</strong>.
         </p>
       </div>
 

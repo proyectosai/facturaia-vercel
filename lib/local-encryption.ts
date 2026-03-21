@@ -2,7 +2,7 @@ import "server-only";
 
 import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from "node:crypto";
 
-export type EncryptionScope = "local-core" | "backup";
+export type EncryptionScope = "local-core" | "local-documents" | "backup";
 
 export type EncryptedPayloadEnvelope = {
   schemaVersion: 1;
@@ -25,7 +25,7 @@ function getConfiguredPassphrase() {
 }
 
 function isScopeEncryptionRequested(scope: EncryptionScope) {
-  if (scope === "local-core") {
+  if (scope === "local-core" || scope === "local-documents") {
     return process.env.FACTURAIA_ENCRYPT_LOCAL_DATA === "1";
   }
 
@@ -60,7 +60,7 @@ function requireEncryptionPassphrase(scope: EncryptionScope) {
 
   if (!passphrase) {
     throw new LocalEncryptionError(
-      scope === "local-core"
+      scope === "local-core" || scope === "local-documents"
         ? "Falta FACTURAIA_ENCRYPTION_PASSPHRASE para descifrar o escribir el núcleo local cifrado."
         : "Falta FACTURAIA_ENCRYPTION_PASSPHRASE para descifrar o exportar backups cifrados.",
     );
@@ -82,7 +82,9 @@ export function isEncryptedPayloadEnvelope(value: unknown): value is EncryptedPa
   return (
     candidate.schemaVersion === 1 &&
     candidate.format === "facturaia-encrypted" &&
-    (candidate.scope === "local-core" || candidate.scope === "backup") &&
+    (candidate.scope === "local-core" ||
+      candidate.scope === "local-documents" ||
+      candidate.scope === "backup") &&
     candidate.algorithm === "aes-256-gcm" &&
     candidate.kdf === "scrypt" &&
     typeof candidate.salt === "string" &&

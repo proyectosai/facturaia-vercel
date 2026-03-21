@@ -36,6 +36,7 @@ type BackupSummary = {
   invoiceReminders: number;
   commercialDocuments: number;
   documentSignatureRequests: number;
+  studyDocuments: number;
   expenses: number;
   bankMovements: number;
   aiUsageRows: number;
@@ -113,6 +114,7 @@ const summaryLabels: Record<keyof BackupSummary, string> = {
   invoiceReminders: "Recordatorios",
   commercialDocuments: "Pre-facturación",
   documentSignatureRequests: "Solicitudes firma",
+  studyDocuments: "Estudio documental",
   expenses: "Gastos",
   bankMovements: "Mov. banca",
   aiUsageRows: "Registros IA",

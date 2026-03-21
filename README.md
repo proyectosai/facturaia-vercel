@@ -34,7 +34,8 @@ La línea principal es reforzar la instalación privada del cliente:
 - Vista de auditoría operativa con filtros y export JSON para revisar cambios locales en CRM, gastos, facturas, cobros, firmas, banca, mensajería y restauraciones.
 - Historial de facturas con descarga de PDF y envío por email con SMTP o Resend.
 - Página pública de factura con QR.
-- Estudio documental con IA local vía LM Studio para propuestas, presupuestos, contratos y mensajes.
+- Redacción documental local con LM Studio para propuestas, presupuestos, contratos y mensajes.
+- Estudio documental local con notas, TXT, Markdown y PDF extraído, recuperación por fragmentos y respuestas con citas.
 - Módulo de apoyo IRPF / Renta para preparar expedientes con checklist, fuentes oficiales y asistencia local.
 - Exportación de documentos a PDF y Word.
 - Módulo de correo saliente con pantalla de prueba y soporte SMTP / Resend.
@@ -166,7 +167,8 @@ Si buscas una guía clara antes de instalar nada:
 - [Estándar de calidad para el modo local](./docs/CALIDAD_LOCAL.md)
 - [QA / lectura ISO 25010](./docs/QA_ISO_25010.md)
 - [Plan de VeriFactu y firma digital](./docs/VERIFACTU_Y_FIRMA_DIGITAL.md)
-- [Memoria local para LLM y RAG](./docs/MEMORIA_LOCAL_LLM.md)
+- [Memoria local para LLM y RAG (arquitectura propuesta)](./docs/MEMORIA_LOCAL_LLM.md)
+- [Estudio documental local](./docs/modulos/ESTUDIO_DOCUMENTAL_LOCAL.md)
 - [Auditoría local operativa](./docs/modulos/AUDITORIA_LOCAL.md)
 
 ## Sistema de módulos
@@ -198,6 +200,15 @@ Guías clave:
 - `docx`
 - LM Studio local usando `openai/gpt-oss-20b`
 
+## IA local hoy
+
+Lectura correcta, sin humo:
+
+- **Implementado**: mejora de descripciones de factura, generación documental, asistente IRPF / Renta y estudio documental local con recuperación por fragmentos y citas.
+- **Implementado en primera fase**: el estudio documental guarda texto y metadatos en local, recupera fragmentos relevantes y consulta a LM Studio si está disponible.
+- **Todavía no implementado**: embeddings persistentes, vector store local, memoria multi-año y el RAG completo descrito en `docs/MEMORIA_LOCAL_LLM.md`.
+- **Interpretación correcta**: FacturaIA ya integra IA local útil, pero la memoria/RAG de varias capas sigue siendo arquitectura documentada, no producto terminado.
+
 ## Rutas principales
 
 - `/`
@@ -216,6 +227,7 @@ Guías clave:
 - `/facturae`
 - `/renta`
 - `/documents-ai`
+- `/estudio-ia`
 - `/mail`
 - `/feedback`
 - `/auditoria`

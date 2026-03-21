@@ -76,6 +76,7 @@ export type LocalAuditSource =
   | "auth"
   | "backup"
   | "system"
+  | "ai"
   | "profile"
   | "clients"
   | "expenses"
@@ -84,6 +85,12 @@ export type LocalAuditSource =
   | "signatures"
   | "banking"
   | "messaging";
+
+export type StudyDocumentSourceKind =
+  | "note"
+  | "plain_text"
+  | "markdown"
+  | "pdf";
 
 export type LocalAuthRateLimitScope = "local_login";
 
@@ -340,6 +347,34 @@ export type FeedbackEntryRecord = {
   contact_email: string | null;
   created_at: string;
   updated_at: string;
+};
+
+export type StudyDocumentRecord = {
+  id: string;
+  user_id: string;
+  title: string;
+  source_kind: StudyDocumentSourceKind;
+  original_file_name: string | null;
+  mime_type: string | null;
+  text_length: number;
+  chunk_count: number;
+  preview_text: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type StudyDocumentBackupRecord = StudyDocumentRecord & {
+  extracted_text: string;
+};
+
+export type StudyDocumentCitation = {
+  label: string;
+  document_id: string;
+  document_title: string;
+  source_kind: StudyDocumentSourceKind;
+  excerpt: string;
+  chunk_index: number;
+  score: number;
 };
 
 export type LocalAuditEventRecord = {

@@ -28,6 +28,18 @@ export const uploadRules = {
     ],
     allowedExtensions: ["pdf", "txt", "png", "jpg", "jpeg", "webp"],
   },
+  studySource: {
+    label: "documento de estudio",
+    maxBytes: 12 * 1024 * 1024,
+    allowedMimeTypes: [
+      "application/pdf",
+      "text/plain",
+      "text/markdown",
+      "text/x-markdown",
+      "",
+    ],
+    allowedExtensions: ["pdf", "txt", "md", "markdown"],
+  },
   backupJson: {
     label: "backup",
     maxBytes: 10 * 1024 * 1024,

@@ -369,8 +369,36 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
       "Debe considerarse preparatorio. No es una base suficiente para delegar cumplimiento fiscal real.",
   },
   {
-    id: "tax-assistant",
+    id: "document-study",
     order: 10,
+    title: "Estudio documental local",
+    summary:
+      "Biblioteca documental privada con notas, TXT, Markdown y PDF extraído, consultas sobre fragmentos y citas visibles.",
+    status: "active",
+    maturity: "pilot",
+    localSupport: "native",
+    category: "documentos",
+    routeHref: "/estudio-ia",
+    docsPath: "docs/modulos/ESTUDIO_DOCUMENTAL_LOCAL.md",
+    requirements: [
+      "Usuario autenticado",
+      "FACTURAIA_DATA_DIR accesible",
+      "LM Studio recomendado para respuestas redactadas, aunque existe recuperación local sin LLM",
+    ],
+    installSteps: [
+      "Abre /estudio-ia y carga una nota o un TXT/MD/PDF.",
+      "Haz una pregunta concreta sobre esa documentación.",
+      "Revisa siempre las citas antes de usar la respuesta como criterio de trabajo.",
+    ],
+    notes: [
+      "Esta primera entrega usa recuperación por fragmentos y citas. La capa completa de memoria/RAG sigue documentada, no implementada todavía.",
+    ],
+    readinessNote:
+      "Ya sirve para trabajo documental guiado, pero todavía no debe venderse como memoria multi-año ni como NotebookLM privado completo.",
+  },
+  {
+    id: "tax-assistant",
+    order: 11,
     title: "Asistente IRPF / Renta",
     summary:
       "Chat de apoyo para preparar expedientes de renta en Espana con checklist, riesgos y referencias oficiales de AEAT.",
@@ -553,6 +581,11 @@ export function getModuleCatalog(): ModuleRuntimeState[] {
           ? "Listo para exportar borradores XML en local"
           : "Listo para exportar borradores XML"
         : "Falta modo local o Supabase";
+    } else if (module.id === "document-study") {
+      configured = true;
+      configuredLabel = hasLocalAi()
+        ? "Recuperacion local + LM Studio listos"
+        : "Recuperacion local lista sin LLM";
     } else if (module.id === "tax-assistant") {
       configured = true;
       configuredLabel = hasLocalAi()

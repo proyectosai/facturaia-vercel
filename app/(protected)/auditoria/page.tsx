@@ -32,6 +32,7 @@ const auditSourceLabels: Record<LocalAuditSource, string> = {
   auth: "Acceso",
   backup: "Backups",
   system: "Sistema",
+  ai: "IA local",
   profile: "Perfil",
   clients: "CRM",
   expenses: "Gastos",

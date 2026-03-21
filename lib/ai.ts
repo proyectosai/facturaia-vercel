@@ -104,7 +104,7 @@ function extractJsonObject(value: string) {
   return sanitized.slice(firstBrace, lastBrace + 1);
 }
 
-async function callLocalChatModel({
+export async function callLocalChatModel({
   systemPrompt,
   userPrompt,
   temperature = 0.2,

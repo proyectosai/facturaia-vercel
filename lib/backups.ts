@@ -23,6 +23,10 @@ import {
   isLocalFileMode,
 } from "@/lib/demo";
 import {
+  exportStudyDocumentsForUser,
+  replaceStudyDocumentsForUser,
+} from "@/lib/document-study";
+import {
   getLocalCoreSnapshot,
   recordLocalAuditEvent,
   replaceLocalUserData,
@@ -51,6 +55,7 @@ import type {
   MessageRecord,
   MessageThread,
   Profile,
+  StudyDocumentBackupRecord,
 } from "@/lib/types";
 
 export type BackupAiUsageRow = {
@@ -78,6 +83,7 @@ export type FacturaIaBackup = {
   invoiceReminders: InvoiceReminderRecord[];
   commercialDocuments: CommercialDocumentRecord[];
   documentSignatureRequests: DocumentSignatureRequestRecord[];
+  studyDocuments: StudyDocumentBackupRecord[];
   expenses: ExpenseRecord[];
   bankMovements: BankMovementRecord[];
   aiUsage: BackupAiUsageRow[];
@@ -129,6 +135,7 @@ export type BackupSummary = {
   invoiceReminders: number;
   commercialDocuments: number;
   documentSignatureRequests: number;
+  studyDocuments: number;
   expenses: number;
   bankMovements: number;
   aiUsageRows: number;
@@ -162,6 +169,7 @@ function getBackupCounts(backup: FacturaIaBackup): BackupSummary {
     invoiceReminders: backup.invoiceReminders.length,
     commercialDocuments: backup.commercialDocuments.length,
     documentSignatureRequests: backup.documentSignatureRequests.length,
+    studyDocuments: backup.studyDocuments.length,
     expenses: backup.expenses.length,
     bankMovements: backup.bankMovements.length,
     aiUsageRows: backup.aiUsage.length,
@@ -181,6 +189,7 @@ function getBackupModulesIncluded(backup: FacturaIaBackup) {
   if (backup.auditEvents.length > 0) modules.push("security");
   if (backup.commercialDocuments.length > 0) modules.push("commercial-documents");
   if (backup.documentSignatureRequests.length > 0) modules.push("signatures");
+  if (backup.studyDocuments.length > 0) modules.push("document-study");
   if (backup.expenses.length > 0) modules.push("expenses");
   if (backup.bankMovements.length > 0) modules.push("banking");
   if (backup.aiUsage.length > 0) modules.push("ai");
@@ -218,6 +227,7 @@ function normalizeBackupForComparison(backup: FacturaIaBackup) {
     invoiceReminders: sortByJsonValue(backup.invoiceReminders),
     commercialDocuments: sortByJsonValue(backup.commercialDocuments),
     documentSignatureRequests: sortByJsonValue(backup.documentSignatureRequests),
+    studyDocuments: sortByJsonValue(backup.studyDocuments),
     expenses: sortByJsonValue(backup.expenses),
     bankMovements: sortByJsonValue(backup.bankMovements),
     aiUsage: sortByJsonValue(backup.aiUsage),
@@ -277,6 +287,7 @@ export function compareBackupContents(
     "invoiceReminders",
     "commercialDocuments",
     "documentSignatureRequests",
+    "studyDocuments",
     "expenses",
     "bankMovements",
     "aiUsageRows",
@@ -499,6 +510,7 @@ export async function getBackupSummary(userId: string): Promise<BackupSummary> {
       invoiceReminders: demoInvoiceReminders.length,
       commercialDocuments: demoCommercialDocuments.length,
       documentSignatureRequests: demoDocumentSignatureRequests.length,
+      studyDocuments: 0,
       expenses: demoExpenses.length,
       bankMovements: demoBankMovements.length,
       aiUsageRows: 1,
@@ -526,6 +538,7 @@ export async function getBackupSummary(userId: string): Promise<BackupSummary> {
       documentSignatureRequests: snapshot.documentSignatureRequests.filter(
         (request) => request.user_id === userId,
       ).length,
+      studyDocuments: (await exportStudyDocumentsForUser(userId)).length,
       expenses: snapshot.expenses.filter((expense) => expense.user_id === userId).length,
       aiUsageRows: snapshot.aiUsage.filter((entry) => entry.user_id === userId).length,
       messageConnections: snapshot.messageConnections.filter(
@@ -594,6 +607,7 @@ export async function getBackupSummary(userId: string): Promise<BackupSummary> {
     invoiceReminders: invoiceReminders.count ?? 0,
     commercialDocuments: commercialDocuments.count ?? 0,
     documentSignatureRequests: documentSignatureRequests.count ?? 0,
+    studyDocuments: (await exportStudyDocumentsForUser(userId)).length,
     expenses: expenses.count ?? 0,
     bankMovements: bankMovements.count ?? 0,
     aiUsageRows: aiUsage.count ?? 0,
@@ -624,6 +638,7 @@ export async function exportBackupForUser(
       invoiceReminders: demoInvoiceReminders,
       commercialDocuments: demoCommercialDocuments,
       documentSignatureRequests: demoDocumentSignatureRequests,
+      studyDocuments: [],
       expenses: demoExpenses,
       bankMovements: demoBankMovements,
       aiUsage: [
@@ -663,6 +678,7 @@ export async function exportBackupForUser(
         date: entry.date,
         calls_count: entry.calls_count,
       }));
+    const studyDocuments = await exportStudyDocumentsForUser(userId);
 
     return {
       schemaVersion: 1,
@@ -681,6 +697,7 @@ export async function exportBackupForUser(
       documentSignatureRequests: snapshot.documentSignatureRequests.filter(
         (request) => request.user_id === userId,
       ),
+      studyDocuments,
       expenses: snapshot.expenses.filter((expense) => expense.user_id === userId),
       aiUsage,
       messages: {
@@ -716,6 +733,7 @@ export async function exportBackupForUser(
     mailThreads,
     mailMessages,
     mailSyncRuns,
+    studyDocuments,
   ] = await Promise.all([
     admin.from("profiles").select("*").eq("id", userId).maybeSingle(),
     admin.from("clients").select("*").eq("user_id", userId).order("updated_at", { ascending: false }),
@@ -765,6 +783,7 @@ export async function exportBackupForUser(
     admin.from("mail_threads").select("*").eq("user_id", userId).order("last_message_at", { ascending: false }),
     admin.from("mail_messages").select("*").eq("user_id", userId).order("received_at", { ascending: true }),
     admin.from("mail_sync_runs").select("*").eq("user_id", userId).order("created_at", { ascending: true }),
+    exportStudyDocumentsForUser(userId),
   ]);
 
   if (profile.error) {
@@ -807,6 +826,7 @@ export async function exportBackupForUser(
       (commercialDocuments.data as CommercialDocumentRecord[] | null) ?? [],
     documentSignatureRequests:
       (documentSignatureRequests.data as DocumentSignatureRequestRecord[] | null) ?? [],
+    studyDocuments,
     expenses: (expenses.data as ExpenseRecord[] | null) ?? [],
     bankMovements: (bankMovements.data as BankMovementRecord[] | null) ?? [],
     aiUsage: (aiUsage.data as BackupAiUsageRow[] | null) ?? [],
@@ -909,6 +929,13 @@ export async function restoreBackupForUser(
         calls_count: entry.calls_count,
       })),
     });
+    await replaceStudyDocumentsForUser(
+      userId,
+      backup.studyDocuments.map((document) => ({
+        ...document,
+        user_id: userId,
+      })),
+    );
 
     await recordLocalAuditEvent({
       userId,
@@ -922,6 +949,7 @@ export async function restoreBackupForUser(
         schemaVersion: backup.schemaVersion,
         invoices: backup.invoices.length,
         auditEvents: backup.auditEvents.length,
+        studyDocuments: backup.studyDocuments.length,
       },
       contextJson: {
         appUrl: backup.appUrl,
@@ -1073,6 +1101,14 @@ export async function restoreBackupForUser(
       throw new Error("No se han podido restaurar los gastos.");
     }
   }
+
+  await replaceStudyDocumentsForUser(
+    userId,
+    backup.studyDocuments.map((document) => ({
+      ...document,
+      user_id: userId,
+    })),
+  );
 
   if (backup.messages.connections.length > 0) {
     const connectionsInsert = await admin.from("message_connections").insert(

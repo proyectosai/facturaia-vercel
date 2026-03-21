@@ -1,5 +1,17 @@
 # Memoria local para LLM en FacturaIA
 
+## Estado de este documento
+
+Este documento describe la **arquitectura objetivo**, no algo completamente terminado.
+
+A día de hoy ya existe una primera pieza real en `/estudio-ia`:
+
+- ingesta local de notas, TXT, Markdown y PDF extraído
+- recuperación por fragmentos
+- respuestas con citas
+
+Lo que **todavía no está implementado** aquí es la capa completa de memoria multi-año, embeddings persistentes y RAG local de varias capas que se describe más abajo.
+
 ## Objetivo
 
 Definir una arquitectura de memoria local duradera para FacturaIA que permita:
