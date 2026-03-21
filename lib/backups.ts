@@ -1,5 +1,7 @@
 import "server-only";
 
+import { createHash } from "node:crypto";
+
 import {
   demoAiUsage,
   demoBankMovements,
@@ -88,6 +90,23 @@ export type FacturaIaBackup = {
   };
 };
 
+export type FacturaIaBackupManifest = {
+  schemaVersion: 1;
+  appVersion: string;
+  exportedAt: string;
+  source: "demo" | "live";
+  appUrl: string;
+  checksumAlgorithm: "sha256";
+  modulesIncluded: string[];
+  counts: BackupSummary;
+};
+
+export type FacturaIaBackupEnvelope = {
+  manifest: FacturaIaBackupManifest;
+  payload: FacturaIaBackup;
+  checksum: string;
+};
+
 export type BackupSummary = {
   clients: number;
   feedbackEntries: number;
@@ -109,13 +128,114 @@ function getAppUrl() {
   return process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 }
 
+function getAppVersion() {
+  return process.env.npm_package_version ?? "0.1.0";
+}
+
+function computePayloadChecksum(payload: FacturaIaBackup) {
+  return createHash("sha256")
+    .update(JSON.stringify(payload))
+    .digest("hex");
+}
+
+function getBackupCounts(backup: FacturaIaBackup): BackupSummary {
+  return {
+    clients: backup.clients.length,
+    feedbackEntries: backup.feedbackEntries.length,
+    invoices: backup.invoices.length,
+    invoiceReminders: backup.invoiceReminders.length,
+    commercialDocuments: backup.commercialDocuments.length,
+    documentSignatureRequests: backup.documentSignatureRequests.length,
+    expenses: backup.expenses.length,
+    bankMovements: backup.bankMovements.length,
+    aiUsageRows: backup.aiUsage.length,
+    messageConnections: backup.messages.connections.length,
+    messageThreads: backup.messages.threads.length,
+    messageRecords: backup.messages.records.length,
+    mailThreads: backup.mail.threads.length,
+    mailMessages: backup.mail.messages.length,
+  };
+}
+
+function getBackupModulesIncluded(backup: FacturaIaBackup) {
+  const modules = ["core"];
+
+  if (backup.clients.length > 0) modules.push("crm");
+  if (backup.feedbackEntries.length > 0) modules.push("feedback");
+  if (backup.commercialDocuments.length > 0) modules.push("commercial-documents");
+  if (backup.documentSignatureRequests.length > 0) modules.push("signatures");
+  if (backup.expenses.length > 0) modules.push("expenses");
+  if (backup.bankMovements.length > 0) modules.push("banking");
+  if (backup.aiUsage.length > 0) modules.push("ai");
+  if (backup.messages.connections.length > 0 || backup.messages.threads.length > 0) {
+    modules.push("messaging");
+  }
+  if (backup.mail.threads.length > 0 || backup.mail.messages.length > 0) {
+    modules.push("mail");
+  }
+
+  return modules;
+}
+
+export function buildBackupEnvelope(backup: FacturaIaBackup): FacturaIaBackupEnvelope {
+  return {
+    manifest: {
+      schemaVersion: backup.schemaVersion,
+      appVersion: getAppVersion(),
+      exportedAt: backup.exportedAt,
+      source: backup.source,
+      appUrl: backup.appUrl,
+      checksumAlgorithm: "sha256",
+      modulesIncluded: getBackupModulesIncluded(backup),
+      counts: getBackupCounts(backup),
+    },
+    payload: backup,
+    checksum: computePayloadChecksum(backup),
+  };
+}
+
+function isBackupEnvelope(value: unknown): value is FacturaIaBackupEnvelope {
+  return Boolean(
+    value &&
+      typeof value === "object" &&
+      "manifest" in value &&
+      "payload" in value &&
+      "checksum" in value,
+  );
+}
+
+export function inspectBackupPayload(raw: string): FacturaIaBackupEnvelope {
+  const encryptedEnvelope = tryParseEncryptedEnvelope(raw);
+  const decrypted = encryptedEnvelope
+    ? decryptEncryptedEnvelope(encryptedEnvelope, "backup")
+    : raw;
+  const parsed = JSON.parse(decrypted) as FacturaIaBackup | FacturaIaBackupEnvelope;
+
+  if (!isBackupEnvelope(parsed)) {
+    const payload = parsed as FacturaIaBackup;
+    return buildBackupEnvelope(payload);
+  }
+
+  const actualChecksum = computePayloadChecksum(parsed.payload);
+
+  if (parsed.checksum !== actualChecksum) {
+    throw new Error("La copia de seguridad está dañada o ha sido modificada.");
+  }
+
+  if (parsed.manifest.schemaVersion !== parsed.payload.schemaVersion) {
+    throw new Error("La copia de seguridad tiene un manifest incoherente.");
+  }
+
+  return parsed;
+}
+
 export function buildBackupFilename(date = new Date()) {
   const suffix = isBackupEncryptionRequested() ? "-encrypted" : "";
   return `facturaia-backup-${date.toISOString().slice(0, 10)}${suffix}.json`;
 }
 
 export function serializeBackupPayload(backup: FacturaIaBackup) {
-  const serialized = JSON.stringify(backup, null, 2);
+  const serialized = JSON.stringify(buildBackupEnvelope(backup), null, 2);
 
   if (!isBackupEncryptionRequested()) {
     return serialized;
@@ -125,12 +245,7 @@ export function serializeBackupPayload(backup: FacturaIaBackup) {
 }
 
 export function parseBackupPayload(raw: string) {
-  const encryptedEnvelope = tryParseEncryptedEnvelope(raw);
-  const decrypted = encryptedEnvelope
-    ? decryptEncryptedEnvelope(encryptedEnvelope, "backup")
-    : raw;
-
-  return JSON.parse(decrypted) as FacturaIaBackup;
+  return inspectBackupPayload(raw).payload;
 }
 
 export async function getBackupSummary(userId: string): Promise<BackupSummary> {

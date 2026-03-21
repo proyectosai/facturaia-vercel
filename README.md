@@ -38,7 +38,7 @@ La línea principal es reforzar la instalación privada del cliente:
 - Módulo de correo saliente con pantalla de prueba y soporte SMTP / Resend.
 - Módulo de correo entrante con importación IMAP manual y bandeja interna.
 - Módulo opcional de mensajería unificada para WhatsApp Business y Telegram por webhook.
-- Centro de backups para exportar, restaurar y sincronizar copias remotas por WebDAV / Nextcloud.
+- Centro de backups para exportar, restaurar y sincronizar copias remotas por WebDAV / Nextcloud, con manifest y checksum de integridad en el JSON.
 - Catálogo de módulos opcionales con estado e instalación en `/modules`.
 - Guía de instalación privada dentro de la propia app.
 - Asistente de primeros pasos dentro del panel para instalaciones no técnicas.
@@ -394,7 +394,7 @@ Tablas principales activas:
 - El proyecto usa IA local con LM Studio; no depende de una API comercial externa para documentos.
 - El flujo de Word y PDF documental ya está operativo.
 - Está planteado para uso privado y autogestionado.
-- El backup exporta JSON del usuario autenticado, la restauración funciona en modo reemplazo y el primer proveedor remoto soportado es WebDAV / Nextcloud.
+- El backup exporta JSON del usuario autenticado con `manifest`, `counts` y `checksum`, la restauración funciona en modo reemplazo y el primer proveedor remoto soportado es WebDAV / Nextcloud.
 - El correo saliente soporta SMTP y Resend, con pantalla de prueba propia en `/mail`.
 - El correo entrante soporta una primera entrega IMAP con sincronización manual desde `/mail`.
 - El módulo `/presupuestos` cubre la primera fase de pre-facturación: persistencia, estados y conversión a factura.

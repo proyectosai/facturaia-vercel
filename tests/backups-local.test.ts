@@ -3,7 +3,13 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
-import { exportBackupForUser, restoreBackupForUser } from "@/lib/backups";
+import {
+  exportBackupForUser,
+  inspectBackupPayload,
+  parseBackupPayload,
+  restoreBackupForUser,
+  serializeBackupPayload,
+} from "@/lib/backups";
 import {
   createLocalCommercialDocumentRecord,
   createLocalDocumentSignatureRequest,
@@ -65,6 +71,78 @@ afterEach(async () => {
 });
 
 describe("local backup export and restore", () => {
+  test("serializes local backups with manifest and checksum", async () => {
+    await saveLocalProfile({
+      userId,
+      email,
+      fullName: "Asesoria Martin Fiscal",
+      nif: "B12345678",
+      address: "Calle Alcala 100, Madrid",
+      logoUrl: null,
+    });
+
+    await createLocalInvoiceRecord({
+      userId,
+      payload: {
+        issueDate: "2026-03-20",
+        dueDate: "2026-03-30",
+        issuerName: "Asesoria Martin Fiscal",
+        issuerNif: "B12345678",
+        issuerAddress: "Calle Alcala 100, Madrid",
+        clientName: "Empresa Norte S.L.",
+        clientNif: "B76543210",
+        clientAddress: "Avenida de Europa 15, Pozuelo",
+        clientEmail: "admin@empresanorte.es",
+      },
+      lineItems: buildLineItems(),
+      totals: buildTotals(),
+      issuerLogoUrl: null,
+    });
+
+    const backup = await exportBackupForUser(userId, email);
+    const serialized = serializeBackupPayload(backup);
+    const inspected = inspectBackupPayload(serialized);
+
+    expect(inspected.manifest.schemaVersion).toBe(1);
+    expect(inspected.manifest.appVersion).toBeTruthy();
+    expect(inspected.manifest.checksumAlgorithm).toBe("sha256");
+    expect(inspected.manifest.modulesIncluded).toContain("core");
+    expect(inspected.manifest.counts.invoices).toBe(1);
+    expect(inspected.checksum).toHaveLength(64);
+    expect(parseBackupPayload(serialized).invoices).toHaveLength(1);
+  });
+
+  test("rejects tampered backup payloads", async () => {
+    await createLocalInvoiceRecord({
+      userId,
+      payload: {
+        issueDate: "2026-03-20",
+        dueDate: "2026-03-30",
+        issuerName: "Asesoria Martin Fiscal",
+        issuerNif: "B12345678",
+        issuerAddress: "Calle Alcala 100, Madrid",
+        clientName: "Empresa Norte S.L.",
+        clientNif: "B76543210",
+        clientAddress: "Avenida de Europa 15, Pozuelo",
+        clientEmail: "admin@empresanorte.es",
+      },
+      lineItems: buildLineItems(),
+      totals: buildTotals(),
+      issuerLogoUrl: null,
+    });
+
+    const backup = await exportBackupForUser(userId, email);
+    const serialized = serializeBackupPayload(backup);
+    const tampered = serialized.replace(
+      "Empresa Norte S.L.",
+      "Empresa Norte Manipulada S.L.",
+    );
+
+    expect(() => parseBackupPayload(tampered)).toThrow(
+      /dañada|modificada/i,
+    );
+  });
+
   test("exports local data and restores it into a fresh local directory", async () => {
     await saveLocalProfile({
       userId,
@@ -199,8 +277,13 @@ describe("local backup export and restore", () => {
     });
 
     const backup = await exportBackupForUser(userId, email);
+    const envelope = inspectBackupPayload(serializeBackupPayload(backup));
 
     expect(backup.appUrl).toBe("http://127.0.0.1:3999");
+    expect(envelope.manifest.counts.invoices).toBe(1);
+    expect(envelope.manifest.counts.feedbackEntries).toBe(1);
+    expect(envelope.manifest.modulesIncluded).toContain("crm");
+    expect(envelope.manifest.modulesIncluded).toContain("commercial-documents");
     expect(backup.clients).toHaveLength(1);
     expect(backup.feedbackEntries).toHaveLength(1);
     expect(backup.expenses).toHaveLength(1);

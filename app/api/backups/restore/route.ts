@@ -3,7 +3,7 @@ import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { z } from "zod";
 
 import type { FacturaIaBackup } from "@/lib/backups";
-import { parseBackupPayload, restoreBackupForUser } from "@/lib/backups";
+import { inspectBackupPayload, restoreBackupForUser } from "@/lib/backups";
 import { requireUser } from "@/lib/auth";
 import {
   assertAllowedUpload,
@@ -392,7 +392,17 @@ export async function POST(request: Request) {
     assertAllowedUpload(file, uploadRules.backupJson);
 
     const text = await file.text();
-    const parsed = backupSchema.parse(parseBackupPayload(text)) as FacturaIaBackup;
+    const inspected = inspectBackupPayload(text);
+    const parsed = backupSchema.parse(inspected.payload) as FacturaIaBackup;
+
+    if (String(formData.get("dryRun") ?? "").trim() === "1") {
+      return NextResponse.json({
+        ok: true,
+        dryRun: true,
+        manifest: inspected.manifest,
+      });
+    }
+
     const restored = await restoreBackupForUser(user.id, user.email ?? "", parsed);
 
     return NextResponse.json({
