@@ -15,6 +15,22 @@
   --color-danger: #cf5f49;
   --color-success: #2f7d67;
   --color-success-soft: #e1f0ea;
+  --font-plus-jakarta:
+    "Aptos",
+    "Aptos Display",
+    "SF Pro Text",
+    "Inter",
+    "Segoe UI",
+    "Helvetica Neue",
+    "Noto Sans",
+    sans-serif;
+  --font-fraunces:
+    "Iowan Old Style",
+    "Palatino Linotype",
+    "Book Antiqua",
+    "Baskerville",
+    "Times New Roman",
+    serif;
 }
 
 @theme inline {

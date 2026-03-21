@@ -128,6 +128,13 @@ export type BackupContentComparison = {
   mismatches: BackupContentMismatch[];
 };
 
+function formatBackupMismatches(mismatches: BackupContentMismatch[], limit = 5) {
+  return mismatches
+    .slice(0, limit)
+    .map((mismatch) => `${mismatch.field}: esperado=${mismatch.expected} actual=${mismatch.actual}`)
+    .join("; ");
+}
+
 export type BackupSummary = {
   clients: number;
   feedbackEntries: number;
@@ -1006,7 +1013,26 @@ export async function restoreBackupForUser(
       },
     });
 
-    return getBackupCounts(backup);
+    const restoredBackup = await exportBackupForUser(userId, email);
+    const restoreValidationExpectation: FacturaIaBackup = {
+      ...backup,
+      source: restoredBackup.source,
+      appUrl: restoredBackup.appUrl,
+    };
+    const comparison = compareBackupContents(
+      restoreValidationExpectation,
+      restoredBackup,
+    );
+
+    if (!comparison.matches) {
+      throw new Error(
+        `La restauración local terminó con diferencias respecto a la copia aplicada. ${formatBackupMismatches(
+          comparison.mismatches,
+        )}`,
+      );
+    }
+
+    return getBackupCounts(restoredBackup);
   }
 
   const admin = createAdminSupabaseClient();
