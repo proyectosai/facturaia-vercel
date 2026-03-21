@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidateAppPath } from "@/lib/actions/revalidate-path";
 import { redirect } from "next/navigation";
 import { ZodError, z } from "zod";
 
@@ -96,9 +96,9 @@ export async function saveClientAction(formData: FormData) {
         tags,
       });
 
-      revalidatePath("/clientes");
-      revalidatePath("/modules");
-      revalidatePath("/backups");
+      revalidateAppPath("/clientes");
+      revalidateAppPath("/modules");
+      revalidateAppPath("/backups");
       redirect(`/clientes?client=${client.id}&${payload.clientId ? "updated=1" : "created=1"}`);
     }
 
@@ -129,9 +129,9 @@ export async function saveClientAction(formData: FormData) {
         throw new Error("No se ha podido actualizar la ficha del cliente.");
       }
 
-      revalidatePath("/clientes");
-      revalidatePath("/modules");
-      revalidatePath("/backups");
+      revalidateAppPath("/clientes");
+      revalidateAppPath("/modules");
+      revalidateAppPath("/backups");
       redirect(`/clientes?client=${payload.clientId}&updated=1`);
     }
 
@@ -160,9 +160,9 @@ export async function saveClientAction(formData: FormData) {
       throw new Error("No se ha podido crear la ficha del cliente.");
     }
 
-    revalidatePath("/clientes");
-    revalidatePath("/modules");
-    revalidatePath("/backups");
+    revalidateAppPath("/clientes");
+    revalidateAppPath("/modules");
+    revalidateAppPath("/backups");
     redirect(`/clientes?client=${data.id}&created=1`);
   } catch (error) {
     rethrowIfRedirectError(error);

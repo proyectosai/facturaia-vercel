@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidateAppPath } from "@/lib/actions/revalidate-path";
 import { redirect } from "next/navigation";
 import { z, ZodError } from "zod";
 
@@ -99,11 +99,11 @@ export async function markMailThreadReadAction(formData: FormData) {
   const threadId = String(formData.get("threadId") ?? "");
 
   if (!threadId || isDemoMode()) {
-    revalidatePath("/mail");
+    revalidateAppPath("/mail");
     return;
   }
 
   await markMailThreadReadForUser(user.id, threadId);
 
-  revalidatePath("/mail");
+  revalidateAppPath("/mail");
 }

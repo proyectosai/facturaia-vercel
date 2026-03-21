@@ -7,6 +7,7 @@ on:
   pull_request:
     branches:
       - main
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -14,12 +15,14 @@ concurrency:
 
 jobs:
   validate:
+    timeout-minutes: 45
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os:
           - ubuntu-latest
+          - macos-latest
           - windows-latest
 
     steps:
@@ -43,6 +46,9 @@ jobs:
 
       - name: Unit tests
         run: npm test
+
+      - name: Local hardening suite
+        run: npm run test:massive-local
 
       - name: Build demo
         run: npm run demo:build

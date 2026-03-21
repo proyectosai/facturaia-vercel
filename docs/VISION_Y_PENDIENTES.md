@@ -87,9 +87,10 @@ Todavía faltan piezas importantes para considerarlo un producto completamente m
 
 ### Autenticación y datos
 
-- integración con Supabase Auth por magic link
-- persistencia en Postgres
-- políticas RLS
+- modo local privado con email + contraseña y bootstrap inicial
+- persistencia local en SQLite para el núcleo privado
+- compatibilidad con Supabase Auth por magic link en despliegues remotos
+- persistencia en Postgres y políticas RLS cuando se usa Supabase
 - perfil fiscal del emisor
 - almacenamiento de logo
 
@@ -166,7 +167,9 @@ Estas partes existen, pero no están cerradas del todo:
 
 ### Calidad
 
-- no hay suite de tests seria todavía
+- ya existe una suite seria de tests unitarios, smoke y endurecimiento local
+- CI multiplataforma sobre Linux, macOS y Windows
+- sigue faltando cerrar mejor los e2e críticos de navegador como gate estable
 - falta observabilidad más formal
 - falta semilla de datos y más utilidades de onboarding técnico
 
@@ -207,8 +210,8 @@ Esto forma parte de la visión, pero hoy no está implementado o no está comple
 
 ### Infraestructura
 
-- tests unitarios e integración
-- tests e2e
+- la base de tests unitarios e integración ya existe, pero conviene ampliarla
+- faltan e2e críticos estables como gate principal
 - healthchecks más formales
 - monitorización de errores y eventos críticos
 - pipeline de despliegue más completo
@@ -249,7 +252,8 @@ El criterio es simple: menos funciones vacías y más flujos útiles que ahorren
 
 ### Prioridad 4. Endurecer la base técnica
 
-- tests
+- más cobertura de tests críticos
+- e2e estables por flujo
 - observabilidad
 - scripts de setup
 - despliegue más formal

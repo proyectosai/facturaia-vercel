@@ -16,7 +16,7 @@ La línea principal es reforzar la instalación privada del cliente:
 
 ## Qué incluye
 
-- Autenticación por magic link con Supabase.
+- Autenticación local por email y contraseña en modo privado, con compatibilidad opcional con Supabase y magic link en despliegues remotos.
 - Dashboard protegido con sidebar en español.
 - Gestión de perfil fiscal del emisor.
 - Creación de facturas con IVA, IRPF, numeración automática y PDF profesional.
@@ -46,7 +46,9 @@ La línea principal es reforzar la instalación privada del cliente:
 - Cabeceras de seguridad y validación estricta de uploads en puntos sensibles.
 - Suite de tests unitarios para cobros, seguridad, Facturae y firma.
 - Suite unitaria específica para el núcleo local y su persistencia.
+- Suite masiva local para facturación, banca, comunicaciones, cifrado y módulos.
 - Smoke tests de rutas clave sobre `next start` real.
+- Harness e2e local con Playwright para endurecer login, perfil, factura, cobro y backup sobre SQLite temporal.
 - Modo demo local para revisar la interfaz sin servicios reales.
 
 ## Filosofía del proyecto
@@ -173,7 +175,8 @@ Guías clave:
 - TypeScript
 - Tailwind CSS v4
 - Componentes UI estilo shadcn/ui + Radix
-- Supabase Auth + Postgres + Storage + RLS
+- SQLite local para instalaciones privadas en el propio equipo
+- Supabase Auth + Postgres + Storage + RLS como vía opcional para despliegues remotos
 - Nodemailer + SMTP o Resend
 - `@react-pdf/renderer`
 - `docx`
@@ -237,6 +240,8 @@ npm run test:local-core
 npm run test:massive-local
 npm run test:quality
 ```
+
+CI ya ejecuta `lint`, `typecheck`, `npm test`, `test:massive-local`, build demo y smoke tests en `Linux`, `macOS` y `Windows`. El harness `npm run test:e2e:local` sigue siendo una capa adicional de endurecimiento manual mientras terminamos de estabilizarlo como gate automático.
 
 Modo demo:
 
@@ -304,10 +309,16 @@ npm run start
 npm run lint
 npm run typecheck
 npm test
+npm run test:local-core
+npm run test:massive-local
+npm run test:quality
+npm run test:e2e:local
 npm run test:smoke
 npm run demo:build
 npm run demo:start
 ```
+
+`npm run test:e2e:local` levanta una instalación local temporal sobre SQLite, entra como usuario privado, recorre el flujo crítico de facturación y cobro, y después barre varias rutas protegidas para detectar errores de runtime. Sigue siendo un harness de endurecimiento manual y no forma parte todavía del gate principal.
 
 ## Base de datos
 

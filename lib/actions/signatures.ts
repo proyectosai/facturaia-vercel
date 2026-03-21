@@ -1,7 +1,7 @@
 "use server";
 
 import { headers } from "next/headers";
-import { revalidatePath } from "next/cache";
+import { revalidateAppPath } from "@/lib/actions/revalidate-path";
 import { redirect } from "next/navigation";
 import { ZodError, z } from "zod";
 
@@ -128,11 +128,11 @@ export async function createDocumentSignatureRequestAction(formData: FormData) {
         await updateLocalCommercialDocumentStatus(user.id, document.id, "delivered");
       }
 
-      revalidatePath("/firmas");
-      revalidatePath("/presupuestos");
-      revalidatePath("/modules");
-      revalidatePath("/dashboard");
-      revalidatePath("/backups");
+      revalidateAppPath("/firmas");
+      revalidateAppPath("/presupuestos");
+      revalidateAppPath("/modules");
+      revalidateAppPath("/dashboard");
+      revalidateAppPath("/backups");
 
       redirect(`/firmas?created=${request.id}`);
     }
@@ -183,10 +183,10 @@ export async function createDocumentSignatureRequestAction(formData: FormData) {
         .eq("user_id", user.id);
     }
 
-    revalidatePath("/firmas");
-    revalidatePath("/presupuestos");
-    revalidatePath("/modules");
-    revalidatePath("/dashboard");
+    revalidateAppPath("/firmas");
+    revalidateAppPath("/presupuestos");
+    revalidateAppPath("/modules");
+    revalidateAppPath("/dashboard");
 
     redirect(`/firmas?created=${data.id}`);
   } catch (error) {
@@ -215,9 +215,9 @@ export async function revokeDocumentSignatureRequestAction(formData: FormData) {
         throw new Error("No se ha podido revocar la solicitud.");
       }
 
-      revalidatePath("/firmas");
-      revalidatePath("/presupuestos");
-      revalidatePath("/backups");
+      revalidateAppPath("/firmas");
+      revalidateAppPath("/presupuestos");
+      revalidateAppPath("/backups");
       redirect("/firmas?updated=1");
     }
 
@@ -237,8 +237,8 @@ export async function revokeDocumentSignatureRequestAction(formData: FormData) {
       throw new Error("No se ha podido revocar la solicitud.");
     }
 
-    revalidatePath("/firmas");
-    revalidatePath("/presupuestos");
+    revalidateAppPath("/firmas");
+    revalidateAppPath("/presupuestos");
     redirect("/firmas?updated=1");
   } catch (error) {
     rethrowIfRedirectError(error);
@@ -314,10 +314,10 @@ export async function respondToDocumentSignatureAction(formData: FormData) {
         throw new Error("No se ha podido registrar la respuesta.");
       }
 
-      revalidatePath("/firmas");
-      revalidatePath("/presupuestos");
-      revalidatePath("/backups");
-      revalidatePath(`/firma/${payload.token}`);
+      revalidateAppPath("/firmas");
+      revalidateAppPath("/presupuestos");
+      revalidateAppPath("/backups");
+      revalidateAppPath(`/firma/${payload.token}`);
 
       redirect(
         `/firma/${payload.token}?${
@@ -423,9 +423,9 @@ export async function respondToDocumentSignatureAction(formData: FormData) {
         .eq("user_id", request.user_id);
     }
 
-    revalidatePath("/firmas");
-    revalidatePath("/presupuestos");
-    revalidatePath(`/firma/${payload.token}`);
+    revalidateAppPath("/firmas");
+    revalidateAppPath("/presupuestos");
+    revalidateAppPath(`/firma/${payload.token}`);
 
     redirect(
       `/firma/${payload.token}?${

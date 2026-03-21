@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidateAppPath } from "@/lib/actions/revalidate-path";
 import { redirect } from "next/navigation";
 import { z, ZodError } from "zod";
 
@@ -218,13 +218,13 @@ export async function createInvoiceAction(formData: FormData) {
         issuerLogoUrl,
       });
 
-      revalidatePath("/dashboard");
-      revalidatePath("/new-invoice");
-      revalidatePath("/invoices");
-      revalidatePath("/profile");
-      revalidatePath("/cobros");
-      revalidatePath("/clientes");
-      revalidatePath(`/factura/${invoice.public_id}`);
+      revalidateAppPath("/dashboard");
+      revalidateAppPath("/new-invoice");
+      revalidateAppPath("/invoices");
+      revalidateAppPath("/profile");
+      revalidateAppPath("/cobros");
+      revalidateAppPath("/clientes");
+      revalidateAppPath(`/factura/${invoice.public_id}`);
 
       redirect(`/invoices?created=${invoice.id}`);
     }
@@ -302,13 +302,13 @@ export async function createInvoiceAction(formData: FormData) {
       throw new Error("No se ha podido guardar la factura en Supabase.");
     }
 
-    revalidatePath("/dashboard");
-    revalidatePath("/new-invoice");
-    revalidatePath("/invoices");
-    revalidatePath("/profile");
-    revalidatePath("/cobros");
-    revalidatePath("/clientes");
-    revalidatePath(`/factura/${invoice.public_id}`);
+    revalidateAppPath("/dashboard");
+    revalidateAppPath("/new-invoice");
+    revalidateAppPath("/invoices");
+    revalidateAppPath("/profile");
+    revalidateAppPath("/cobros");
+    revalidateAppPath("/clientes");
+    revalidateAppPath(`/factura/${invoice.public_id}`);
 
     redirect(`/invoices?created=${invoice.id}`);
   } catch (error) {
@@ -347,11 +347,11 @@ export async function updateInvoicePaymentStateAction(formData: FormData) {
         throw new Error("No se ha podido cargar la factura.");
       }
 
-      revalidatePath("/dashboard");
-      revalidatePath("/invoices");
-      revalidatePath("/cobros");
-      revalidatePath("/clientes");
-      revalidatePath("/banca");
+      revalidateAppPath("/dashboard");
+      revalidateAppPath("/invoices");
+      revalidateAppPath("/cobros");
+      revalidateAppPath("/clientes");
+      revalidateAppPath("/banca");
       redirect("/cobros?updated=1");
     }
 
@@ -399,11 +399,11 @@ export async function updateInvoicePaymentStateAction(formData: FormData) {
       await syncInvoicePaymentStatusFromBankMatches(user.id, [payload.invoiceId]);
     }
 
-    revalidatePath("/dashboard");
-    revalidatePath("/invoices");
-    revalidatePath("/cobros");
-    revalidatePath("/clientes");
-    revalidatePath("/banca");
+    revalidateAppPath("/dashboard");
+    revalidateAppPath("/invoices");
+    revalidateAppPath("/cobros");
+    revalidateAppPath("/clientes");
+    revalidateAppPath("/banca");
     redirect("/cobros?updated=1");
   } catch (error) {
     rethrowIfRedirectError(error);
@@ -446,7 +446,7 @@ export async function sendInvoiceEmailAction(formData: FormData) {
         ],
       });
 
-      revalidatePath("/invoices");
+      revalidateAppPath("/invoices");
       redirect(`/invoices?emailed=${invoiceId}`);
     }
 
@@ -478,7 +478,7 @@ export async function sendInvoiceEmailAction(formData: FormData) {
       ],
     });
 
-    revalidatePath("/invoices");
+    revalidateAppPath("/invoices");
     redirect(`/invoices?emailed=${invoiceId}`);
   } catch (error) {
     rethrowIfRedirectError(error);
@@ -524,10 +524,10 @@ export async function sendInvoiceReminderAction(formData: FormData) {
         batchKey: null,
       });
 
-      revalidatePath("/dashboard");
-      revalidatePath("/invoices");
-      revalidatePath("/cobros");
-      revalidatePath("/clientes");
+      revalidateAppPath("/dashboard");
+      revalidateAppPath("/invoices");
+      revalidateAppPath("/cobros");
+      revalidateAppPath("/clientes");
       redirect(`/cobros?reminded=${payload.invoiceId}`);
     }
 
@@ -551,10 +551,10 @@ export async function sendInvoiceReminderAction(formData: FormData) {
       batchKey: null,
     });
 
-    revalidatePath("/dashboard");
-    revalidatePath("/invoices");
-    revalidatePath("/cobros");
-    revalidatePath("/clientes");
+    revalidateAppPath("/dashboard");
+    revalidateAppPath("/invoices");
+    revalidateAppPath("/cobros");
+    revalidateAppPath("/clientes");
     redirect(`/cobros?reminded=${payload.invoiceId}`);
   } catch (error) {
     rethrowIfRedirectError(error);
@@ -623,10 +623,10 @@ export async function sendInvoiceBatchReminderAction(formData: FormData) {
         throw firstFailure ?? new Error("No se ha podido enviar ningún recordatorio.");
       }
 
-      revalidatePath("/dashboard");
-      revalidatePath("/invoices");
-      revalidatePath("/cobros");
-      revalidatePath("/clientes");
+      revalidateAppPath("/dashboard");
+      revalidateAppPath("/invoices");
+      revalidateAppPath("/cobros");
+      revalidateAppPath("/clientes");
 
       const message =
         failedCount > 0
@@ -683,10 +683,10 @@ export async function sendInvoiceBatchReminderAction(formData: FormData) {
       throw firstFailure ?? new Error("No se ha podido enviar ningún recordatorio.");
     }
 
-    revalidatePath("/dashboard");
-    revalidatePath("/invoices");
-    revalidatePath("/cobros");
-    revalidatePath("/clientes");
+    revalidateAppPath("/dashboard");
+    revalidateAppPath("/invoices");
+    revalidateAppPath("/cobros");
+    revalidateAppPath("/clientes");
 
     const message =
       failedCount > 0

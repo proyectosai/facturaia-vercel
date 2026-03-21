@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidateAppPath } from "@/lib/actions/revalidate-path";
 
 import { requireUser } from "@/lib/auth";
 import { isDemoMode, isLocalFileMode } from "@/lib/demo";
@@ -24,13 +24,13 @@ export async function markThreadReadAction(formData: FormData) {
   const threadId = String(formData.get("threadId") ?? "");
 
   if (!threadId || isDemoMode()) {
-    revalidatePath("/messages");
+    revalidateAppPath("/messages");
     return;
   }
 
   if (isLocalFileMode()) {
     await markLocalMessageThreadRead(user.id, threadId);
-    revalidatePath("/messages");
+    revalidateAppPath("/messages");
     return;
   }
 
@@ -45,7 +45,7 @@ export async function markThreadReadAction(formData: FormData) {
     throw new Error("No se ha podido marcar la conversación como leída.");
   }
 
-  revalidatePath("/messages");
+  revalidateAppPath("/messages");
 }
 
 export async function setThreadUrgencyAction(formData: FormData) {
@@ -54,7 +54,7 @@ export async function setThreadUrgencyAction(formData: FormData) {
   const urgency = String(formData.get("urgency") ?? "");
 
   if (!threadId || !["low", "medium", "high"].includes(urgency) || isDemoMode()) {
-    revalidatePath("/messages");
+    revalidateAppPath("/messages");
     return;
   }
 
@@ -65,7 +65,7 @@ export async function setThreadUrgencyAction(formData: FormData) {
       urgency as "low" | "medium" | "high",
       getUrgencyScore(urgency),
     );
-    revalidatePath("/messages");
+    revalidateAppPath("/messages");
     return;
   }
 
@@ -84,7 +84,7 @@ export async function setThreadUrgencyAction(formData: FormData) {
     throw new Error("No se ha podido actualizar la prioridad.");
   }
 
-  revalidatePath("/messages");
+  revalidateAppPath("/messages");
 }
 
 export async function unlockThreadUrgencyAction(formData: FormData) {
@@ -92,13 +92,13 @@ export async function unlockThreadUrgencyAction(formData: FormData) {
   const threadId = String(formData.get("threadId") ?? "");
 
   if (!threadId || isDemoMode()) {
-    revalidatePath("/messages");
+    revalidateAppPath("/messages");
     return;
   }
 
   if (isLocalFileMode()) {
     await unlockLocalMessageThreadUrgency(user.id, threadId);
-    revalidatePath("/messages");
+    revalidateAppPath("/messages");
     return;
   }
 
@@ -115,5 +115,5 @@ export async function unlockThreadUrgencyAction(formData: FormData) {
     throw new Error("No se ha podido devolver la prioridad al modo automático.");
   }
 
-  revalidatePath("/messages");
+  revalidateAppPath("/messages");
 }

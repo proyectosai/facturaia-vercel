@@ -1,21 +1,27 @@
 import "server-only";
 
 import path from "node:path";
-import { createRequire } from "node:module";
 import { promises as fs } from "node:fs";
 
 import initSqlJs, { type Database, type SqlJsStatic } from "sql.js";
-
-const require = createRequire(import.meta.url);
 
 let sqlJsPromise: Promise<SqlJsStatic> | null = null;
 
 function getSqlJs() {
   if (!sqlJsPromise) {
-    const wasmBaseDir = path.dirname(require.resolve("sql.js/dist/sql-wasm.js"));
+    const wasmFilePath = path.join(
+      process.cwd(),
+      "node_modules",
+      "sql.js",
+      "dist",
+      "sql-wasm.wasm",
+    );
 
     sqlJsPromise = initSqlJs({
-      locateFile: (file) => path.join(wasmBaseDir, file),
+      // Next puede empaquetar require.resolve como un id numérico en el
+      // bundle del servidor. Apuntar al wasm desde process.cwd() evita esa
+      // ruptura en build y E2E local.
+      locateFile: () => wasmFilePath,
     });
   }
 

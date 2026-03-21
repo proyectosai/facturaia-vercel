@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidateAppPath } from "@/lib/actions/revalidate-path";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
@@ -85,9 +85,9 @@ export async function createExpenseAction(formData: FormData) {
         },
       });
 
-      revalidatePath("/gastos");
-      revalidatePath("/backups");
-      revalidatePath("/modules");
+      revalidateAppPath("/gastos");
+      revalidateAppPath("/backups");
+      revalidateAppPath("/modules");
       redirect(`/gastos?created=${expense.id}`);
     }
 
@@ -134,9 +134,9 @@ export async function createExpenseAction(formData: FormData) {
       throw new Error("No se ha podido guardar el gasto.");
     }
 
-    revalidatePath("/gastos");
-    revalidatePath("/backups");
-    revalidatePath("/modules");
+    revalidateAppPath("/gastos");
+    revalidateAppPath("/backups");
+    revalidateAppPath("/modules");
 
     redirect(`/gastos?created=${data.id}`);
   } catch (error) {
@@ -173,8 +173,8 @@ export async function markExpenseReviewedAction(formData: FormData) {
         throw new Error("No se ha podido actualizar el estado del gasto.");
       }
 
-      revalidatePath("/gastos");
-      revalidatePath("/backups");
+      revalidateAppPath("/gastos");
+      revalidateAppPath("/backups");
       redirect("/gastos?updated=1");
     }
 
@@ -191,7 +191,7 @@ export async function markExpenseReviewedAction(formData: FormData) {
       throw new Error("No se ha podido actualizar el estado del gasto.");
     }
 
-    revalidatePath("/gastos");
+    revalidateAppPath("/gastos");
     redirect("/gastos?updated=1");
   } catch (error) {
     rethrowIfRedirectError(error);

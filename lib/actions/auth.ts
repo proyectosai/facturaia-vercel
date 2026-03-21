@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidateAppPath } from "@/lib/actions/revalidate-path";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { ZodError, z } from "zod";
@@ -227,9 +227,9 @@ export async function updateProfileAction(formData: FormData) {
         logoUrl,
       });
 
-      revalidatePath("/dashboard");
-      revalidatePath("/new-invoice");
-      revalidatePath("/profile");
+      revalidateAppPath("/dashboard");
+      revalidateAppPath("/new-invoice");
+      revalidateAppPath("/profile");
       redirect("/profile?updated=1");
     }
 
@@ -274,9 +274,9 @@ export async function updateProfileAction(formData: FormData) {
       throw new Error("No se ha podido guardar el perfil.");
     }
 
-    revalidatePath("/dashboard");
-    revalidatePath("/new-invoice");
-    revalidatePath("/profile");
+    revalidateAppPath("/dashboard");
+    revalidateAppPath("/new-invoice");
+    revalidateAppPath("/profile");
     redirect("/profile?updated=1");
   } catch (error) {
     rethrowIfRedirectError(error);

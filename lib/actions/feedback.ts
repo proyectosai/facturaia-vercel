@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidateAppPath } from "@/lib/actions/revalidate-path";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
@@ -78,9 +78,9 @@ export async function createFeedbackEntryAction(formData: FormData) {
         contactEmail: payload.contactEmail || null,
       });
 
-      revalidatePath("/feedback");
-      revalidatePath("/dashboard");
-      revalidatePath("/backups");
+      revalidateAppPath("/feedback");
+      revalidateAppPath("/dashboard");
+      revalidateAppPath("/backups");
       redirect("/feedback?created=1");
     }
 
@@ -102,9 +102,9 @@ export async function createFeedbackEntryAction(formData: FormData) {
       throw new Error("No se ha podido guardar la entrada de feedback.");
     }
 
-    revalidatePath("/feedback");
-    revalidatePath("/dashboard");
-    revalidatePath("/backups");
+    revalidateAppPath("/feedback");
+    revalidateAppPath("/dashboard");
+    revalidateAppPath("/backups");
     redirect("/feedback?created=1");
   } catch (error) {
     rethrowIfRedirectError(error);
@@ -133,8 +133,8 @@ export async function updateFeedbackStatusAction(formData: FormData) {
         throw new Error("No se ha podido actualizar el estado del feedback.");
       }
 
-      revalidatePath("/feedback");
-      revalidatePath("/backups");
+      revalidateAppPath("/feedback");
+      revalidateAppPath("/backups");
       redirect("/feedback?updated=1");
     }
 
@@ -152,7 +152,7 @@ export async function updateFeedbackStatusAction(formData: FormData) {
       throw new Error("No se ha podido actualizar el estado del feedback.");
     }
 
-    revalidatePath("/feedback");
+    revalidateAppPath("/feedback");
     redirect("/feedback?updated=1");
   } catch (error) {
     rethrowIfRedirectError(error);

@@ -32,6 +32,8 @@ Antes de dar por buena una iteración del modo local, deben pasar estos gates:
    - conversión a factura
    - export de backup
 
+En el repositorio, `lint`, `typecheck`, `npm test`, `test:massive-local`, build demo y smoke tests ya se ejecutan en CI sobre `Linux`, `macOS` y `Windows`. El e2e largo sigue siendo una capa adicional de endurecimiento y todavía no sustituye a los gates segmentados.
+
 ## Qué debe quedar cubierto por tests
 
 ### Núcleo local
@@ -106,7 +108,11 @@ Usar tres capas:
    - comprobar que las pantallas cargan en `next start`
 
 3. **flujos segmentados**
-   - alta cliente
+   - login local
+   - perfil fiscal
+   - nueva factura
+   - cobro
+   - alta de cliente
    - gasto
    - presupuesto
    - firma
@@ -129,3 +135,12 @@ Si hay conflicto entre:
 la prioridad es la segunda.
 
 FacturaIA debe madurar como herramienta **usable en local** antes de ampliar más superficie.
+
+## Ejecución recomendada
+
+Para validar una iteración seria del modo local:
+
+1. `npm run test:massive-local`
+2. `npm run test:smoke`
+
+Además, queda preparado un harness de navegador en `npm run test:e2e:local` para endurecer el flujo local crítico sobre SQLite temporal. Recorre login, perfil, nueva factura, cobros, backup export y un barrido de rutas protegidas, pero todavía no forma parte del gate principal.

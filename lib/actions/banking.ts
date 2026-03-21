@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidateAppPath } from "@/lib/actions/revalidate-path";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
@@ -67,10 +67,10 @@ export async function importBankMovementsAction(formData: FormData) {
         );
       }
 
-      revalidatePath("/banca");
-      revalidatePath("/backups");
-      revalidatePath("/modules");
-      revalidatePath("/system");
+      revalidateAppPath("/banca");
+      revalidateAppPath("/backups");
+      revalidateAppPath("/modules");
+      revalidateAppPath("/system");
       redirect(`/banca?created=${createdRows.length}`);
     }
 
@@ -120,10 +120,10 @@ export async function importBankMovementsAction(formData: FormData) {
       throw new Error("No se ha podido guardar el extracto bancario.");
     }
 
-    revalidatePath("/banca");
-    revalidatePath("/backups");
-    revalidatePath("/modules");
-    revalidatePath("/system");
+    revalidateAppPath("/banca");
+    revalidateAppPath("/backups");
+    revalidateAppPath("/modules");
+    revalidateAppPath("/system");
     redirect(`/banca?created=${rowsToInsert.length}`);
   } catch (error) {
     rethrowIfRedirectError(error);
@@ -198,12 +198,12 @@ export async function reconcileBankMovementAction(formData: FormData) {
         Array.from(affectedInvoiceIds),
       );
 
-      revalidatePath("/banca");
-      revalidatePath("/dashboard");
-      revalidatePath("/invoices");
-      revalidatePath("/cobros");
-      revalidatePath("/clientes");
-      revalidatePath("/backups");
+      revalidateAppPath("/banca");
+      revalidateAppPath("/dashboard");
+      revalidateAppPath("/invoices");
+      revalidateAppPath("/cobros");
+      revalidateAppPath("/clientes");
+      revalidateAppPath("/backups");
       redirect("/banca?updated=1");
     }
 
@@ -277,12 +277,12 @@ export async function reconcileBankMovementAction(formData: FormData) {
       Array.from(affectedInvoiceIds),
     );
 
-    revalidatePath("/banca");
-    revalidatePath("/dashboard");
-    revalidatePath("/invoices");
-    revalidatePath("/cobros");
-    revalidatePath("/clientes");
-    revalidatePath("/backups");
+    revalidateAppPath("/banca");
+    revalidateAppPath("/dashboard");
+    revalidateAppPath("/invoices");
+    revalidateAppPath("/cobros");
+    revalidateAppPath("/clientes");
+    revalidateAppPath("/backups");
     redirect("/banca?updated=1");
   } catch (error) {
     rethrowIfRedirectError(error);

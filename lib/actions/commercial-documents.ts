@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidateAppPath } from "@/lib/actions/revalidate-path";
 import { redirect } from "next/navigation";
 import { ZodError, z } from "zod";
 
@@ -167,11 +167,11 @@ export async function createCommercialDocumentAction(formData: FormData) {
         input: documentInput,
       });
 
-      revalidatePath("/dashboard");
-      revalidatePath("/presupuestos");
-      revalidatePath("/profile");
-      revalidatePath("/modules");
-      revalidatePath("/backups");
+      revalidateAppPath("/dashboard");
+      revalidateAppPath("/presupuestos");
+      revalidateAppPath("/profile");
+      revalidateAppPath("/modules");
+      revalidateAppPath("/backups");
 
       redirect(`/presupuestos?created=${document.id}`);
     }
@@ -187,10 +187,10 @@ export async function createCommercialDocumentAction(formData: FormData) {
       throw new Error("No se ha podido guardar el documento.");
     }
 
-    revalidatePath("/dashboard");
-    revalidatePath("/presupuestos");
-    revalidatePath("/profile");
-    revalidatePath("/modules");
+    revalidateAppPath("/dashboard");
+    revalidateAppPath("/presupuestos");
+    revalidateAppPath("/profile");
+    revalidateAppPath("/modules");
 
     redirect(`/presupuestos?created=${data.id}`);
   } catch (error) {
@@ -241,9 +241,9 @@ export async function updateCommercialDocumentStatusAction(formData: FormData) {
         throw new Error("No se ha podido actualizar el estado.");
       }
 
-      revalidatePath("/presupuestos");
-      revalidatePath("/dashboard");
-      revalidatePath("/backups");
+      revalidateAppPath("/presupuestos");
+      revalidateAppPath("/dashboard");
+      revalidateAppPath("/backups");
       redirect("/presupuestos?updated=1");
     }
 
@@ -258,8 +258,8 @@ export async function updateCommercialDocumentStatusAction(formData: FormData) {
       throw new Error("No se ha podido actualizar el estado.");
     }
 
-    revalidatePath("/presupuestos");
-    revalidatePath("/dashboard");
+    revalidateAppPath("/presupuestos");
+    revalidateAppPath("/dashboard");
 
     redirect("/presupuestos?updated=1");
   } catch (error) {
@@ -334,10 +334,10 @@ export async function convertCommercialDocumentToInvoiceAction(formData: FormDat
         throw new Error("La factura se creó, pero no se pudo vincular el documento origen.");
       }
 
-      revalidatePath("/presupuestos");
-      revalidatePath("/invoices");
-      revalidatePath("/dashboard");
-      revalidatePath("/backups");
+      revalidateAppPath("/presupuestos");
+      revalidateAppPath("/invoices");
+      revalidateAppPath("/dashboard");
+      revalidateAppPath("/backups");
       redirect(`/invoices?created=${invoice.id}`);
     }
 
@@ -384,9 +384,9 @@ export async function convertCommercialDocumentToInvoiceAction(formData: FormDat
       throw new Error("La factura se creó, pero no se pudo vincular el documento origen.");
     }
 
-    revalidatePath("/presupuestos");
-    revalidatePath("/invoices");
-    revalidatePath("/dashboard");
+    revalidateAppPath("/presupuestos");
+    revalidateAppPath("/invoices");
+    revalidateAppPath("/dashboard");
 
     redirect(`/invoices?created=${invoice.id}`);
   } catch (error) {
