@@ -85,6 +85,7 @@ Responsabilidades:
 
 - mantener el snapshot funcional del modo local
 - poblar un mirror relacional dentro de `core.sqlite` como puente hacia un esquema SQLite real
+- servir ya lecturas estructuradas de auditoría, uso, clientes y facturas desde ese mirror cuando no hay cifrado local activo
 - recalcular contadores y estado base del usuario local
 - preservar compatibilidad con instalaciones antiguas que todavía arranquen desde `core.json`
 

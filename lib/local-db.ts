@@ -4,7 +4,7 @@ import path from "node:path";
 import { promises as fs } from "node:fs";
 
 import initSqlJs, { type Database, type SqlJsStatic } from "sql.js";
-import type { LocalAuditEventRecord } from "@/lib/types";
+import type { ClientRecord, InvoiceRecord, LocalAuditEventRecord } from "@/lib/types";
 
 let sqlJsPromise: Promise<SqlJsStatic> | null = null;
 
@@ -676,6 +676,75 @@ function parseJsonObjectField(value: unknown) {
   }
 }
 
+function parseJsonArrayField<T>(value: unknown) {
+  if (typeof value !== "string" || !value) {
+    return [] as T[];
+  }
+
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return Array.isArray(parsed) ? (parsed as T[]) : ([] as T[]);
+  } catch {
+    return [] as T[];
+  }
+}
+
+function mapClientRow(values: unknown[]): ClientRecord {
+  return {
+    id: String(values[0] ?? ""),
+    user_id: String(values[1] ?? ""),
+    relation_kind: String(values[2] ?? "client") as ClientRecord["relation_kind"],
+    status: String(values[3] ?? "lead") as ClientRecord["status"],
+    priority: String(values[4] ?? "medium") as ClientRecord["priority"],
+    display_name: String(values[5] ?? ""),
+    first_name: values[6] === null ? null : String(values[6] ?? ""),
+    last_name: values[7] === null ? null : String(values[7] ?? ""),
+    company_name: values[8] === null ? null : String(values[8] ?? ""),
+    email: values[9] === null ? null : String(values[9] ?? ""),
+    phone: values[10] === null ? null : String(values[10] ?? ""),
+    nif: values[11] === null ? null : String(values[11] ?? ""),
+    address: values[12] === null ? null : String(values[12] ?? ""),
+    notes: values[13] === null ? null : String(values[13] ?? ""),
+    tags: parseJsonArrayField<string>(values[14]),
+    created_at: String(values[15] ?? ""),
+    updated_at: String(values[16] ?? ""),
+  };
+}
+
+function mapInvoiceRow(values: unknown[]): InvoiceRecord {
+  return {
+    id: String(values[0] ?? ""),
+    user_id: String(values[1] ?? ""),
+    public_id: String(values[2] ?? ""),
+    invoice_number: Number(values[3] ?? 0),
+    issue_date: String(values[4] ?? ""),
+    due_date: String(values[5] ?? ""),
+    issuer_name: String(values[6] ?? ""),
+    issuer_nif: String(values[7] ?? ""),
+    issuer_address: String(values[8] ?? ""),
+    issuer_logo_url: values[9] === null ? null : String(values[9] ?? ""),
+    client_name: String(values[10] ?? ""),
+    client_nif: String(values[11] ?? ""),
+    client_address: String(values[12] ?? ""),
+    client_email: String(values[13] ?? ""),
+    line_items: parseJsonArrayField<InvoiceRecord["line_items"][number]>(values[14]),
+    subtotal: Number(values[15] ?? 0),
+    vat_total: Number(values[16] ?? 0),
+    irpf_rate: Number(values[17] ?? 0),
+    irpf_amount: Number(values[18] ?? 0),
+    grand_total: Number(values[19] ?? 0),
+    amount_paid: Number(values[20] ?? 0),
+    payment_status: String(values[21] ?? "pending") as InvoiceRecord["payment_status"],
+    paid_at: values[22] === null ? null : String(values[22] ?? ""),
+    last_reminder_at: values[23] === null ? null : String(values[23] ?? ""),
+    reminder_count: Number(values[24] ?? 0),
+    collection_notes: values[25] === null ? null : String(values[25] ?? ""),
+    vat_breakdown: parseJsonArrayField<InvoiceRecord["vat_breakdown"][number]>(values[26]),
+    created_at: String(values[27] ?? ""),
+    updated_at: String(values[28] ?? ""),
+  };
+}
+
 function mapAuditEventRow(values: unknown[]): LocalAuditEventRecord {
   return {
     id: String(values[0] ?? ""),
@@ -1345,6 +1414,262 @@ export async function listStructuredLocalAuditEventsForUser(
     );
 
     return (result[0]?.values ?? []).map((values) => mapAuditEventRow(values));
+  } finally {
+    db.close();
+  }
+}
+
+export async function listStructuredLocalClientsForUser(
+  userId: string,
+): Promise<ClientRecord[] | null> {
+  const db = await openDatabase();
+
+  try {
+    if (getStructuredMirrorStatus(db) !== "ready") {
+      return null;
+    }
+
+    const result = db.exec(
+      `
+        SELECT
+          id,
+          user_id,
+          relation_kind,
+          status,
+          priority,
+          display_name,
+          first_name,
+          last_name,
+          company_name,
+          email,
+          phone,
+          nif,
+          address,
+          notes,
+          tags_json,
+          created_at,
+          updated_at
+        FROM local_clients
+        WHERE user_id = ?
+        ORDER BY updated_at DESC, created_at DESC;
+      `,
+      [userId],
+    );
+
+    return (result[0]?.values ?? []).map((values) => mapClientRow(values));
+  } finally {
+    db.close();
+  }
+}
+
+export async function getStructuredLocalClientById(
+  userId: string,
+  clientId: string,
+): Promise<ClientRecord | null> {
+  const db = await openDatabase();
+
+  try {
+    if (getStructuredMirrorStatus(db) !== "ready") {
+      return null;
+    }
+
+    const result = db.exec(
+      `
+        SELECT
+          id,
+          user_id,
+          relation_kind,
+          status,
+          priority,
+          display_name,
+          first_name,
+          last_name,
+          company_name,
+          email,
+          phone,
+          nif,
+          address,
+          notes,
+          tags_json,
+          created_at,
+          updated_at
+        FROM local_clients
+        WHERE user_id = ? AND id = ?
+        LIMIT 1;
+      `,
+      [userId, clientId],
+    );
+
+    const row = result[0]?.values?.[0];
+    return row ? mapClientRow(row) : null;
+  } finally {
+    db.close();
+  }
+}
+
+export async function listStructuredLocalInvoicesForUser(
+  userId: string,
+): Promise<InvoiceRecord[] | null> {
+  const db = await openDatabase();
+
+  try {
+    if (getStructuredMirrorStatus(db) !== "ready") {
+      return null;
+    }
+
+    const result = db.exec(
+      `
+        SELECT
+          id,
+          user_id,
+          public_id,
+          invoice_number,
+          issue_date,
+          due_date,
+          issuer_name,
+          issuer_nif,
+          issuer_address,
+          issuer_logo_url,
+          client_name,
+          client_nif,
+          client_address,
+          client_email,
+          line_items_json,
+          subtotal,
+          vat_total,
+          irpf_rate,
+          irpf_amount,
+          grand_total,
+          amount_paid,
+          payment_status,
+          paid_at,
+          last_reminder_at,
+          reminder_count,
+          collection_notes,
+          vat_breakdown_json,
+          created_at,
+          updated_at
+        FROM local_invoices
+        WHERE user_id = ?
+        ORDER BY issue_date DESC, created_at DESC;
+      `,
+      [userId],
+    );
+
+    return (result[0]?.values ?? []).map((values) => mapInvoiceRow(values));
+  } finally {
+    db.close();
+  }
+}
+
+export async function getStructuredLocalInvoiceById(
+  userId: string,
+  invoiceId: string,
+): Promise<InvoiceRecord | null> {
+  const db = await openDatabase();
+
+  try {
+    if (getStructuredMirrorStatus(db) !== "ready") {
+      return null;
+    }
+
+    const result = db.exec(
+      `
+        SELECT
+          id,
+          user_id,
+          public_id,
+          invoice_number,
+          issue_date,
+          due_date,
+          issuer_name,
+          issuer_nif,
+          issuer_address,
+          issuer_logo_url,
+          client_name,
+          client_nif,
+          client_address,
+          client_email,
+          line_items_json,
+          subtotal,
+          vat_total,
+          irpf_rate,
+          irpf_amount,
+          grand_total,
+          amount_paid,
+          payment_status,
+          paid_at,
+          last_reminder_at,
+          reminder_count,
+          collection_notes,
+          vat_breakdown_json,
+          created_at,
+          updated_at
+        FROM local_invoices
+        WHERE user_id = ? AND id = ?
+        LIMIT 1;
+      `,
+      [userId, invoiceId],
+    );
+
+    const row = result[0]?.values?.[0];
+    return row ? mapInvoiceRow(row) : null;
+  } finally {
+    db.close();
+  }
+}
+
+export async function getStructuredLocalInvoiceByPublicId(
+  publicId: string,
+): Promise<InvoiceRecord | null> {
+  const db = await openDatabase();
+
+  try {
+    if (getStructuredMirrorStatus(db) !== "ready") {
+      return null;
+    }
+
+    const result = db.exec(
+      `
+        SELECT
+          id,
+          user_id,
+          public_id,
+          invoice_number,
+          issue_date,
+          due_date,
+          issuer_name,
+          issuer_nif,
+          issuer_address,
+          issuer_logo_url,
+          client_name,
+          client_nif,
+          client_address,
+          client_email,
+          line_items_json,
+          subtotal,
+          vat_total,
+          irpf_rate,
+          irpf_amount,
+          grand_total,
+          amount_paid,
+          payment_status,
+          paid_at,
+          last_reminder_at,
+          reminder_count,
+          collection_notes,
+          vat_breakdown_json,
+          created_at,
+          updated_at
+        FROM local_invoices
+        WHERE public_id = ?
+        LIMIT 1;
+      `,
+      [publicId],
+    );
+
+    const row = result[0]?.values?.[0];
+    return row ? mapInvoiceRow(row) : null;
   } finally {
     db.close();
   }

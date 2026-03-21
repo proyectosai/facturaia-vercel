@@ -9,9 +9,14 @@ import {
   createLocalDocumentSignatureRequest,
   createLocalExpenseRecord,
   createLocalInvoiceRecord,
+  getLocalClientById,
   getLocalCoreSnapshot,
+  getLocalInvoiceById,
+  getLocalInvoiceByPublicId,
   incrementLocalDailyAiUsage,
+  listLocalClientsForUser,
   listLocalFeedbackEntriesForUser,
+  listLocalInvoicesForUser,
   getLocalPublicSignatureRequestByToken,
   linkLocalCommercialDocumentToInvoice,
   markLocalSignatureRequestViewed,
@@ -314,6 +319,57 @@ describe("local core persistence", () => {
     expect(mirror.counts.clients).toBe(1);
     expect(mirror.counts.invoices).toBe(1);
     expect(mirror.counts.counters).toBe(3);
+  });
+
+  test("serves client and invoice reads from the structured mirror", async () => {
+    const client = await saveLocalClientRecord({
+      userId,
+      relationKind: "client",
+      status: "active",
+      priority: "high",
+      displayName: "Empresa Mirror S.L.",
+      firstName: null,
+      lastName: null,
+      companyName: "Empresa Mirror S.L.",
+      email: "admin@mirror.es",
+      phone: "+34 600222333",
+      nif: "B88888888",
+      address: "Calle Mirror 8, Madrid",
+      notes: "Cliente servido desde SQLite",
+      tags: ["mirror", "priority"],
+    });
+
+    const invoice = await createLocalInvoiceRecord({
+      userId,
+      payload: {
+        issueDate: "2026-03-22",
+        dueDate: "2026-03-29",
+        issuerName: "Asesoria Martin Fiscal",
+        issuerNif: "B12345678",
+        issuerAddress: "Calle Alcala 100, Madrid",
+        clientName: client.display_name,
+        clientNif: client.nif ?? "",
+        clientAddress: client.address ?? "",
+        clientEmail: client.email ?? "",
+      },
+      lineItems: buildLineItems(),
+      totals: buildTotals(),
+      issuerLogoUrl: null,
+    });
+
+    const clients = await listLocalClientsForUser(userId);
+    const invoices = await listLocalInvoicesForUser(userId);
+    const byClientId = await getLocalClientById(userId, client.id);
+    const byInvoiceId = await getLocalInvoiceById(userId, invoice.id);
+    const byPublicId = await getLocalInvoiceByPublicId(invoice.public_id);
+
+    expect(clients).toHaveLength(1);
+    expect(clients[0]?.tags).toEqual(["mirror", "priority"]);
+    expect(byClientId?.email).toBe("admin@mirror.es");
+    expect(invoices).toHaveLength(1);
+    expect(invoices[0]?.line_items[0]?.description).toContain("Servicio mensual");
+    expect(byInvoiceId?.invoice_number).toBe(1);
+    expect(byPublicId?.client_name).toBe("Empresa Mirror S.L.");
   });
 
   test("stores feedback entries locally and updates their status", async () => {

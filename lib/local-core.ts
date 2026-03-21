@@ -48,9 +48,14 @@ import {
   tryParseEncryptedEnvelope,
 } from "@/lib/local-encryption";
 import {
+  getStructuredLocalClientById,
   getStructuredLocalDailyAiUsage,
+  getStructuredLocalInvoiceById,
+  getStructuredLocalInvoiceByPublicId,
   getStructuredLocalMonthlyInvoiceUsage,
+  listStructuredLocalClientsForUser,
   listStructuredLocalAuditEventsForUser,
+  listStructuredLocalInvoicesForUser,
   getLocalDataDir as getLocalDataDirFromDb,
   readLocalStateText,
   writeLocalStateText,
@@ -1003,6 +1008,11 @@ function sortByPrimaryDateDescending<T extends { created_at: string; updated_at:
 }
 
 export async function listLocalClientsForUser(userId: string) {
+  const structuredClients = await listStructuredLocalClientsForUser(userId);
+  if (structuredClients) {
+    return structuredClients;
+  }
+
   const data = await readLocalCoreData();
   return sortByUpdatedAtDescending(
     data.clients.filter((client) => client.user_id === userId),
@@ -1010,6 +1020,11 @@ export async function listLocalClientsForUser(userId: string) {
 }
 
 export async function getLocalClientById(userId: string, clientId: string) {
+  const structuredClient = await getStructuredLocalClientById(userId, clientId);
+  if (structuredClient) {
+    return structuredClient;
+  }
+
   const clients = await listLocalClientsForUser(userId);
   return clients.find((client) => client.id === clientId) ?? null;
 }
@@ -1191,6 +1206,11 @@ export async function saveLocalClientRecord({
 }
 
 export async function listLocalInvoicesForUser(userId: string) {
+  const structuredInvoices = await listStructuredLocalInvoicesForUser(userId);
+  if (structuredInvoices) {
+    return structuredInvoices;
+  }
+
   const data = await readLocalCoreData();
   return data.invoices
     .filter((invoice) => invoice.user_id === userId)
@@ -1204,11 +1224,21 @@ export async function listLocalInvoicesForUser(userId: string) {
 }
 
 export async function getLocalInvoiceById(userId: string, invoiceId: string) {
+  const structuredInvoice = await getStructuredLocalInvoiceById(userId, invoiceId);
+  if (structuredInvoice) {
+    return structuredInvoice;
+  }
+
   const invoices = await listLocalInvoicesForUser(userId);
   return invoices.find((invoice) => invoice.id === invoiceId) ?? null;
 }
 
 export async function getLocalInvoiceByPublicId(publicId: string) {
+  const structuredInvoice = await getStructuredLocalInvoiceByPublicId(publicId);
+  if (structuredInvoice) {
+    return structuredInvoice;
+  }
+
   const data = await readLocalCoreData();
   return data.invoices.find((invoice) => invoice.public_id === publicId) ?? null;
 }
