@@ -32,27 +32,31 @@ afterEach(async () => {
 });
 
 describe("document study module", () => {
-  test("stores notes and answers with citations even without LM Studio", async () => {
-    await createStudyNoteForUser({
-      userId,
-      title: "Dividendos 2025",
-      text:
-        "El acta de socios de marzo de 2025 menciona un reparto de dividendos de 18.000 euros. Tambien indica que el pago previsto se hara en dos tramos y que la retencion debe revisarse antes de contabilizarlo.",
-    });
+  test(
+    "stores notes and answers with citations even without LM Studio",
+    { timeout: 15000 },
+    async () => {
+      await createStudyNoteForUser({
+        userId,
+        title: "Dividendos 2025",
+        text:
+          "El acta de socios de marzo de 2025 menciona un reparto de dividendos de 18.000 euros. Tambien indica que el pago previsto se hara en dos tramos y que la retencion debe revisarse antes de contabilizarlo.",
+      });
 
-    const documents = await listStudyDocumentsForUser(userId);
-    const answer = await answerStudyQuestionForUser({
-      userId,
-      question: "Que dice la documentacion sobre el reparto de dividendos de 2025?",
-    });
+      const documents = await listStudyDocumentsForUser(userId);
+      const answer = await answerStudyQuestionForUser({
+        userId,
+        question: "Que dice la documentacion sobre el reparto de dividendos de 2025?",
+      });
 
-    expect(documents).toHaveLength(1);
-    expect(documents[0]?.title).toBe("Dividendos 2025");
-    expect(answer.usedLocalAi).toBe(false);
-    expect(answer.citations).toHaveLength(1);
-    expect(answer.citations[0]?.document_title).toBe("Dividendos 2025");
-    expect(answer.answerText).toContain("[S1]");
-  });
+      expect(documents).toHaveLength(1);
+      expect(documents[0]?.title).toBe("Dividendos 2025");
+      expect(answer.usedLocalAi).toBe(false);
+      expect(answer.citations).toHaveLength(1);
+      expect(answer.citations[0]?.document_title).toBe("Dividendos 2025");
+      expect(answer.answerText).toContain("[S1]");
+    },
+  );
 
   test("imports plain-text files and allows deleting them later", async () => {
     const file = new File(

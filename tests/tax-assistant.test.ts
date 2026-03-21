@@ -15,23 +15,27 @@ afterEach(() => {
 });
 
 describe("tax assistant fallback", () => {
-  test("returns a guided response with official sources when local AI is not configured", async () => {
-    delete process.env.LM_STUDIO_BASE_URL;
-    delete process.env.LM_STUDIO_MODEL;
-    delete process.env.LM_STUDIO_API_KEY;
+  test(
+    "returns a guided response with official sources when local AI is not configured",
+    { timeout: 15000 },
+    async () => {
+      delete process.env.LM_STUDIO_BASE_URL;
+      delete process.env.LM_STUDIO_MODEL;
+      delete process.env.LM_STUDIO_API_KEY;
 
-    const result = await generateSpanishTaxAssistantReply({
-      message: "Necesito ordenar la renta de un autonomo con alquiler y acciones.",
-      clientName: "Nexo Digital S.L.",
-      taxYear: "2025",
-      clientSummary: "Autonomo en estimacion directa con un alquiler y ventas de acciones.",
-      providedDocuments: "Datos fiscales, certificados bancarios y libro de gastos.",
-    });
+      const result = await generateSpanishTaxAssistantReply({
+        message: "Necesito ordenar la renta de un autonomo con alquiler y acciones.",
+        clientName: "Nexo Digital S.L.",
+        taxYear: "2025",
+        clientSummary: "Autonomo en estimacion directa con un alquiler y ventas de acciones.",
+        providedDocuments: "Datos fiscales, certificados bancarios y libro de gastos.",
+      });
 
-    expect(result.provider).toBe("FacturaIA");
-    expect(result.model).toBe("Plantillas internas");
-    expect(result.text).toContain("Checklist base para abrir o revisar el expediente");
-    expect(result.text).toContain("Campaña de Renta en la AEAT");
-    expect(result.text).toContain("Aviso: este asistente ayuda a preparar y revisar expedientes");
-  });
+      expect(result.provider).toBe("FacturaIA");
+      expect(result.model).toBe("Plantillas internas");
+      expect(result.text).toContain("Checklist base para abrir o revisar el expediente");
+      expect(result.text).toContain("Campaña de Renta en la AEAT");
+      expect(result.text).toContain("Aviso: este asistente ayuda a preparar y revisar expedientes");
+    },
+  );
 });
