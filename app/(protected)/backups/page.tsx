@@ -5,6 +5,7 @@ import { getBackupSummary } from "@/lib/backups";
 import { requireUser } from "@/lib/auth";
 import { isDemoMode } from "@/lib/demo";
 import { getRemoteBackupState } from "@/lib/remote-backups";
+import { DesktopPreferredNotice } from "@/components/ui/desktop-preferred-notice";
 import { Badge } from "@/components/ui/badge";
 
 export default async function BackupsPage() {
@@ -27,7 +28,7 @@ export default async function BackupsPage() {
 
           <div className="space-y-3">
             <p className="section-kicker">Copias de seguridad</p>
-            <h1 className="font-display text-5xl leading-none tracking-tight text-foreground">
+            <h1 className="font-display text-4xl leading-none tracking-tight text-foreground sm:text-5xl">
               Exporta y restaura tu instalación sin depender de terceros.
             </h1>
             <p className="text-lg leading-8 text-muted-foreground">
@@ -61,6 +62,8 @@ export default async function BackupsPage() {
           </div>
         </div>
       </section>
+
+      <DesktopPreferredNotice description="Puedes consultar el estado de backups en móvil, pero la comparación de summaries, el dry-run y la restauración completa se entienden mucho mejor en escritorio." />
 
       <BackupCenter
         summary={summary}

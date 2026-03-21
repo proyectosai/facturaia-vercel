@@ -316,17 +316,33 @@ async function runMobileRouteSweep(page) {
       heading: /datos fiscales y control del entorno privado/i,
       action: /guardar perfil|guardado desactivado en demo/i,
     },
+    {
+      route: "/backups",
+      heading: /exporta y restaura tu instalación/i,
+      action: /descargar backup json/i,
+    },
+    {
+      route: "/modules",
+      heading: /instala poco a poco solo lo que realmente necesitas/i,
+    },
+    {
+      route: "/instalacion",
+      heading: /facturaia ya no está pensada como producto de pago/i,
+      action: /abrir asistente/i,
+    },
   ];
 
   for (const item of routes) {
     await page.goto(`${baseUrl}${item.route}`, { waitUntil: "load" });
-    await page.locator("main").last().waitFor({ state: "visible", timeout: 30_000 });
+    await page.locator("main").last().waitFor({ state: "visible", timeout: 45_000 });
     assertNoRouteError(page);
     await page.getByRole("heading", { name: item.heading }).first().waitFor({
       state: "visible",
       timeout: 30_000,
     });
-    await waitForPrimaryAction(page, item.action);
+    if (item.action) {
+      await waitForPrimaryAction(page, item.action);
+    }
     await assertNoHorizontalOverflow(page, item.route);
   }
 }

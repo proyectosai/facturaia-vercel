@@ -12,6 +12,7 @@ import {
 import { isLocalMode } from "@/lib/demo";
 import { getLocalSecurityReadiness } from "@/lib/local-core";
 import { RouteToast } from "@/components/route-toast";
+import { DesktopPreferredNotice } from "@/components/ui/desktop-preferred-notice";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -70,7 +71,7 @@ export default async function InstalacionPage({
       <section className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr] xl:items-end">
         <div className="max-w-4xl space-y-4">
           <p className="section-kicker">Instalación privada</p>
-          <h1 className="font-display text-5xl leading-none tracking-tight text-foreground">
+          <h1 className="font-display text-4xl leading-none tracking-tight text-foreground sm:text-5xl">
             FacturaIA ya no está pensada como producto de pago, sino como herramienta privada y autogestionada.
           </h1>
           <p className="text-lg leading-8 text-muted-foreground">
@@ -79,14 +80,14 @@ export default async function InstalacionPage({
             interesen y trabajar sin planes, pasarela de pago integrada ni dependencias comerciales obligatorias.
           </p>
 
-          <div className="flex flex-wrap gap-3">
-            <Button asChild>
+          <div className="grid gap-3 sm:flex sm:flex-wrap">
+            <Button className="w-full sm:w-auto" asChild>
               <Link href="/primeros-pasos">Abrir asistente</Link>
             </Button>
-            <Button variant="outline" asChild>
+            <Button className="w-full sm:w-auto" variant="outline" asChild>
               <Link href="/modules">Ver módulos</Link>
             </Button>
-            <Button variant="outline" asChild>
+            <Button className="w-full sm:w-auto" variant="outline" asChild>
               <Link href="https://github.com/proyectosai/facturaia">
                 Ver repositorio
               </Link>
@@ -120,6 +121,8 @@ export default async function InstalacionPage({
           </CardContent>
         </Card>
       </section>
+
+      <DesktopPreferredNotice description="La guía sigue siendo consultable en móvil, pero copiar comandos, revisar variables y comparar estados del entorno es más cómodo en escritorio." />
 
       {localMode && !localSecurity.ready ? (
         <Card className="border-[color:rgba(180,68,54,0.24)] bg-[linear-gradient(145deg,rgba(255,249,247,0.98),rgba(255,238,233,0.92))]">

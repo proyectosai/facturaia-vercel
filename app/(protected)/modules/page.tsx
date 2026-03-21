@@ -25,6 +25,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { DesktopPreferredNotice } from "@/components/ui/desktop-preferred-notice";
 
 const categoryIcons = {
   canales: MessageSquareText,
@@ -55,7 +56,7 @@ export default function ModulesPage() {
 
           <div className="space-y-3">
             <p className="section-kicker">Catálogo modular</p>
-            <h1 className="font-display text-5xl leading-none tracking-tight text-foreground">
+            <h1 className="font-display text-4xl leading-none tracking-tight text-foreground sm:text-5xl">
               Instala poco a poco solo lo que realmente necesitas.
             </h1>
             <p className="text-lg leading-8 text-muted-foreground">
@@ -96,6 +97,8 @@ export default function ModulesPage() {
           </CardContent>
         </Card>
       </section>
+
+      <DesktopPreferredNotice description="En móvil sirve para consultar madurez y decidir por fases. Para leer requisitos largos, pasos de instalación y documentación de cada módulo, sigue siendo más cómoda en escritorio." />
 
       <section className="grid gap-4 xl:grid-cols-3">
         <Card className="border-[color:var(--color-success-soft)] bg-[color:rgba(235,249,241,0.72)]">
@@ -296,31 +299,51 @@ export default function ModulesPage() {
             return (
               <Card key={module.id}>
                 <CardContent className="space-y-5">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="flex items-start gap-3">
+                  <div className="flex min-w-0 w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
+                    <div className="flex min-w-0 w-full items-start gap-3 sm:w-auto">
                       <div className="rounded-2xl bg-[color:var(--color-brand-soft)] p-3 text-[color:var(--color-brand)]">
                         <CategoryIcon className="h-5 w-5" />
                       </div>
-                      <div>
+                      <div className="min-w-0">
                         <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
                           Orden {module.order}
                         </p>
-                        <h3 className="mt-1 text-2xl font-semibold text-foreground">
+                        <h3 className="mt-1 break-words text-2xl font-semibold text-foreground">
                           {module.title}
                         </h3>
                       </div>
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                      <Badge variant={statusMeta.badgeVariant}>{statusMeta.label}</Badge>
-                      <Badge variant={maturityMeta.badgeVariant}>{maturityMeta.label}</Badge>
-                      <Badge variant={localSupportMeta.badgeVariant}>
+                    <div className="grid w-full gap-2 sm:flex sm:w-auto sm:flex-wrap sm:justify-end">
+                      <Badge
+                        className="w-full justify-start whitespace-normal break-words text-left leading-5 sm:w-auto"
+                        variant={statusMeta.badgeVariant}
+                      >
+                        {statusMeta.label}
+                      </Badge>
+                      <Badge
+                        className="w-full justify-start whitespace-normal break-words text-left leading-5 sm:w-auto"
+                        variant={maturityMeta.badgeVariant}
+                      >
+                        {maturityMeta.label}
+                      </Badge>
+                      <Badge
+                        className="w-full justify-start whitespace-normal break-words text-left leading-5 sm:w-auto"
+                        variant={localSupportMeta.badgeVariant}
+                      >
                         {localSupportMeta.label}
                       </Badge>
-                      <Badge variant={module.configured ? "success" : "secondary"}>
+                      <Badge
+                        className="hidden whitespace-normal break-words text-left leading-5 sm:inline-flex sm:w-auto"
+                        variant={module.configured ? "success" : "secondary"}
+                      >
                         {module.configuredLabel}
                       </Badge>
                     </div>
                   </div>
+
+                  <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground sm:hidden">
+                    {module.configuredLabel}
+                  </p>
 
                   <p className="text-sm leading-7 text-muted-foreground">
                     {module.summary}
@@ -393,7 +416,7 @@ export default function ModulesPage() {
                     ) : null}
 
                     {module.docsPath ? (
-                      <div className="inline-flex items-center rounded-full bg-[color:var(--color-panel)] px-4 py-2 text-sm text-muted-foreground">
+                      <div className="w-full break-all rounded-[20px] bg-[color:var(--color-panel)] px-4 py-3 text-sm text-muted-foreground sm:inline-flex sm:w-auto sm:items-center sm:rounded-full sm:break-normal sm:py-2">
                         Documento: {module.docsPath}
                       </div>
                     ) : null}
