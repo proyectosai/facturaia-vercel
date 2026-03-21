@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 const path = require("node:path");
 const { spawn } = require("node:child_process");
+const { mkdir, rm, writeFile } = require("node:fs/promises");
 const { setTimeout: delay } = require("node:timers/promises");
 const { chromium } = require("@playwright/test");
 
@@ -8,9 +9,13 @@ const host = "127.0.0.1";
 const port = Number(process.env.FACTURAIA_E2E_PORT || 3101);
 const baseUrl = process.env.FACTURAIA_E2E_BASE_URL || `http://${host}:${port}`;
 const mobileViewport = { width: 390, height: 844 };
+const e2eScope = process.env.FACTURAIA_E2E_SCOPE || "full";
 const dataDir =
   process.env.FACTURAIA_E2E_DATA_DIR ||
   path.join(process.cwd(), ".facturaia-e2e");
+const artifactDir =
+  process.env.FACTURAIA_E2E_ARTIFACT_DIR ||
+  path.join(process.cwd(), ".artifacts", "local-e2e");
 
 const userEmail = "asesor@despacho.local";
 const userPassword = "ClaveSegura123";
@@ -19,6 +24,44 @@ function assert(condition, message) {
   if (!condition) {
     throw new Error(message);
   }
+}
+
+function getArtifactPath(filename) {
+  return path.join(artifactDir, filename);
+}
+
+function sanitizeLabel(value) {
+  return value.replace(/[^a-z0-9_-]+/gi, "-").replace(/^-+|-+$/g, "").toLowerCase();
+}
+
+async function prepareArtifactDir() {
+  await rm(artifactDir, { recursive: true, force: true });
+  await mkdir(artifactDir, { recursive: true });
+}
+
+async function capturePageArtifact(page, label) {
+  const safeLabel = sanitizeLabel(label);
+  const html = await page.content();
+  const meta = {
+    label,
+    url: page.url(),
+    title: await page.title(),
+  };
+
+  await writeFile(getArtifactPath(`${safeLabel}.html`), html, "utf8");
+  await writeFile(
+    getArtifactPath(`${safeLabel}.json`),
+    JSON.stringify(meta, null, 2),
+    "utf8",
+  );
+  await page.screenshot({
+    path: getArtifactPath(`${safeLabel}.png`),
+    fullPage: true,
+  });
+}
+
+async function writeReport(filename, payload) {
+  await writeFile(getArtifactPath(filename), JSON.stringify(payload, null, 2), "utf8");
 }
 
 async function waitForServer(url, attempts = 120) {
@@ -360,12 +403,16 @@ async function runMobileRouteSweep(page) {
 async function main() {
   let server;
   let browser;
+  let currentPage = null;
+  let currentStage = e2eScope;
 
   try {
+    await prepareArtifactDir();
     server = await startLocalServer();
     browser = await chromium.launch({ headless: true });
 
     const page = await browser.newPage();
+    currentPage = page;
     const pageErrors = [];
     const consoleErrors = [];
 
@@ -376,51 +423,82 @@ async function main() {
       }
     });
 
-    await runCriticalLocalFlow(page);
-    await runProtectedRouteSweep(page);
-
-    const mobileContext = await browser.newContext({
-      viewport: mobileViewport,
-    });
-    const mobilePage = await mobileContext.newPage();
-
-    try {
-      await loginLocalUser(mobilePage);
-      await runMobileRouteSweep(mobilePage);
-    } finally {
-      await mobileContext.close();
+    if (e2eScope === "core" || e2eScope === "full") {
+      currentStage = "critical-local-flow";
+      await runCriticalLocalFlow(page);
+      currentStage = "protected-route-sweep";
+      await runProtectedRouteSweep(page);
     }
 
-    const backup = await exportBackupSnapshot(page);
+    if (e2eScope === "mobile" || e2eScope === "full") {
+      const mobileContext = await browser.newContext({
+        viewport: mobileViewport,
+      });
+      const mobilePage = await mobileContext.newPage();
+      currentPage = mobilePage;
 
-    assert(backup.profile, "El backup no incluye perfil.");
-    assert(backup.invoices.length >= 1, "El backup no incluye la factura creada.");
+      try {
+        currentStage = "mobile-login";
+        await loginLocalUser(mobilePage);
+        currentStage = "mobile-route-sweep";
+        await runMobileRouteSweep(mobilePage);
+      } finally {
+        await mobileContext.close();
+        currentPage = page;
+      }
+    }
 
-	    console.log(
-	      JSON.stringify(
-        {
-          baseUrl,
-          mobileViewport,
-          dataDir: path.resolve(dataDir),
-          finalUrl: page.url(),
-          pageErrors,
-          consoleErrors,
-	          backupCounts: {
-	            invoices: backup.invoices.length,
-	            clients: (backup.clients ?? []).length,
-	            expenses: (backup.expenses ?? []).length,
-	            commercialDocuments: (backup.commercialDocuments ?? []).length,
-	            signatures: (backup.documentSignatureRequests ?? []).length,
-	            messages: (backup.messages?.threads ?? []).length,
-	            mail: (backup.mail?.threads ?? []).length,
-	            bankMovements: (backup.bankMovements ?? []).length,
-	            feedback: (backup.feedbackEntries ?? []).length,
-	          },
-	        },
+    let backupCounts = null;
+
+    if (e2eScope === "core" || e2eScope === "full") {
+      currentStage = "backup-export";
+      const backup = await exportBackupSnapshot(page);
+
+      assert(backup.profile, "El backup no incluye perfil.");
+      assert(backup.invoices.length >= 1, "El backup no incluye la factura creada.");
+
+      backupCounts = {
+        invoices: backup.invoices.length,
+        clients: (backup.clients ?? []).length,
+        expenses: (backup.expenses ?? []).length,
+        commercialDocuments: (backup.commercialDocuments ?? []).length,
+        signatures: (backup.documentSignatureRequests ?? []).length,
+        messages: (backup.messages?.threads ?? []).length,
+        mail: (backup.mail?.threads ?? []).length,
+        bankMovements: (backup.bankMovements ?? []).length,
+        feedback: (backup.feedbackEntries ?? []).length,
+      };
+    }
+
+    const report = {
+      scope: e2eScope,
+      baseUrl,
+      mobileViewport,
+      dataDir: path.resolve(dataDir),
+      finalUrl: page.url(),
+      pageErrors,
+      consoleErrors,
+      backupCounts,
+    };
+
+    await writeReport("report.json", report);
+    console.log(
+      JSON.stringify(
+        report,
         null,
         2,
       ),
     );
+  } catch (error) {
+    if (currentPage) {
+      await capturePageArtifact(currentPage, `${e2eScope}-${currentStage}-failure`);
+    }
+    await writeReport("failure.json", {
+      scope: e2eScope,
+      stage: currentStage,
+      message: error instanceof Error ? error.message : String(error),
+    });
+    throw error;
   } finally {
     if (browser) {
       await browser.close();
