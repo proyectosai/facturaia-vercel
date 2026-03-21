@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import {
   ArchiveRestore,
   Blocks,
@@ -105,6 +106,10 @@ const mobileNavigation = [
 ];
 
 const allNavigationItems = navigationSections.flatMap((section) => section.items);
+const SIDEBAR_WIDTH_STORAGE_KEY = "facturaia.sidebar-width";
+const DEFAULT_SIDEBAR_WIDTH = 286;
+const MIN_SIDEBAR_WIDTH = 252;
+const MAX_SIDEBAR_WIDTH = 420;
 
 export function AppSidebar({
   children,
@@ -116,6 +121,12 @@ export function AppSidebar({
   demoMode?: boolean;
 }) {
   const pathname = usePathname();
+  const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH);
+  const resizeStateRef = useRef<{
+    pointerId: number;
+    startX: number;
+    startWidth: number;
+  } | null>(null);
   const activeHiddenMobileItem =
     allNavigationItems.find((item) => pathname === item.href || pathname.startsWith(`${item.href}/`)) ?? null;
   const visibleMobileItems = mobileNavigation.some(
@@ -133,10 +144,85 @@ export function AppSidebar({
       .map((segment) => segment[0]?.toUpperCase())
       .join("") || "FI";
 
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const storedWidth = window.localStorage.getItem(SIDEBAR_WIDTH_STORAGE_KEY);
+    const parsedWidth = Number(storedWidth);
+
+    if (Number.isFinite(parsedWidth)) {
+      setSidebarWidth(
+        Math.max(MIN_SIDEBAR_WIDTH, Math.min(MAX_SIDEBAR_WIDTH, parsedWidth)),
+      );
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.localStorage.setItem(
+      SIDEBAR_WIDTH_STORAGE_KEY,
+      String(Math.round(sidebarWidth)),
+    );
+  }, [sidebarWidth]);
+
+  useEffect(() => {
+    function stopResize() {
+      if (!resizeStateRef.current) {
+        return;
+      }
+
+      resizeStateRef.current = null;
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    }
+
+    function handlePointerMove(event: PointerEvent) {
+      if (!resizeStateRef.current) {
+        return;
+      }
+
+      const deltaX = event.clientX - resizeStateRef.current.startX;
+      const nextWidth = resizeStateRef.current.startWidth + deltaX;
+
+      setSidebarWidth(
+        Math.max(MIN_SIDEBAR_WIDTH, Math.min(MAX_SIDEBAR_WIDTH, nextWidth)),
+      );
+    }
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", stopResize);
+    window.addEventListener("pointercancel", stopResize);
+
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", stopResize);
+      window.removeEventListener("pointercancel", stopResize);
+      stopResize();
+    };
+  }, []);
+
+  function handleResizeStart(event: React.PointerEvent<HTMLButtonElement>) {
+    resizeStateRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startWidth: sidebarWidth,
+    };
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+  }
+
   return (
     <div className="flex min-h-screen">
-      <aside className="hidden w-[286px] shrink-0 border-r border-white/40 bg-[color:rgba(251,247,241,0.84)] px-5 py-6 backdrop-blur lg:block">
-        <div className="sticky top-6 flex h-[calc(100vh-3rem)] flex-col">
+      <aside
+        className="relative hidden shrink-0 border-r border-white/40 bg-[color:rgba(251,247,241,0.84)] backdrop-blur lg:block"
+        style={{ width: `${sidebarWidth}px` }}
+      >
+        <div className="flex h-screen min-h-0 flex-col px-5 py-6">
           <Link href="/" className="mb-6 flex items-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[color:var(--color-brand)] text-sm font-bold uppercase tracking-[0.2em] text-[color:var(--color-brand-foreground)]">
               FIA
@@ -149,41 +235,43 @@ export function AppSidebar({
             </div>
           </Link>
 
-          <nav className="space-y-5">
-            {navigationSections.map((section) => (
-              <div key={section.title} className="space-y-1.5">
-                <div className="px-3 pb-1">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-foreground/70">
-                    {section.title}
-                  </p>
-                  <p className="mt-1 text-xs text-muted-foreground">{section.hint}</p>
+          <div className="min-h-0 flex-1 overflow-y-auto pr-2">
+            <nav className="space-y-5">
+              {navigationSections.map((section) => (
+                <div key={section.title} className="space-y-1.5">
+                  <div className="px-3 pb-1">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-foreground/70">
+                      {section.title}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">{section.hint}</p>
+                  </div>
+                  {section.items.map((item) => {
+                    const Icon = item.icon;
+                    const active =
+                      pathname === item.href || pathname.startsWith(`${item.href}/`);
+
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className={cn(
+                          "flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition",
+                          active
+                            ? "bg-[color:var(--color-brand)] text-[color:var(--color-brand-foreground)] shadow-lg shadow-[color:color-mix(in_oklab,var(--color-brand)_18%,transparent)]"
+                            : "text-muted-foreground hover:bg-white/70 hover:text-foreground",
+                        )}
+                      >
+                        <Icon className="h-4 w-4" />
+                        <span className="min-w-0 truncate">{item.label}</span>
+                      </Link>
+                    );
+                  })}
                 </div>
-                {section.items.map((item) => {
-                  const Icon = item.icon;
-                  const active =
-                    pathname === item.href || pathname.startsWith(`${item.href}/`);
+              ))}
+            </nav>
+          </div>
 
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={cn(
-                        "flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition",
-                        active
-                          ? "bg-[color:var(--color-brand)] text-[color:var(--color-brand-foreground)] shadow-lg shadow-[color:color-mix(in_oklab,var(--color-brand)_18%,transparent)]"
-                          : "text-muted-foreground hover:bg-white/70 hover:text-foreground",
-                      )}
-                    >
-                      <Icon className="h-4 w-4" />
-                      {item.label}
-                    </Link>
-                  );
-                })}
-              </div>
-            ))}
-          </nav>
-
-          <Card className="mt-auto rounded-[30px] bg-[color:rgba(255,255,255,0.82)] p-5">
+          <Card className="mt-5 shrink-0 rounded-[30px] bg-[color:rgba(255,255,255,0.82)] p-5">
             <div className="flex items-center gap-3">
               <Avatar>
                 {profile.logo_url ? <AvatarImage src={profile.logo_url} alt="Logo" /> : null}
@@ -223,6 +311,19 @@ export function AppSidebar({
             </form>
           </Card>
         </div>
+
+        <button
+          type="button"
+          aria-label="Ajustar ancho del menú lateral"
+          title="Arrastra para ensanchar o estrechar el menú"
+          onDoubleClick={() => setSidebarWidth(DEFAULT_SIDEBAR_WIDTH)}
+          onPointerDown={handleResizeStart}
+          className={cn(
+            "absolute right-0 top-0 h-full w-3 -translate-x-1/2 cursor-col-resize border-none bg-transparent",
+            "after:absolute after:left-1/2 after:top-0 after:h-full after:w-px after:-translate-x-1/2 after:bg-border/70 after:transition",
+            "hover:after:w-[2px] hover:after:bg-[color:var(--color-brand)]",
+          )}
+        />
       </aside>
 
       <div className="flex min-h-screen min-w-0 flex-1 flex-col">
