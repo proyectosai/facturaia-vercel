@@ -87,6 +87,14 @@ export type StructuredMirrorMutation = {
   counters?: StructuredSnapshot["counters"];
 };
 
+export type StructuredLocalCoreSlices = {
+  clients: ClientRecord[];
+  auditEvents: LocalAuditEventRecord[];
+  invoices: InvoiceRecord[];
+  invoiceReminders: InvoiceReminderRecord[];
+  counters: StructuredSnapshot["counters"];
+};
+
 const STRUCTURED_MIRROR_TABLES = [
   "local_users",
   "local_profiles",
@@ -2158,6 +2166,156 @@ export async function listStructuredLocalInvoiceRemindersForUser(
     );
 
     return (result[0]?.values ?? []).map((values) => mapInvoiceReminderRow(values));
+  } finally {
+    db.close();
+  }
+}
+
+export async function readStructuredLocalCoreSlices(): Promise<StructuredLocalCoreSlices | null> {
+  const db = await openDatabase();
+
+  try {
+    if (getStructuredMirrorStatus(db) !== "ready") {
+      return null;
+    }
+
+    const clientsResult = db.exec(
+      `
+        SELECT
+          id,
+          user_id,
+          relation_kind,
+          status,
+          priority,
+          display_name,
+          first_name,
+          last_name,
+          company_name,
+          email,
+          phone,
+          nif,
+          address,
+          notes,
+          tags_json,
+          created_at,
+          updated_at
+        FROM local_clients
+        ORDER BY created_at ASC, updated_at ASC;
+      `,
+    );
+
+    const auditResult = db.exec(
+      `
+        SELECT
+          id,
+          user_id,
+          actor_type,
+          actor_id,
+          source,
+          action,
+          entity_type,
+          entity_id,
+          before_json,
+          after_json,
+          context_json,
+          created_at
+        FROM local_audit_events
+        ORDER BY created_at ASC;
+      `,
+    );
+
+    const invoicesResult = db.exec(
+      `
+        SELECT
+          id,
+          user_id,
+          public_id,
+          invoice_number,
+          issue_date,
+          due_date,
+          issuer_name,
+          issuer_nif,
+          issuer_address,
+          issuer_logo_url,
+          client_name,
+          client_nif,
+          client_address,
+          client_email,
+          line_items_json,
+          subtotal,
+          vat_total,
+          irpf_rate,
+          irpf_amount,
+          grand_total,
+          amount_paid,
+          payment_status,
+          paid_at,
+          last_reminder_at,
+          reminder_count,
+          collection_notes,
+          vat_breakdown_json,
+          created_at,
+          updated_at
+        FROM local_invoices
+        ORDER BY invoice_number ASC, created_at ASC;
+      `,
+    );
+
+    const remindersResult = db.exec(
+      `
+        SELECT
+          id,
+          user_id,
+          invoice_id,
+          delivery_channel,
+          trigger_mode,
+          batch_key,
+          recipient_email,
+          subject,
+          status,
+          error_message,
+          sent_at,
+          created_at
+        FROM local_invoice_reminders
+        ORDER BY created_at ASC, sent_at ASC;
+      `,
+    );
+
+    const countersResult = db.exec(
+      `
+        SELECT counter_key, counter_value
+        FROM local_counters;
+      `,
+    );
+
+    const counters: StructuredSnapshot["counters"] = {
+      invoice_number: 0,
+      quote_number: 0,
+      delivery_note_number: 0,
+    };
+
+    for (const row of countersResult[0]?.values ?? []) {
+      const key = String(row[0] ?? "");
+      const value = Number(row[1] ?? 0);
+
+      if (key === "invoice_number") {
+        counters.invoice_number = value;
+      } else if (key === "quote_number") {
+        counters.quote_number = value;
+      } else if (key === "delivery_note_number") {
+        counters.delivery_note_number = value;
+      }
+    }
+
+    return {
+      clients: (clientsResult[0]?.values ?? []).map((values) => mapClientRow(values)),
+      auditEvents: (auditResult[0]?.values ?? []).map((values) => mapAuditEventRow(values)),
+      invoices: (invoicesResult[0]?.values ?? []).map((values) => mapInvoiceRow(values)),
+      invoiceReminders: (remindersResult[0]?.values ?? []).map((values) =>
+        mapInvoiceReminderRow(values),
+      ),
+      counters,
+    };
   } finally {
     db.close();
   }

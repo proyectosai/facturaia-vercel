@@ -38,6 +38,7 @@ import {
   listStructuredLocalAuditEventsForUser,
   getLocalDatabaseFilePath,
   inspectLocalStructuredMirror,
+  writeLocalStateText,
 } from "@/lib/local-db";
 import type {
   CommercialDocumentRecord,
@@ -418,6 +419,75 @@ describe("local core persistence", () => {
     expect(reminders[0]?.recipient_email).toBe("admin@cobros.es");
     expect(mirror.counts.invoices).toBe(1);
     expect(mirror.counts.invoiceReminders).toBe(1);
+  });
+
+  test("treats sqlite as the primary source for clients invoices reminders and counters", async () => {
+    const client = await saveLocalClientRecord({
+      userId,
+      relationKind: "client",
+      status: "active",
+      priority: "medium",
+      displayName: "Empresa Fuente Principal S.L.",
+      firstName: null,
+      lastName: null,
+      companyName: "Empresa Fuente Principal S.L.",
+      email: "admin@principal.es",
+      phone: "+34 600444555",
+      nif: "B77777777",
+      address: "Calle Principal 1, Madrid",
+      notes: "Cliente que debe sobrevivir al snapshot",
+      tags: ["sqlite-primary"],
+    });
+
+    const invoice = await createLocalInvoiceRecord({
+      userId,
+      payload: {
+        issueDate: "2026-03-24",
+        dueDate: "2026-03-31",
+        issuerName: "Asesoria Martin Fiscal",
+        issuerNif: "B12345678",
+        issuerAddress: "Calle Alcala 100, Madrid",
+        clientName: client.display_name,
+        clientNif: client.nif ?? "",
+        clientAddress: client.address ?? "",
+        clientEmail: client.email ?? "",
+      },
+      lineItems: buildLineItems(),
+      totals: buildTotals(),
+      issuerLogoUrl: null,
+    });
+
+    await recordLocalInvoiceReminder({
+      userId,
+      invoiceId: invoice.id,
+      recipientEmail: "admin@principal.es",
+      subject: "Recordatorio principal",
+      triggerMode: "manual",
+      batchKey: null,
+    });
+
+    const staleSnapshot = await getLocalCoreSnapshot();
+    staleSnapshot.clients = [];
+    staleSnapshot.invoices = [];
+    staleSnapshot.invoiceReminders = [];
+    staleSnapshot.auditEvents = [];
+    staleSnapshot.counters.invoice_number = 0;
+
+    await writeLocalStateText(
+      JSON.stringify(staleSnapshot, null, 2),
+      JSON.stringify(staleSnapshot, null, 2),
+      { structuredMutation: {} },
+    );
+
+    const recovered = await getLocalCoreSnapshot();
+
+    expect(recovered.clients).toHaveLength(1);
+    expect(recovered.invoices).toHaveLength(1);
+    expect(recovered.invoiceReminders).toHaveLength(1);
+    expect(recovered.auditEvents.length).toBeGreaterThan(0);
+    expect(recovered.counters.invoice_number).toBe(1);
+    expect(recovered.clients[0]?.display_name).toBe("Empresa Fuente Principal S.L.");
+    expect(recovered.invoices[0]?.client_name).toBe("Empresa Fuente Principal S.L.");
   });
 
   test("stores feedback entries locally and updates their status", async () => {

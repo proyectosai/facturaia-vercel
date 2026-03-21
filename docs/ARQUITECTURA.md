@@ -87,6 +87,7 @@ Responsabilidades:
 - poblar un mirror relacional dentro de `core.sqlite` como puente hacia un esquema SQLite real
 - servir ya lecturas estructuradas de auditoría, uso, clientes y facturas desde ese mirror cuando no hay cifrado local activo
 - aplicar también upserts dirigidos de clientes, facturas, cobros y recordatorios sobre ese mirror para reducir resincronizados completos
+- tratar ya `clientes`, `facturas`, `recordatorios`, `auditoría` y `contadores` como secciones con SQLite prioritaria al reconstruir el núcleo en modo local
 - recalcular contadores y estado base del usuario local
 - preservar compatibilidad con instalaciones antiguas que todavía arranquen desde `core.json`
 

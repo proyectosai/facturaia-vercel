@@ -57,6 +57,7 @@ import {
   listStructuredLocalAuditEventsForUser,
   listStructuredLocalInvoicesForUser,
   listStructuredLocalInvoiceRemindersForUser,
+  readStructuredLocalCoreSlices,
   getLocalDataDir as getLocalDataDirFromDb,
   readLocalStateText,
   type StructuredMirrorMutation,
@@ -195,13 +196,29 @@ async function readLocalCoreData(): Promise<LocalCoreData> {
 
     const encryptedEnvelope = tryParseEncryptedEnvelope(raw);
 
-    if (encryptedEnvelope) {
-      return tryParseLocalCoreData(
-        decryptEncryptedEnvelope(encryptedEnvelope, "local-core"),
-      );
+    const baseData = encryptedEnvelope
+      ? tryParseLocalCoreData(
+          decryptEncryptedEnvelope(encryptedEnvelope, "local-core"),
+        )
+      : tryParseLocalCoreData(raw);
+
+    const structuredSlices = await readStructuredLocalCoreSlices();
+
+    if (!structuredSlices) {
+      return baseData;
     }
 
-    return tryParseLocalCoreData(raw);
+    return {
+      ...baseData,
+      clients: structuredSlices.clients,
+      auditEvents: structuredSlices.auditEvents,
+      invoices: structuredSlices.invoices,
+      invoiceReminders: structuredSlices.invoiceReminders,
+      counters: {
+        ...baseData.counters,
+        ...structuredSlices.counters,
+      },
+    };
   } catch (error) {
     if ((error as NodeJS.ErrnoException)?.code === "ENOENT") {
       return getDefaultLocalData();
