@@ -4,7 +4,12 @@ import path from "node:path";
 import { promises as fs } from "node:fs";
 
 import initSqlJs, { type Database, type SqlJsStatic } from "sql.js";
-import type { ClientRecord, InvoiceRecord, LocalAuditEventRecord } from "@/lib/types";
+import type {
+  ClientRecord,
+  InvoiceRecord,
+  InvoiceReminderRecord,
+  LocalAuditEventRecord,
+} from "@/lib/types";
 
 let sqlJsPromise: Promise<SqlJsStatic> | null = null;
 
@@ -74,6 +79,13 @@ export type StructuredMirrorSection =
   | "invoices"
   | "invoiceReminders"
   | "counters";
+export type StructuredMirrorMutation = {
+  clients?: ClientRecord[];
+  auditEvents?: LocalAuditEventRecord[];
+  invoices?: InvoiceRecord[];
+  invoiceReminders?: InvoiceReminderRecord[];
+  counters?: StructuredSnapshot["counters"];
+};
 
 const STRUCTURED_MIRROR_TABLES = [
   "local_users",
@@ -785,6 +797,188 @@ function replaceStructuredCounters(db: Database, parsed: StructuredSnapshot) {
   );
 }
 
+function upsertTableRow(
+  db: Database,
+  tableName: string,
+  columns: string[],
+  conflictColumn: string,
+  row: Record<string, unknown>,
+) {
+  const placeholders = columns.map(() => "?").join(", ");
+  const updateAssignments = columns
+    .filter((column) => column !== conflictColumn)
+    .map((column) => `${column} = excluded.${column}`)
+    .join(", ");
+
+  db.run(
+    `
+      INSERT INTO ${tableName} (${columns.join(", ")})
+      VALUES (${placeholders})
+      ON CONFLICT(${conflictColumn})
+      DO UPDATE SET ${updateAssignments};
+    `,
+    columns.map((column) => toSqlValue(row[column])),
+  );
+}
+
+function upsertStructuredClientRows(db: Database, rows: ClientRecord[]) {
+  for (const row of rows) {
+    upsertTableRow(
+      db,
+      "local_clients",
+      [
+        "id",
+        "user_id",
+        "relation_kind",
+        "status",
+        "priority",
+        "display_name",
+        "first_name",
+        "last_name",
+        "company_name",
+        "email",
+        "phone",
+        "nif",
+        "address",
+        "notes",
+        "tags_json",
+        "created_at",
+        "updated_at",
+      ],
+      "id",
+      {
+        ...row,
+        tags_json: toJsonText(row.tags),
+      },
+    );
+  }
+}
+
+function upsertStructuredAuditEventRows(db: Database, rows: LocalAuditEventRecord[]) {
+  for (const row of rows) {
+    upsertTableRow(
+      db,
+      "local_audit_events",
+      [
+        "id",
+        "user_id",
+        "actor_type",
+        "actor_id",
+        "source",
+        "action",
+        "entity_type",
+        "entity_id",
+        "before_json",
+        "after_json",
+        "context_json",
+        "created_at",
+      ],
+      "id",
+      {
+        ...row,
+        before_json: toJsonText(row.before_json),
+        after_json: toJsonText(row.after_json),
+        context_json: toJsonText(row.context_json),
+      },
+    );
+  }
+}
+
+function upsertStructuredInvoiceRows(db: Database, rows: InvoiceRecord[]) {
+  for (const row of rows) {
+    upsertTableRow(
+      db,
+      "local_invoices",
+      [
+        "id",
+        "user_id",
+        "public_id",
+        "invoice_number",
+        "issue_date",
+        "due_date",
+        "issuer_name",
+        "issuer_nif",
+        "issuer_address",
+        "issuer_logo_url",
+        "client_name",
+        "client_nif",
+        "client_address",
+        "client_email",
+        "line_items_json",
+        "subtotal",
+        "vat_total",
+        "irpf_rate",
+        "irpf_amount",
+        "grand_total",
+        "amount_paid",
+        "payment_status",
+        "paid_at",
+        "last_reminder_at",
+        "reminder_count",
+        "collection_notes",
+        "vat_breakdown_json",
+        "created_at",
+        "updated_at",
+      ],
+      "id",
+      {
+        ...row,
+        line_items_json: toJsonText(row.line_items),
+        vat_breakdown_json: toJsonText(row.vat_breakdown),
+      },
+    );
+  }
+}
+
+function upsertStructuredInvoiceReminderRows(db: Database, rows: InvoiceReminderRecord[]) {
+  for (const row of rows) {
+    upsertTableRow(
+      db,
+      "local_invoice_reminders",
+      [
+        "id",
+        "user_id",
+        "invoice_id",
+        "delivery_channel",
+        "trigger_mode",
+        "batch_key",
+        "recipient_email",
+        "subject",
+        "status",
+        "error_message",
+        "sent_at",
+        "created_at",
+      ],
+      "id",
+      row,
+    );
+  }
+}
+
+function upsertStructuredCounters(db: Database, counters: StructuredSnapshot["counters"]) {
+  upsertTableRow(
+    db,
+    "local_counters",
+    ["counter_key", "counter_value"],
+    "counter_key",
+    { counter_key: "invoice_number", counter_value: counters.invoice_number },
+  );
+  upsertTableRow(
+    db,
+    "local_counters",
+    ["counter_key", "counter_value"],
+    "counter_key",
+    { counter_key: "quote_number", counter_value: counters.quote_number },
+  );
+  upsertTableRow(
+    db,
+    "local_counters",
+    ["counter_key", "counter_value"],
+    "counter_key",
+    { counter_key: "delivery_note_number", counter_value: counters.delivery_note_number },
+  );
+}
+
 function readSchemaInfo(db: Database, key: string) {
   const result = db.exec(
     "SELECT info_value FROM local_schema_info WHERE info_key = ? LIMIT 1;",
@@ -883,6 +1077,23 @@ function mapInvoiceRow(values: unknown[]): InvoiceRecord {
     vat_breakdown: parseJsonArrayField<InvoiceRecord["vat_breakdown"][number]>(values[26]),
     created_at: String(values[27] ?? ""),
     updated_at: String(values[28] ?? ""),
+  };
+}
+
+function mapInvoiceReminderRow(values: unknown[]): InvoiceReminderRecord {
+  return {
+    id: String(values[0] ?? ""),
+    user_id: String(values[1] ?? ""),
+    invoice_id: String(values[2] ?? ""),
+    delivery_channel: String(values[3] ?? "email") as InvoiceReminderRecord["delivery_channel"],
+    trigger_mode: String(values[4] ?? "manual") as InvoiceReminderRecord["trigger_mode"],
+    batch_key: values[5] === null ? null : String(values[5] ?? ""),
+    recipient_email: String(values[6] ?? ""),
+    subject: String(values[7] ?? ""),
+    status: String(values[8] ?? "sent") as InvoiceReminderRecord["status"],
+    error_message: values[9] === null ? null : String(values[9] ?? ""),
+    sent_at: String(values[10] ?? ""),
+    created_at: String(values[11] ?? ""),
   };
 }
 
@@ -1417,6 +1628,45 @@ function syncStructuredMirrorSections(
   }
 }
 
+function applyStructuredMirrorMutation(
+  db: Database,
+  mutation: StructuredMirrorMutation,
+) {
+  const syncedAt = new Date().toISOString();
+
+  db.run("BEGIN TRANSACTION;");
+
+  try {
+    if (mutation.clients?.length) {
+      upsertStructuredClientRows(db, mutation.clients);
+    }
+
+    if (mutation.auditEvents?.length) {
+      upsertStructuredAuditEventRows(db, mutation.auditEvents);
+    }
+
+    if (mutation.invoices?.length) {
+      upsertStructuredInvoiceRows(db, mutation.invoices);
+    }
+
+    if (mutation.invoiceReminders?.length) {
+      upsertStructuredInvoiceReminderRows(db, mutation.invoiceReminders);
+    }
+
+    if (mutation.counters) {
+      upsertStructuredCounters(db, mutation.counters);
+    }
+
+    upsertSchemaInfo(db, "structured_mirror_schema_version", String(STRUCTURED_MIRROR_SCHEMA_VERSION));
+    upsertSchemaInfo(db, "structured_mirror_last_synced_at", syncedAt);
+    upsertSchemaInfo(db, "structured_mirror_status", "ready");
+    db.run("COMMIT;");
+  } catch (error) {
+    db.run("ROLLBACK;");
+    throw error;
+  }
+}
+
 async function persistDatabase(db: Database) {
   await ensureLocalDataDir();
   const filePath = getLocalDatabaseFilePath();
@@ -1498,6 +1748,7 @@ export async function writeLocalStateText(
   snapshotText = payloadText,
   options?: {
     structuredSections?: StructuredMirrorSection[];
+    structuredMutation?: StructuredMirrorMutation;
   },
 ) {
   const db = await openDatabase();
@@ -1506,8 +1757,14 @@ export async function writeLocalStateText(
     writePayloadToDatabase(db, payloadText);
     if (isStructuredMirrorEnabled()) {
       const structuredSections = options?.structuredSections;
+      const structuredMutation = options?.structuredMutation;
 
       if (
+        structuredMutation &&
+        getStructuredMirrorStatus(db) === "ready"
+      ) {
+        applyStructuredMirrorMutation(db, structuredMutation);
+      } else if (
         Array.isArray(structuredSections) &&
         structuredSections.length > 0 &&
         getStructuredMirrorStatus(db) === "ready"
@@ -1863,6 +2120,44 @@ export async function getStructuredLocalInvoiceByPublicId(
 
     const row = result[0]?.values?.[0];
     return row ? mapInvoiceRow(row) : null;
+  } finally {
+    db.close();
+  }
+}
+
+export async function listStructuredLocalInvoiceRemindersForUser(
+  userId: string,
+): Promise<InvoiceReminderRecord[] | null> {
+  const db = await openDatabase();
+
+  try {
+    if (getStructuredMirrorStatus(db) !== "ready") {
+      return null;
+    }
+
+    const result = db.exec(
+      `
+        SELECT
+          id,
+          user_id,
+          invoice_id,
+          delivery_channel,
+          trigger_mode,
+          batch_key,
+          recipient_email,
+          subject,
+          status,
+          error_message,
+          sent_at,
+          created_at
+        FROM local_invoice_reminders
+        WHERE user_id = ?
+        ORDER BY sent_at DESC, created_at DESC;
+      `,
+      [userId],
+    );
+
+    return (result[0]?.values ?? []).map((values) => mapInvoiceReminderRow(values));
   } finally {
     db.close();
   }

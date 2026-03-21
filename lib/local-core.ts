@@ -56,8 +56,10 @@ import {
   listStructuredLocalClientsForUser,
   listStructuredLocalAuditEventsForUser,
   listStructuredLocalInvoicesForUser,
+  listStructuredLocalInvoiceRemindersForUser,
   getLocalDataDir as getLocalDataDirFromDb,
   readLocalStateText,
+  type StructuredMirrorMutation,
   type StructuredMirrorSection,
   writeLocalStateText,
 } from "@/lib/local-db";
@@ -213,6 +215,7 @@ async function writeLocalCoreData(
   data: LocalCoreData,
   options?: {
     structuredSections?: StructuredMirrorSection[];
+    structuredMutation?: StructuredMirrorMutation;
   },
 ) {
   const serialized = JSON.stringify(data, null, 2);
@@ -232,12 +235,22 @@ async function updateLocalCoreData<T>(
   updater: (data: LocalCoreData) => T | Promise<T>,
   options?: {
     structuredSections?: StructuredMirrorSection[];
+    structuredMutation?:
+      | StructuredMirrorMutation
+      | ((data: LocalCoreData, result: T) => StructuredMirrorMutation | null | undefined);
   },
 ) {
   return runLocalCoreMutation(async () => {
     const data = await readLocalCoreData();
     const result = await updater(data);
-    await writeLocalCoreData(data, options);
+    const structuredMutation =
+      typeof options?.structuredMutation === "function"
+        ? (options.structuredMutation(data, result) ?? undefined)
+        : options?.structuredMutation;
+    await writeLocalCoreData(data, {
+      structuredSections: options?.structuredSections,
+      structuredMutation,
+    });
     return result;
   });
 }
@@ -1215,6 +1228,10 @@ export async function saveLocalClientRecord({
     return client;
   }, {
     structuredSections: ["clients", "auditEvents"],
+    structuredMutation: (data, result) => ({
+      clients: result ? [result] : [],
+      auditEvents: data.auditEvents.at(-1) ? [data.auditEvents.at(-1)!] : [],
+    }),
   });
 }
 
@@ -1330,6 +1347,11 @@ export async function createLocalInvoiceRecord({
     return invoice;
   }, {
     structuredSections: ["invoices", "auditEvents", "counters"],
+    structuredMutation: (data, result) => ({
+      invoices: result ? [result] : [],
+      auditEvents: data.auditEvents.at(-1) ? [data.auditEvents.at(-1)!] : [],
+      counters: data.counters,
+    }),
   });
 }
 
@@ -2172,6 +2194,10 @@ export async function updateLocalInvoicePaymentStates(
     return updated;
   }, {
     structuredSections: ["invoices", "auditEvents"],
+    structuredMutation: (data, result) => ({
+      invoices: result,
+      auditEvents: result.length > 0 ? data.auditEvents.slice(-result.length) : [],
+    }),
   });
 }
 
@@ -2718,6 +2744,12 @@ export async function markLocalMailThreadRead(userId: string, threadId: string) 
 }
 
 export async function listLocalInvoiceRemindersForUser(userId: string) {
+  const mirrored = await listStructuredLocalInvoiceRemindersForUser(userId);
+
+  if (mirrored) {
+    return mirrored;
+  }
+
   const data = await readLocalCoreData();
   return data.invoiceReminders
     .filter((reminder) => reminder.user_id === userId)
@@ -2772,6 +2804,12 @@ export async function recordLocalInvoiceReminder({
     return reminder;
   }, {
     structuredSections: ["invoices", "invoiceReminders"],
+    structuredMutation: (data, result) => ({
+      invoices: data.invoices.filter(
+        (candidate) => candidate.user_id === userId && candidate.id === invoiceId,
+      ),
+      invoiceReminders: result ? [result] : [],
+    }),
   });
 }
 

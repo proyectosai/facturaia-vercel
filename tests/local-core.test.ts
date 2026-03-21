@@ -17,6 +17,7 @@ import {
   listLocalClientsForUser,
   listLocalFeedbackEntriesForUser,
   listLocalInvoicesForUser,
+  listLocalInvoiceRemindersForUser,
   getLocalPublicSignatureRequestByToken,
   linkLocalCommercialDocumentToInvoice,
   markLocalSignatureRequestViewed,
@@ -404,6 +405,7 @@ describe("local core persistence", () => {
     });
 
     const fromMirror = await getLocalInvoiceById(userId, invoice.id);
+    const reminders = await listLocalInvoiceRemindersForUser(userId);
     const mirror = await inspectLocalStructuredMirror();
 
     expect(paid?.payment_status).toBe("paid");
@@ -412,6 +414,8 @@ describe("local core persistence", () => {
     expect(fromMirror?.payment_status).toBe("pending");
     expect(fromMirror?.reminder_count).toBe(1);
     expect(fromMirror?.last_reminder_at).toBeTruthy();
+    expect(reminders).toHaveLength(1);
+    expect(reminders[0]?.recipient_email).toBe("admin@cobros.es");
     expect(mirror.counts.invoices).toBe(1);
     expect(mirror.counts.invoiceReminders).toBe(1);
   });

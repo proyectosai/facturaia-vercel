@@ -136,7 +136,7 @@ Comportamiento:
 - el perfil fiscal, las facturas, el PDF, la factura pública, los cobros y los recordatorios se guardan en una base SQLite local dentro del equipo
 - `core.sqlite` mantiene ahora dos capas: snapshot compatible y mirror relacional interno como puente hacia una base local más madura
 - el mirror ya alimenta lecturas reales de auditoría, uso, clientes y facturas cuando está disponible
-- las mutaciones locales de clientes, facturas, cobros y recordatorios ya resincronizan solo las tablas SQLite afectadas, no todo el mirror completo
+- las mutaciones locales de clientes, facturas, cobros y recordatorios ya actualizan el mirror SQLite con upserts dirigidos, sin resincronizarlo completo en cada cambio
 - el acceso local aplica expiración real de sesión, bloqueo temporal por intentos fallidos y auditoría persistente de eventos sensibles
 - en producción, si falta `FACTURAIA_LOCAL_SESSION_SECRET` o activas cifrado sin `FACTURAIA_ENCRYPTION_PASSPHRASE`, FacturaIA bloquea acceso protegido, exportación y restauración hasta corregir la instalación
 - después conviene poner `FACTURAIA_LOCAL_BOOTSTRAP=0`
