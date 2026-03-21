@@ -111,3 +111,7 @@ Si eres autónomo y no técnico:
 - no intentes instalarlo todo a la vez
 - no conviertas un módulo experimental en pieza crítica
 - no metas datos sensibles hasta haber validado backup, envío y recuperación
+
+Si necesitas una lectura más operativa para clientes o pilotos:
+
+- [Adopción para clientes](./ADOPCION_CLIENTES.md)

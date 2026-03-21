@@ -188,6 +188,7 @@ No todo tiene la misma madurez. Esta es la forma correcta de leer el proyecto ho
 
 Si buscas una guía clara antes de instalar nada:
 
+- [Adopción para clientes](./docs/ADOPCION_CLIENTES.md)
 - [Guía en 15 minutos](./docs/GUIA_15_MINUTOS.md)
 - [Instalación en Windows](./docs/INSTALACION_WINDOWS.md)
 - [Instalación en macOS](./docs/INSTALACION_MACOS.md)
@@ -420,6 +421,7 @@ Tablas principales activas:
 ## Documentación adicional
 
 - [Instalación y configuración](./docs/INSTALACION.md)
+- [Adopción para clientes](./docs/ADOPCION_CLIENTES.md)
 - [Guía en 15 minutos](./docs/GUIA_15_MINUTOS.md)
 - [Estado real del producto](./docs/ESTADO_REAL.md)
 - [Sistema de módulos](./docs/SISTEMA_DE_MODULOS.md)
