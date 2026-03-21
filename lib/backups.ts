@@ -107,6 +107,17 @@ export type FacturaIaBackupEnvelope = {
   checksum: string;
 };
 
+export type BackupContentMismatch = {
+  field: string;
+  expected: string | number | boolean;
+  actual: string | number | boolean;
+};
+
+export type BackupContentComparison = {
+  matches: boolean;
+  mismatches: BackupContentMismatch[];
+};
+
 export type BackupSummary = {
   clients: number;
   feedbackEntries: number;
@@ -175,6 +186,119 @@ function getBackupModulesIncluded(backup: FacturaIaBackup) {
   }
 
   return modules;
+}
+
+function sortByJsonValue<T>(items: T[]) {
+  return [...items].sort((left, right) =>
+    JSON.stringify(left).localeCompare(JSON.stringify(right)),
+  );
+}
+
+function normalizeBackupForComparison(backup: FacturaIaBackup) {
+  return {
+    schemaVersion: backup.schemaVersion,
+    source: backup.source,
+    appUrl: backup.appUrl,
+    user: backup.user,
+    profile: backup.profile,
+    clients: sortByJsonValue(backup.clients),
+    feedbackEntries: sortByJsonValue(backup.feedbackEntries),
+    invoices: sortByJsonValue(backup.invoices),
+    invoiceReminders: sortByJsonValue(backup.invoiceReminders),
+    commercialDocuments: sortByJsonValue(backup.commercialDocuments),
+    documentSignatureRequests: sortByJsonValue(backup.documentSignatureRequests),
+    expenses: sortByJsonValue(backup.expenses),
+    bankMovements: sortByJsonValue(backup.bankMovements),
+    aiUsage: sortByJsonValue(backup.aiUsage),
+    messages: {
+      connections: sortByJsonValue(backup.messages.connections),
+      threads: sortByJsonValue(backup.messages.threads),
+      records: sortByJsonValue(backup.messages.records),
+    },
+    mail: {
+      threads: sortByJsonValue(backup.mail.threads),
+      messages: sortByJsonValue(backup.mail.messages),
+      syncRuns: sortByJsonValue(backup.mail.syncRuns),
+    },
+  };
+}
+
+export function compareBackupContents(
+  expected: FacturaIaBackup,
+  actual: FacturaIaBackup,
+): BackupContentComparison {
+  const normalizedExpected = normalizeBackupForComparison(expected);
+  const normalizedActual = normalizeBackupForComparison(actual);
+  const mismatches: BackupContentMismatch[] = [];
+
+  const expectedJson = JSON.stringify(normalizedExpected);
+  const actualJson = JSON.stringify(normalizedActual);
+
+  if (expectedJson === actualJson) {
+    return {
+      matches: true,
+      mismatches,
+    };
+  }
+
+  const summaryFields: Array<keyof BackupSummary> = [
+    "clients",
+    "feedbackEntries",
+    "invoices",
+    "invoiceReminders",
+    "commercialDocuments",
+    "documentSignatureRequests",
+    "expenses",
+    "bankMovements",
+    "aiUsageRows",
+    "messageConnections",
+    "messageThreads",
+    "messageRecords",
+    "mailThreads",
+    "mailMessages",
+  ];
+
+  const expectedSummary = getBackupCounts(expected);
+  const actualSummary = getBackupCounts(actual);
+
+  for (const field of summaryFields) {
+    if (expectedSummary[field] !== actualSummary[field]) {
+      mismatches.push({
+        field: `counts.${field}`,
+        expected: expectedSummary[field],
+        actual: actualSummary[field],
+      });
+    }
+  }
+
+  if (expected.profile?.id !== actual.profile?.id) {
+    mismatches.push({
+      field: "profile.id",
+      expected: expected.profile?.id ?? false,
+      actual: actual.profile?.id ?? false,
+    });
+  }
+
+  if (expected.user.email !== actual.user.email) {
+    mismatches.push({
+      field: "user.email",
+      expected: expected.user.email,
+      actual: actual.user.email,
+    });
+  }
+
+  if (mismatches.length === 0) {
+    mismatches.push({
+      field: "payload",
+      expected: "snapshot-equal",
+      actual: "snapshot-different",
+    });
+  }
+
+  return {
+    matches: false,
+    mismatches,
+  };
 }
 
 export function buildBackupEnvelope(backup: FacturaIaBackup): FacturaIaBackupEnvelope {

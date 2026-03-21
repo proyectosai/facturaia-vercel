@@ -31,6 +31,12 @@ Antes de dar por buena una iteración del modo local, deben pasar estos gates:
    - aceptación pública
    - conversión a factura
    - export de backup
+7. prueba de desastre:
+   - exportar
+   - restaurar en instalación vacía
+   - reexportar
+   - comparar contenido
+   - validar continuidad de numeración
 
 En el repositorio, `lint`, `typecheck`, `npm test`, `test:massive-local`, build demo y smoke tests ya se ejecutan en CI sobre `Linux`, `macOS` y `Windows`. El e2e largo sigue siendo una capa adicional de endurecimiento y todavía no sustituye a los gates segmentados.
 
@@ -53,6 +59,8 @@ En el repositorio, `lint`, `typecheck`, `npm test`, `test:massive-local`, build 
 - errores legibles en modo local
 - acceso protegido a export y restore
 - cifrado opcional reproducible del núcleo local y de los backups cuando esté activado
+- manifest y checksum válidos en el backup
+- restauración rechazada si la copia ha sido manipulada
 
 ### UX operativa
 

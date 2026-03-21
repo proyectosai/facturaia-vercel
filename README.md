@@ -241,7 +241,7 @@ npm run test:massive-local
 npm run test:quality
 ```
 
-CI ya ejecuta `lint`, `typecheck`, `npm test`, `test:massive-local`, build demo y smoke tests en `Linux`, `macOS` y `Windows`. El harness `npm run test:e2e:local` sigue siendo una capa adicional de endurecimiento manual mientras terminamos de estabilizarlo como gate automático.
+CI ya ejecuta `lint`, `typecheck`, `npm test`, `test:massive-local`, build demo y smoke tests en `Linux`, `macOS` y `Windows`. El harness `npm run test:e2e:local` sigue siendo una capa adicional de endurecimiento manual mientras terminamos de estabilizarlo como gate automático. La batería local ya cubre roundtrip de `backup -> restore -> reexport -> compare` y continuidad de numeración tras desastre.
 
 Modo demo:
 

@@ -3,7 +3,9 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
+import type { InvoiceRecord } from "@/lib/types";
 import {
+  compareBackupContents,
   exportBackupForUser,
   inspectBackupPayload,
   parseBackupPayload,
@@ -11,15 +13,20 @@ import {
   serializeBackupPayload,
 } from "@/lib/backups";
 import {
+  createLocalBankMovementRecords,
   createLocalCommercialDocumentRecord,
   createLocalDocumentSignatureRequest,
   createLocalExpenseRecord,
   createLocalFeedbackEntry,
   createLocalInvoiceRecord,
   getLocalCoreSnapshot,
+  reconcileLocalBankMovement,
+  recordLocalInvoiceReminder,
   respondToLocalDocumentSignatureRequest,
   saveLocalClientRecord,
   saveLocalProfile,
+  syncLocalInvoicePaymentStatusFromBankMatches,
+  updateLocalInvoicePaymentState,
 } from "@/lib/local-core";
 
 const userId = "user-backup-local";
@@ -53,6 +60,39 @@ function buildTotals() {
         vatAmount: 73.5,
       },
     ],
+  };
+}
+
+function buildMassLineItems(index: number) {
+  const base = 250 + index * 5;
+  const vat = Number((base * 0.21).toFixed(2));
+
+  return {
+    lineItems: [
+      {
+        description: `Servicio recurrente empresa ${index}`,
+        quantity: 1,
+        unitPrice: base,
+        vatRate: 21 as const,
+        lineBase: base,
+        vatAmount: vat,
+        lineTotal: Number((base + vat).toFixed(2)),
+      },
+    ],
+    totals: {
+      subtotal: base,
+      vatTotal: vat,
+      irpfRate: 0,
+      irpfAmount: 0,
+      grandTotal: Number((base + vat).toFixed(2)),
+      vatBreakdown: [
+        {
+          rate: 21 as const,
+          taxableBase: base,
+          vatAmount: vat,
+        },
+      ],
+    },
   };
 }
 
@@ -311,6 +351,237 @@ describe("local backup export and restore", () => {
       expect(restored.documentSignatureRequests[0]?.status).toBe("signed");
       expect(restored.invoices[0]?.invoice_number).toBe(1);
       expect(restored.clients[0]?.display_name).toBe("Empresa Norte S.L.");
+    } finally {
+      await rm(restoreDir, { recursive: true, force: true });
+      process.env.FACTURAIA_DATA_DIR = localDataDir;
+    }
+  });
+
+  test("supports disaster restore roundtrip with mass invoicing and banking continuity", async () => {
+    await saveLocalProfile({
+      userId,
+      email,
+      fullName: "Asesoria Martin Fiscal",
+      nif: "B12345678",
+      address: "Calle Alcala 100, Madrid",
+      logoUrl: null,
+    });
+
+    for (let index = 1; index <= 3; index += 1) {
+      await saveLocalClientRecord({
+        userId,
+        relationKind: "client",
+        status: "active",
+        priority: index === 1 ? "high" : "medium",
+        displayName: `Empresa ${index} S.L.`,
+        firstName: null,
+        lastName: null,
+        companyName: `Empresa ${index} S.L.`,
+        email: `admin${index}@empresa.test`,
+        phone: `+34 6000000${index}`,
+        nif: `B76543${String(index).padStart(3, "0")}`,
+        address: `Avenida Cliente ${index}, Madrid`,
+        notes: "Cliente para prueba de desastre",
+        tags: ["desastre", "local"],
+      });
+    }
+
+    const invoices: InvoiceRecord[] = [];
+
+    for (let index = 1; index <= 24; index += 1) {
+      const { lineItems, totals } = buildMassLineItems(index);
+      const created = await createLocalInvoiceRecord({
+        userId,
+        payload: {
+          issueDate: `2026-04-${String(((index - 1) % 28) + 1).padStart(2, "0")}`,
+          dueDate: `2026-05-${String(((index - 1) % 28) + 1).padStart(2, "0")}`,
+          issuerName: "Asesoria Martin Fiscal",
+          issuerNif: "B12345678",
+          issuerAddress: "Calle Alcala 100, Madrid",
+          clientName: `Empresa ${((index - 1) % 3) + 1} S.L.`,
+          clientNif: `B76543${String(((index - 1) % 3) + 1).padStart(3, "0")}`,
+          clientAddress: `Avenida Cliente ${((index - 1) % 3) + 1}, Madrid`,
+          clientEmail: `admin${((index - 1) % 3) + 1}@empresa.test`,
+        },
+        lineItems,
+        totals,
+        issuerLogoUrl: null,
+      });
+
+      invoices.push(created);
+    }
+
+    await updateLocalInvoicePaymentState(userId, invoices[0]!.id, "mark_paid");
+    await updateLocalInvoicePaymentState(userId, invoices[1]!.id, "mark_paid");
+    await recordLocalInvoiceReminder({
+      userId,
+      invoiceId: invoices[2]!.id,
+      recipientEmail: invoices[2]!.client_email,
+      subject: "Recordatorio lote desastre",
+      triggerMode: "batch",
+      batchKey: "overdue_due",
+    });
+
+    const [movement] = await createLocalBankMovementRecords({
+      userId,
+      rows: [
+        {
+          accountLabel: "Cuenta principal",
+          bookingDate: "2026-05-12",
+          valueDate: "2026-05-12",
+          description: "Transferencia cliente Empresa 3",
+          counterpartyName: "Empresa 3 S.L.",
+          amount: Number((buildMassLineItems(3).totals.grandTotal / 2).toFixed(2)),
+          currency: "EUR",
+          direction: "credit",
+          balance: 8200,
+          sourceFileName: "movimientos.csv",
+          sourceHash: "desastre-mov-1",
+          rawRow: {
+            row: 1,
+          },
+        },
+      ],
+    });
+
+    await reconcileLocalBankMovement({
+      userId,
+      movementId: movement!.id,
+      actionKind: "match_invoice",
+      targetId: invoices[2]!.id,
+      notes: "Cobro parcial para prueba de desastre",
+    });
+    await syncLocalInvoicePaymentStatusFromBankMatches(userId, [invoices[2]!.id]);
+
+    await createLocalExpenseRecord({
+      userId,
+      expenseKind: "supplier_invoice",
+      reviewStatus: "reviewed",
+      vendorName: "Proveedor Disaster S.L.",
+      vendorNif: "B33445566",
+      expenseDate: "2026-04-20",
+      currency: "EUR",
+      baseAmount: 180,
+      vatAmount: 37.8,
+      totalAmount: 217.8,
+      notes: "Gasto para test de roundtrip",
+      sourceFileName: "gasto-desastre.txt",
+      sourceFilePath: "data:text/plain;base64,ZmFrZQ==",
+      sourceFileMimeType: "text/plain",
+      extractionMethod: "manual",
+      rawText: "Factura proveedor disaster",
+      extractedPayload: {
+        confidence: 1,
+      },
+    });
+
+    await createLocalFeedbackEntry({
+      userId,
+      sourceType: "pilot",
+      moduleKey: "backups",
+      severity: "high",
+      title: "Prueba de desastre",
+      message: "Se necesita garantizar roundtrip completo en local.",
+      reporterName: "Asesoria Martin Fiscal",
+      contactEmail: email,
+    });
+
+    const document = await createLocalCommercialDocumentRecord({
+      userId,
+      input: {
+        document_type: "quote",
+        status: "draft",
+        issue_date: "2026-04-21",
+        valid_until: "2026-05-21",
+        issuer_name: "Asesoria Martin Fiscal",
+        issuer_nif: "B12345678",
+        issuer_address: "Calle Alcala 100, Madrid",
+        issuer_logo_url: null,
+        client_name: "Empresa 1 S.L.",
+        client_nif: "B76543001",
+        client_address: "Avenida Cliente 1, Madrid",
+        client_email: "admin1@empresa.test",
+        line_items: buildLineItems(),
+        vat_breakdown: buildTotals().vatBreakdown,
+        subtotal: 350,
+        vat_total: 73.5,
+        irpf_rate: 0,
+        irpf_amount: 0,
+        grand_total: 423.5,
+        notes: "Documento de prueba de desastre",
+        converted_invoice_id: null,
+      },
+    });
+
+    const signatureRequest = await createLocalDocumentSignatureRequest({
+      userId,
+      documentId: document.id,
+      documentType: "quote",
+      requestKind: "quote_acceptance",
+      publicToken: "token-disaster-restore",
+      requestNote: null,
+      requestedAt: "2026-04-21T10:00:00.000Z",
+      expiresAt: "2026-05-21T23:59:59.000Z",
+      evidence: {
+        documentSnapshot: {
+          hash: "hash-disaster-restore",
+        },
+      },
+    });
+
+    await respondToLocalDocumentSignatureRequest({
+      token: signatureRequest.public_token,
+      status: "signed",
+      signerName: "Empresa 1 S.L.",
+      signerEmail: "admin1@empresa.test",
+      signerNif: "B76543001",
+      signerMessage: "Aceptado para prueba",
+      acceptedTerms: true,
+      forwardedFor: "127.0.0.1",
+      userAgent: "Vitest disaster",
+    });
+
+    const originalBackup = await exportBackupForUser(userId, email);
+    const restoreDir = await mkdtemp(path.join(os.tmpdir(), "facturaia-backup-disaster-"));
+
+    try {
+      process.env.FACTURAIA_DATA_DIR = restoreDir;
+      await restoreBackupForUser(userId, email, originalBackup);
+
+      const restoredBackup = await exportBackupForUser(userId, email);
+      const comparison = compareBackupContents(originalBackup, restoredBackup);
+
+      expect(comparison.matches).toBe(true);
+      expect(comparison.mismatches).toEqual([]);
+
+      const { lineItems, totals } = buildMassLineItems(25);
+      const nextInvoice = await createLocalInvoiceRecord({
+        userId,
+        payload: {
+          issueDate: "2026-04-25",
+          dueDate: "2026-05-25",
+          issuerName: "Asesoria Martin Fiscal",
+          issuerNif: "B12345678",
+          issuerAddress: "Calle Alcala 100, Madrid",
+          clientName: "Empresa 2 S.L.",
+          clientNif: "B76543002",
+          clientAddress: "Avenida Cliente 2, Madrid",
+          clientEmail: "admin2@empresa.test",
+        },
+        lineItems,
+        totals,
+        issuerLogoUrl: null,
+      });
+
+      const restoredSnapshot = await getLocalCoreSnapshot();
+
+      expect(nextInvoice.invoice_number).toBe(25);
+      expect(restoredSnapshot.invoices).toHaveLength(25);
+      expect(restoredSnapshot.invoiceReminders).toHaveLength(1);
+      expect(restoredSnapshot.bankMovements).toHaveLength(1);
+      expect(
+        restoredSnapshot.invoices.find((invoice) => invoice.id === invoices[2]!.id)?.payment_status,
+      ).toBe("partial");
     } finally {
       await rm(restoreDir, { recursive: true, force: true });
       process.env.FACTURAIA_DATA_DIR = localDataDir;
