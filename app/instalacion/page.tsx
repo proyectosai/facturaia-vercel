@@ -209,8 +209,9 @@ docker compose -f compose.app.yml up --build`}</code>
               </pre>
             </div>
             <p className="text-sm leading-7 text-muted-foreground">
-              Primero configura solo `NEXT_PUBLIC_APP_URL`, Supabase y correo saliente.
-              Todo lo demás puede esperar.
+              Primero configura solo `NEXT_PUBLIC_APP_URL`, `FACTURAIA_LOCAL_MODE=1`,
+              `FACTURAIA_LOCAL_SESSION_SECRET`, `FACTURAIA_DATA_DIR` y, si lo necesitas,
+              correo saliente. Supabase ya no es obligatorio para arrancar el núcleo local.
             </p>
           </CardContent>
         </Card>
@@ -368,7 +369,7 @@ docker compose -f compose.app.yml up --build`}</code>
           <CardHeader>
             <CardTitle>Rutas recomendadas</CardTitle>
             <CardDescription>
-              Si vas a usarlo como herramienta privada, este es el recorrido más natural.
+              Si vas a usarlo como herramienta privada, este es el recorrido base.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -380,67 +381,32 @@ docker compose -f compose.app.yml up --build`}</code>
                 label: "Abrir perfil",
               },
               {
-                title: "2. Prepara un presupuesto o albarán",
-                description:
-                  "Valida el flujo previo a facturación y conviértelo en factura cuando toque.",
-                href: "/presupuestos",
-                label: "Abrir pre-facturación",
-              },
-              {
-                title: "3. Emite una primera factura",
+                title: "2. Emite una primera factura",
                 description:
                   "Verifica el flujo base con cliente, líneas, PDF y envío por email.",
                 href: "/new-invoice",
                 label: "Nueva factura",
               },
               {
-                title: "4. Revisa correo y backups",
+                title: "3. Revisa correo y backups",
                 description:
                   "Configura el envío saliente y prepara copias remotas antes de usarlo a diario.",
                 href: "/mail",
                 label: "Abrir correo",
               },
               {
-                title: "5. Importa tus primeros gastos",
+                title: "4. Activa cobros y vencimientos",
                 description:
-                  "Valida el circuito de justificantes y deja revisado al menos un gasto real o de prueba.",
-                href: "/gastos",
-                label: "Abrir gastos",
+                  "Marca pagos, revisa pendientes y valida el seguimiento básico antes de añadir más módulos.",
+                href: "/cobros",
+                label: "Abrir cobros",
               },
               {
-                title: "6. Importa un extracto bancario",
+                title: "5. Revisa módulos antes de seguir",
                 description:
-                  "Carga un CSV corto desde tu banco y valida las primeras sugerencias de conciliación manual.",
-                href: "/banca",
-                label: "Abrir banca",
-              },
-              {
-                title: "7. Crea tus primeras fichas de cliente",
-                description:
-                  "Centraliza datos de contacto y deja notas internas antes de trabajar a diario con documentos y mensajes.",
-                href: "/clientes",
-                label: "Abrir CRM",
-              },
-              {
-                title: "8. Valida una firma documental",
-                description:
-                  "Genera un enlace de aceptación desde un presupuesto o albarán y comprueba la respuesta en tu entorno.",
-                href: "/firmas",
-                label: "Abrir firmas",
-              },
-              {
-                title: "9. Revisa el exportador Facturae",
-                description:
-                  "Descarga un XML de prueba y contrástalo con la normativa oficial si vas a trabajar flujos estructurados.",
-                href: "/facturae",
-                label: "Abrir Facturae",
-              },
-              {
-                title: "10. Activa documentos o mensajería",
-                description:
-                  "Añade IA local y bandeja de mensajes solo si de verdad te aportan valor.",
-                href: "/documents-ai",
-                label: "Abrir documentos",
+                  "Cuando el núcleo esté estable, decide qué entra en piloto y qué conviene dejar fuera por ahora.",
+                href: "/modules",
+                label: "Ver módulos",
               },
             ].map((item) => (
               <div
@@ -459,6 +425,29 @@ docker compose -f compose.app.yml up --build`}</code>
           </CardContent>
         </Card>
       </section>
+
+      <Card className="overflow-hidden bg-[linear-gradient(155deg,rgba(255,255,255,0.96),rgba(244,239,230,0.88))]">
+        <CardHeader>
+          <CardTitle>Qué dejar para una segunda fase</CardTitle>
+          <CardDescription>
+            Estas piezas pueden aportar valor, pero no conviene meterlas todas en el arranque.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4 lg:grid-cols-3">
+          {[
+            "Piloto útil: presupuestos, firma documental y CRM ligero.",
+            "Validar antes: estudio documental local, IMAP, banca CSV, mensajería y backups remotos.",
+            "Mejor esperar: OCR de gastos, Facturae / VeriFactu como promesa cerrada y automatizaciones agresivas.",
+          ].map((item) => (
+            <div
+              key={item}
+              className="rounded-[24px] bg-white/80 p-4 text-sm leading-7 text-muted-foreground"
+            >
+              {item}
+            </div>
+          ))}
+        </CardContent>
+      </Card>
     </div>
   );
 }

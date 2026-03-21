@@ -191,13 +191,13 @@ export default async function DashboardPage() {
       title:
         collectionSummary.amountPending > 0
           ? "Sigue los cobros pendientes"
-          : "Activa tu flujo privado de automatización",
+          : "Activa módulos solo por fases",
       description:
         collectionSummary.amountPending > 0
           ? "El siguiente salto de madurez es controlar vencimientos, cobros parciales y facturas liquidadas desde un solo sitio."
-          : "Tu instalación no depende de planes. Usa la IA local, los documentos y la bandeja de mensajes según tu propia operativa.",
-      href: collectionSummary.amountPending > 0 ? "/cobros" : "/documents-ai",
-      label: collectionSummary.amountPending > 0 ? "Abrir cobros" : "Abrir documentos IA",
+          : "El núcleo ya puede ser útil por sí solo. Revisa primero qué módulos están para uso diario y cuáles conviene dejar en piloto.",
+      href: collectionSummary.amountPending > 0 ? "/cobros" : "/modules",
+      label: collectionSummary.amountPending > 0 ? "Abrir cobros" : "Revisar módulos",
       done: collectionSummary.amountPending === 0,
     },
   ];
@@ -215,6 +215,7 @@ export default async function DashboardPage() {
           <CardHeader className="space-y-4">
             <div className="flex flex-wrap items-center gap-3">
               <Badge variant="success">Uso privado</Badge>
+              <Badge variant="secondary">Núcleo primero</Badge>
               <span className="rounded-full bg-white/80 px-4 py-2 text-sm text-muted-foreground">
                 Instalación: {demoMode ? "demo local" : "autogestionada"}
               </span>
@@ -224,8 +225,9 @@ export default async function DashboardPage() {
                 Hola, {profile.full_name || "autónomo"}.
               </CardTitle>
               <CardDescription className="max-w-2xl text-base leading-7">
-                Este panel te dice de un vistazo qué has emitido, cuánto has
-                facturado y qué te conviene hacer ahora para mantener la operativa al día.
+                Este panel te dice qué has emitido, cuánto has facturado y cuál
+                es el siguiente paso razonable sin forzar módulos que todavía no
+                necesitas.
               </CardDescription>
             </div>
           </CardHeader>
@@ -298,9 +300,9 @@ export default async function DashboardPage() {
                 </Link>
               </Button>
               <Button variant="ghost" asChild>
-                <Link href="/documents-ai">
+                <Link href="/modules">
                   <FileText className="h-4 w-4" />
-                  Documentos IA
+                  Módulos
                 </Link>
               </Button>
               <Button variant="ghost" asChild>
@@ -433,6 +435,43 @@ export default async function DashboardPage() {
           );
         })}
       </section>
+
+      <Card className="overflow-hidden bg-[linear-gradient(155deg,rgba(255,255,255,0.96),rgba(244,239,230,0.88))]">
+        <CardHeader>
+          <CardTitle>Qué conviene activar hoy</CardTitle>
+          <CardDescription>
+            FacturaIA no debe usarse como bloque único. Empieza por el núcleo y
+            deja el resto por fases.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4 lg:grid-cols-3">
+          {[
+            {
+              title: "Usar ya",
+              description:
+                "Perfil fiscal, facturas, PDF, factura pública, correo saliente, backups locales, cobros y auditoría básica.",
+            },
+            {
+              title: "Usar con piloto",
+              description:
+                "Presupuestos, firma, CRM ligero, estudio documental, IMAP, banca CSV, mensajería y backups remotos.",
+            },
+            {
+              title: "No activar todavía",
+              description:
+                "OCR de gastos, Facturae / VeriFactu como promesa cerrada y memoria local RAG multi-año.",
+            },
+          ].map((item) => (
+            <div
+              key={item.title}
+              className="rounded-[24px] bg-white/80 p-4 text-sm leading-7 text-muted-foreground"
+            >
+              <p className="font-semibold text-foreground">{item.title}</p>
+              <p className="mt-2">{item.description}</p>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
 
       <section className="space-y-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">

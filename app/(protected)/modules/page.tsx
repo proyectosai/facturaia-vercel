@@ -134,6 +134,43 @@ export default function ModulesPage() {
         </Card>
       </section>
 
+      <Card className="overflow-hidden bg-[linear-gradient(155deg,rgba(255,255,255,0.96),rgba(244,239,230,0.9))]">
+        <CardHeader>
+          <CardTitle>Cómo leer esta página sin engañarte</CardTitle>
+          <CardDescription>
+            Que un módulo exista en el panel no significa que deba activarse ya
+            en una instalación real.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4 lg:grid-cols-3">
+          {[
+            {
+              title: "Usar ya",
+              description:
+                "Lo diario y prudente: facturación, PDF, correo saliente, backups locales, cobros y auditoría básica.",
+            },
+            {
+              title: "Usar con piloto",
+              description:
+                "Módulos que pueden aportar valor, pero conviene validar con datos de prueba y flujo completo.",
+            },
+            {
+              title: "No activar todavía",
+              description:
+                "Lo fiscal más delicado o lo que sigue sin suficiente cierre técnico y operativo.",
+            },
+          ].map((item) => (
+            <div
+              key={item.title}
+              className="rounded-[24px] bg-white/80 p-4 text-sm leading-7 text-muted-foreground"
+            >
+              <p className="font-semibold text-foreground">{item.title}</p>
+              <p className="mt-2">{item.description}</p>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
       <Card className="overflow-hidden bg-[linear-gradient(155deg,rgba(255,255,255,0.96),rgba(244,239,230,0.92))]">
         <CardHeader>
           <CardTitle>Núcleo recomendado para un autónomo no técnico</CardTitle>
@@ -201,6 +238,10 @@ export default function ModulesPage() {
                 </p>
                 <p className="mt-2 text-sm leading-7 text-muted-foreground">
                   {nextModule.configuredLabel}
+                </p>
+                <p className="mt-2 text-sm leading-7 text-muted-foreground">
+                  Que sea el siguiente módulo del roadmap no implica que sea el
+                  siguiente que debas activar en tu instalación.
                 </p>
               </div>
 
