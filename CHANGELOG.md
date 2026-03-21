@@ -4,6 +4,27 @@ Todos los cambios relevantes de FacturaIA se documentarán aquí.
 
 El formato está inspirado en Keep a Changelog y el versionado irá madurando conforme avance el proyecto.
 
+## [0.2.0] - 2026-03-21
+
+### Añadido
+
+- Job dedicado `local-e2e` en GitHub Actions para ejecutar `npm run test:e2e:local` sobre Linux.
+- Verificación post-restore en modo local: tras restaurar una copia, FacturaIA reexporta y compara el contenido antes de dar la operación por válida.
+- Recuperación SQLite-first reforzada para clientes, facturas, recordatorios, auditoría, gastos, banca, mensajería, correo, documentos comerciales, firmas, feedback, perfiles, identidad, uso de IA y contadores.
+- Pruebas nuevas de degradación del snapshot para slices críticas del modo local.
+
+### Mejorado
+
+- El snapshot compatible ya se mantiene alineado cuando una mutación entra por la vía SQLite-first.
+- El build local deja de depender de Google Fonts y ahora compila sin acceso a `fonts.googleapis.com`.
+- El modo local endurece de forma visible el flujo `exportar -> restaurar -> validar`.
+- La batería local sube de cobertura operativa y queda alineada con el cierre de una release de hardening.
+
+### Documentación
+
+- `docs/CALIDAD_LOCAL.md`
+- `docs/ESTADO_REAL.md`
+
 ## [0.1.1] - 2026-03-20
 
 ### Añadido

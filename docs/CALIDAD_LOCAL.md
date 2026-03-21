@@ -39,7 +39,7 @@ Antes de dar por buena una iteración del modo local, deben pasar estos gates:
    - comparar contenido
    - validar continuidad de numeración
 
-En el repositorio, `lint`, `typecheck`, `npm test`, `test:massive-local`, build demo y smoke tests ya se ejecutan en CI sobre `Linux`, `macOS` y `Windows`. El e2e largo sigue siendo una capa adicional de endurecimiento y todavía no sustituye a los gates segmentados.
+En el repositorio, `lint`, `typecheck`, `npm test`, `test:massive-local`, build demo y smoke tests ya se ejecutan en CI sobre `Linux`, `macOS` y `Windows`. Además, `npm run test:e2e:local` ya corre como job dedicado en `Linux` para endurecer el flujo crítico del modo local.
 
 ## Qué debe quedar cubierto por tests
 
@@ -157,7 +157,18 @@ Para validar una iteración seria del modo local:
 1. `npm run test:massive-local`
 2. `npm run test:smoke`
 
-Además, queda preparado un harness de navegador en `npm run test:e2e:local` para endurecer el flujo local crítico sobre SQLite temporal. Recorre login, perfil, nueva factura, cobros, backup export y un barrido de rutas protegidas, pero todavía no forma parte del gate principal.
+Además, queda preparado un harness de navegador en `npm run test:e2e:local` para endurecer el flujo local crítico sobre SQLite temporal. Recorre login, perfil, nueva factura, cobros, backup export y un barrido de rutas protegidas, y ahora también forma parte de la validación automática del repositorio.
+
+## Cierre de la fase local
+
+La fase de hardening local puede darse por cerrada cuando se cumplan estas condiciones:
+
+1. `test:massive-local` verde de forma repetible.
+2. `test:e2e:local` verde en CI.
+3. backup local con `manifest`, `checksum`, `dry-run`, restore y verificación post-restore.
+4. build local sin dependencias externas obligatorias.
+5. rutas principales del modo local sin dependencia accidental de Supabase.
+6. snapshot compatible mantenido solo como capa de compatibilidad, no como fuente principal de verdad operativa.
 
 ## Operativa de despacho
 

@@ -15,6 +15,7 @@ Estas piezas son las más razonables para una instalación privada prudente:
 - correo saliente
 - backups locales
 - cobros y vencimientos básicos
+- instalación local privada sin depender de Google Fonts ni servicios web externos para compilar
 
 Interpretación práctica:
 
@@ -70,12 +71,23 @@ Interpretación práctica:
 
 ## Qué le falta al proyecto para dar más confianza
 
-- más pruebas de extremo a extremo
 - más restauraciones de backup validadas
 - mejor instalación para no técnicos
 - más pilotos reales con autónomos
 - mayor cierre fiscal en Facturae / VeriFactu
 - menos dependencia de configuración manual en módulos avanzados
+- seguir reduciendo el papel del snapshot legacy frente a SQLite estructurado
+
+## Estado de la fase local
+
+La fase local ya no está en “base sin cerrar”. Ahora mismo queda en una situación intermedia más defendible:
+
+- SQLite estructurado ya soporta la operativa crítica y la recuperación de slices principales.
+- el snapshot compatible sigue existiendo, pero ya no debería mandar sobre el estado real diario.
+- la copia local se valida antes y después del restore.
+- el build local ya compila offline sin depender de `fonts.googleapis.com`.
+
+Lo que todavía falta para dar la fase por completamente cerrada es rematar la transición del snapshot legado a una capa SQLite todavía más primaria y seguir estabilizando el cierre de release alrededor de esa base.
 
 ## Orden recomendado de adopción
 
