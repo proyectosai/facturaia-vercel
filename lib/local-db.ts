@@ -10,6 +10,7 @@ import type {
   InvoiceReminderRecord,
   LocalAuditEventRecord,
 } from "@/lib/types";
+import { getLocalRuntimeEnv } from "@/lib/env";
 
 let sqlJsPromise: Promise<SqlJsStatic> | null = null;
 
@@ -137,7 +138,7 @@ function getSqlJs() {
 }
 
 export function getLocalDataDir() {
-  return process.env.FACTURAIA_DATA_DIR?.trim() || path.join(process.cwd(), ".facturaia-local");
+  return getLocalRuntimeEnv().FACTURAIA_DATA_DIR || path.join(process.cwd(), ".facturaia-local");
 }
 
 export function getLocalDatabaseFilePath() {
@@ -508,7 +509,7 @@ function initializeSchema(db: Database) {
 }
 
 function isStructuredMirrorEnabled() {
-  return process.env.FACTURAIA_ENCRYPT_LOCAL_DATA !== "1";
+  return !getLocalRuntimeEnv().FACTURAIA_ENCRYPT_LOCAL_DATA;
 }
 
 function normalizeStructuredSnapshot(parsed: unknown): StructuredSnapshot {

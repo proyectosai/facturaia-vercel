@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from "node:crypto";
+import { getLocalRuntimeEnv } from "@/lib/env";
 
 export type EncryptionScope = "local-core" | "local-documents" | "backup";
 
@@ -20,16 +21,17 @@ export type EncryptedPayloadEnvelope = {
 export class LocalEncryptionError extends Error {}
 
 function getConfiguredPassphrase() {
-  const value = process.env.FACTURAIA_ENCRYPTION_PASSPHRASE?.trim();
-  return value ? value : null;
+  return getLocalRuntimeEnv().FACTURAIA_ENCRYPTION_PASSPHRASE ?? null;
 }
 
 function isScopeEncryptionRequested(scope: EncryptionScope) {
+  const env = getLocalRuntimeEnv();
+
   if (scope === "local-core" || scope === "local-documents") {
-    return process.env.FACTURAIA_ENCRYPT_LOCAL_DATA === "1";
+    return env.FACTURAIA_ENCRYPT_LOCAL_DATA;
   }
 
-  return process.env.FACTURAIA_ENCRYPT_BACKUPS === "1";
+  return env.FACTURAIA_ENCRYPT_BACKUPS;
 }
 
 export function isLocalDataEncryptionRequested() {

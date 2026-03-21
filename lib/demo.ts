@@ -16,18 +16,19 @@ import type {
   MessageThread,
   Profile,
 } from "@/lib/types";
+import { getLocalRuntimeEnv, getOptionalPublicEnv } from "@/lib/env";
 
 export function hasSupabasePublicEnv() {
-  return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()) &&
-    Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim());
+  const env = getOptionalPublicEnv();
+  return Boolean(env.NEXT_PUBLIC_SUPABASE_URL) && Boolean(env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 }
 
 export function isLocalMode() {
-  return process.env.FACTURAIA_LOCAL_MODE === "1";
+  return getLocalRuntimeEnv().FACTURAIA_LOCAL_MODE;
 }
 
 export function isLocalBootstrapEnabled() {
-  return process.env.FACTURAIA_LOCAL_BOOTSTRAP === "1";
+  return getLocalRuntimeEnv().FACTURAIA_LOCAL_BOOTSTRAP;
 }
 
 export function isLocalFileMode() {
@@ -35,7 +36,7 @@ export function isLocalFileMode() {
 }
 
 export function isDemoMode() {
-  return process.env.FACTURAIA_DEMO_MODE === "1" ||
+  return getLocalRuntimeEnv().FACTURAIA_DEMO_MODE ||
     (!isLocalMode() && !hasSupabasePublicEnv());
 }
 

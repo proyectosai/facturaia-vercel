@@ -14,7 +14,7 @@
     "typecheck": "node -e \"const fs=require('fs'); fs.rmSync('.next/types',{recursive:true,force:true,maxRetries:5,retryDelay:100});\" && next typegen && tsc --noEmit --incremental false",
     "e2e:local:server": "node scripts/start-local-e2e.mjs",
     "test:local-core": "vitest run tests/local-core.test.ts",
-    "test:massive-local": "vitest run tests/local-core.test.ts tests/local-auth-security.test.ts tests/local-audit.test.ts tests/backups-local.test.ts tests/local-billing-qa.test.ts tests/local-office-qa.test.ts tests/local-banking.test.ts tests/local-communications.test.ts tests/local-encryption.test.ts tests/document-study.test.ts tests/modules.test.ts",
+    "test:massive-local": "vitest run tests/local-core.test.ts tests/env.test.ts tests/local-auth-security.test.ts tests/local-audit.test.ts tests/backups-local.test.ts tests/local-billing-qa.test.ts tests/local-office-qa.test.ts tests/local-banking.test.ts tests/local-communications.test.ts tests/local-encryption.test.ts tests/document-study.test.ts tests/modules.test.ts",
     "test:e2e:local": "node tests/local-e2e.cjs",
     "test:quality": "npm run lint && npm run typecheck && npm test && npm run demo:build && npm run test:smoke",
     "test": "vitest run",

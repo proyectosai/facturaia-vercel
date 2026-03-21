@@ -65,6 +65,7 @@ import {
   type StructuredMirrorSection,
   writeLocalStateText,
 } from "@/lib/local-db";
+import { getLocalRuntimeEnv, getOptionalPublicEnv } from "@/lib/env";
 import { roundCurrency, toNumber } from "@/lib/utils";
 
 type LocalCoreAuthUser = AppUserRecord & {
@@ -287,13 +288,14 @@ function getNormalizedEmail(email: string) {
 }
 
 function getLocalSessionSecretFallback() {
+  const publicEnv = getOptionalPublicEnv();
   return createHash("sha256")
-    .update(`${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}:${getLocalDataDir()}`)
+    .update(`${publicEnv.NEXT_PUBLIC_APP_URL}:${getLocalDataDir()}`)
     .digest("hex");
 }
 
 function getConfiguredLocalSessionSecret() {
-  return process.env.FACTURAIA_LOCAL_SESSION_SECRET?.trim() || null;
+  return getLocalRuntimeEnv().FACTURAIA_LOCAL_SESSION_SECRET ?? null;
 }
 
 function getLocalSessionSecret() {
@@ -310,32 +312,13 @@ function getLocalSessionSecret() {
   return getLocalSessionSecretFallback();
 }
 
-function getPositiveNumberFromEnv(rawValue: string | undefined, fallback: number) {
-  const parsed = Number(rawValue ?? "");
-
-  if (!Number.isFinite(parsed) || parsed <= 0) {
-    return fallback;
-  }
-
-  return parsed;
-}
-
 export function getLocalSecurityPolicy() {
-  const sessionMaxAgeHours = getPositiveNumberFromEnv(
-    process.env.FACTURAIA_LOCAL_SESSION_MAX_AGE_HOURS,
-    168,
-  );
-  const loginMaxAttempts = Math.max(
-    1,
-    Math.trunc(
-      getPositiveNumberFromEnv(process.env.FACTURAIA_LOCAL_LOGIN_MAX_ATTEMPTS, 5),
-    ),
-  );
+  const env = getLocalRuntimeEnv();
+  const sessionMaxAgeHours = env.FACTURAIA_LOCAL_SESSION_MAX_AGE_HOURS;
+  const loginMaxAttempts = Math.max(1, Math.trunc(env.FACTURAIA_LOCAL_LOGIN_MAX_ATTEMPTS));
   const loginLockoutMinutes = Math.max(
     1,
-    Math.trunc(
-      getPositiveNumberFromEnv(process.env.FACTURAIA_LOCAL_LOGIN_LOCKOUT_MINUTES, 15),
-    ),
+    Math.trunc(env.FACTURAIA_LOCAL_LOGIN_LOCKOUT_MINUTES),
   );
 
   return {
@@ -352,12 +335,12 @@ export function getLocalSessionMaxAgeSeconds() {
 }
 
 export function getLocalSecurityIssues() {
+  const env = getLocalRuntimeEnv();
   const issues: string[] = [];
   const configuredSessionSecret = getConfiguredLocalSessionSecret();
   const encryptionRequested =
-    process.env.FACTURAIA_ENCRYPT_LOCAL_DATA === "1" ||
-    process.env.FACTURAIA_ENCRYPT_BACKUPS === "1";
-  const encryptionPassphrase = process.env.FACTURAIA_ENCRYPTION_PASSPHRASE?.trim();
+    env.FACTURAIA_ENCRYPT_LOCAL_DATA || env.FACTURAIA_ENCRYPT_BACKUPS;
+  const encryptionPassphrase = env.FACTURAIA_ENCRYPTION_PASSPHRASE;
 
   if (process.env.NODE_ENV === "production" && !configuredSessionSecret) {
     issues.push("FACTURAIA_LOCAL_SESSION_SECRET es obligatorio en producción.");
