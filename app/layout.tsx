@@ -4,9 +4,15 @@ import { Providers } from "@/components/providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "FacturaIA",
+  title: "FacturaIA — Facturación española open source para autónomos",
   description:
-    "Aplicación self-hosted de facturación en español con Next.js 15, Supabase, SMTP o Resend, LM Studio y generación de PDF profesional.",
+    "Herramienta open source de facturación española con IVA/IRPF, PDF profesional, cobros, backups, CRM, firma documental, banca CSV, IA local y más. Self-hosted, privada, sin dependencias externas.",
+  openGraph: {
+    title: "FacturaIA — Facturación española open source",
+    description:
+      "20+ módulos: facturas, PDF, cobros, CRM, firma, banca, IA local. Self-hosted y gratuito para autónomos.",
+    type: "website",
+  },
 };
 
 export default function RootLayout({
